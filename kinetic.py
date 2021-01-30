@@ -51,7 +51,6 @@ class MainWindow(QWidget):
 		global dir_last_released
 		sender = self.sender()
 		
-		print(sender.parentLayout)
 		for k in range(sender.parentLayout.rowCount()):
 			sender.parentLayout.itemAt(k).widget().setColor(0)
 		
@@ -59,69 +58,67 @@ class MainWindow(QWidget):
 		sender.setIconSize(QSize(BUTTON_WIDTH, BUTTON_HEIGHT))
 		sender.activeColor = 1
 		
-		#self.Stack.setCurrentIndex(sender.i)
+		self.Stack.setCurrentIndex(sender.i)
 		dir_last_released = id(sender)
 		
-		self.hlayout.replaceWidget(self.currentWig, sender.childLayout)
 
 	def patchPressed(self):
 		global patch_last_released
 		sender = self.sender()
-		sender.setIcon(QIcon(colorTuple[1]))
+		
+		for k in range(sender.parentLayout.rowCount()):
+			sender.parentLayout.itemAt(k).widget().setColor(0)
+		
+		sender.setIcon(QIcon(sender.colorTuple[1]))
 		sender.setIconSize(QSize(BUTTON_WIDTH, BUTTON_HEIGHT))
 		sender.activeColor = 1
 		
-		print(sender.parentLayout)
-		for k in range(sender.parentLayout.rowCount()):
-			sender.parentLayout.itemAt(k).setColor(0)
-			
 		patch_last_released = id(sender)
 		
 	def __init__(self, parent=None):
 		super().__init__(parent)
-		folderScroll = QScrollArea()
-		#self.Stack = QStackedWidget (self)
+		self.folderScroll = QScrollArea()
+		self.Stack = QStackedWidget (self)
 		self.hlayout = QHBoxLayout(self)
-		self.hlayout.addWidget(folderScroll)
+		self.hlayout.addWidget(self.folderScroll)
 
-		folderScroll_widget = QWidget()
-		folderScroll_layout = QFormLayout(folderScroll_widget)
+		self.folderScroll_widget = QWidget()
+		self.folderScroll_layout = QFormLayout(self.folderScroll_widget)
 		
 		dirno = 0
 		for i, x in enumerate(os.walk(os.path.join(sys.path[0], 'patches/'))):
-		
+			# 0th return is some meta bullshit	
+			if i == 0: 
+				continue
 			buttonLabel = os.path.basename(x[0]) 
 
-			#each directory gets a filescroll
-			fileScroll = QScrollArea()
-			fileScroll_widget = QWidget()
-			fileScroll_layout = QFormLayout(fileScroll_widget)
-			fileScroll.setWidget(fileScroll_widget)
-			fileScroll.setContentsMargins(0, 0, 0, 0)
+			#each directory gets a self.fileScroll
+			self.fileScroll = QScrollArea()
+			self.fileScroll_widget = QWidget()
+			self.fileScroll_layout = QFormLayout(self.fileScroll_widget)
+			self.fileScroll.setWidget(self.fileScroll_widget)
+			self.fileScroll.setContentsMargins(0, 0, 0, 0)
 			
 			#my_button.released.connect(self.dirReleased) 
-			dirButton = JulianButton(buttonLabel, folderScroll_layout, fileScroll_widget, i)
+			dirButton = JulianButton(buttonLabel, self.folderScroll_layout, self.fileScroll_widget, i-1)
 			dirButton.pressed.connect(self.dirPressed) 
 			
 			for j, file in enumerate(os.listdir(x[0])):
 				if file.endswith(".patch"):
 					buttonLabel = file.replace('.patch', '') 
-					patchButton = JulianButton(buttonLabel, fileScroll_layout, None, j)
+					patchButton = JulianButton(buttonLabel, self.fileScroll_layout, None, j)
 					patchButton.pressed.connect(self.patchPressed) 
 					
-			#self.Stack.addWidget (fileScroll_widget)
+			self.Stack.addWidget (self.fileScroll_widget)
 			
-			if i == 0:
-				self.hlayout.addWidget(fileScroll_widget)
-				self.currentWig = fileScroll_widget
 			
-		folderScroll.setWidget(folderScroll_widget)
-		folderScroll.setContentsMargins(0, 0, 0, 0)
+		self.folderScroll.setWidget(self.folderScroll_widget)
+		self.folderScroll.setContentsMargins(0, 0, 0, 0)
 		
-		#hlayout.addWidget(self.Stack)
+		self.hlayout.addWidget(self.Stack)
 		
 		QScroller.grabGesture(
-			folderScroll.viewport(), QScroller.LeftMouseButtonGesture
+			self.folderScroll.viewport(), QScroller.LeftMouseButtonGesture
 		)
 		
 		
