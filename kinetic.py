@@ -36,9 +36,10 @@ class MainWindow(QWidget):
 		# apply patch now
 		try: 
 			my_button, colorTuple, x = allpatches[last_released]
-			my_button.setIcon(QIcon(colorTuple[0]))
-			x = 0
-			allpatches[id(my_button)] = (my_button, colorTuple, x)
+			if(id(sender) != last_released):
+				my_button.setIcon(QIcon(colorTuple[0]))
+				x = 0
+				allpatches[id(my_button)] = (my_button, colorTuple, x)
 		except:
 			pass
 		
