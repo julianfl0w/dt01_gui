@@ -22,7 +22,7 @@ def text_to_image(txt):
 	W, H = (200, 70) # image size
 	background = color # white
 	fontsize = 35
-        print("font: " + pacifico)
+	print("font: " + pacifico)
 	font = ImageFont.truetype(pacifico, fontsize)
 
 	outName = os.path.join(sys.path[0], 'patches', fileFriendly + '__COLOR__.png')
