@@ -7,7 +7,7 @@ from text_to_image import *
 allpatches = dict()
 last_released = 0
 BUTTON_WIDTH  = 200
-BUTTON_HEIGHT = 50
+BUTTON_HEIGHT = 40
 
 class MainWindow(QWidget):
 
@@ -66,7 +66,7 @@ class MainWindow(QWidget):
 		for i in range(30):
 		
 			buttonLabel = 'Label{}'.format(i)
-			labelImage = text_to_image(buttonLabel)
+			labelImage = text_to_image(buttonLabel, size=(BUTTON_WIDTH, BUTTON_HEIGHT))
 			_icon = QIcon(labelImage.replace("__COLOR__", '0'))
 			my_button = QPushButton()
 			my_button.setIcon(_icon)
@@ -78,6 +78,7 @@ class MainWindow(QWidget):
 			allpatches[id(my_button)] = [my_button, colorTuple, 0]
 
 		scroll_area.setWidget(scroll_widget)
+		scroll_area.setContentsMargins(0, 0, 0, 0)
 
 		QScroller.grabGesture(
 			scroll_area.viewport(), QScroller.LeftMouseButtonGesture
