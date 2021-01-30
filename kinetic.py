@@ -42,6 +42,8 @@ class MainWindow(QWidget):
 				allpatches[id(my_button)] = (my_button, colorTuple, x)
 		except:
 			pass
+			
+		last_released = id(sender)
 		
 		#for key, value in allpatches.items():
 		#	my_button, colorTuple, x = value
