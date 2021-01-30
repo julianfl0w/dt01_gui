@@ -1,28 +1,43 @@
 import os
 from PIL import Image, ImageDraw, ImageFont
+import re 
+import sys
 
 # make sure you have the fonts locally in a fonts/ directory
-georgia_bold = 'fonts/georgia_bold.ttf'
-georgia_bold_italic = 'fonts/georgia_bold_italic.ttf'
+pacifico = 'patches/pacifico.ttf'
 
-# W, H = (1280, 720) # image size
-W, H = (720, 405) # image size
-txt = 'Hello Petar this is my test image' # text to render
-background = (0,164,201) # white
-fontsize = 35
-font = ImageFont.truetype(georgia_bold_italic, fontsize)
+regex = re.compile('[^a-zA-Z]')
+#First parameter is the replacement, second parameter is your input string
+regex.sub('', 'ab3d*E')
+#Out: 'abdE'
 
-image = Image.new('RGBA', (W, H), background)
-draw = ImageDraw.Draw(image)
+def text_to_image(txt):
+	# W, H = (1280, 720) # image size
+	W, H = (720, 70) # image size
+	background = (0,164,201) # white
+	fontsize = 35
+	font = ImageFont.truetype(pacifico, fontsize)
 
-# w, h = draw.textsize(txt) # not that accurate in getting font size
-w, h = font.getsize(txt)
+	image = Image.new('RGBA', (W, H), background)
+	draw = ImageDraw.Draw(image)
 
-draw.text(((W-w)/2,(H-h)/2), txt, fill='white', font=font)
-# draw.text((10, 0), txt, (0,0,0), font=font)
-# img_resized = image.resize((188,45), Image.ANTIALIAS)
+	# w, h = draw.textsize(txt) # not that accurate in getting font size
+	w, h = font.getsize(txt)
 
-save_location = os.getcwd()
+	draw.text((10,(H-h)/2), txt, fill='white', font=font)
+	# draw.text((10, 0), txt, (0,0,0), font=font)
+	# img_resized = image.resize((188,45), Image.ANTIALIAS)
+	
+	
+	regex = re.compile('[^a-zA-Z0-9]')
+	#First parameter is the replacement, second parameter is your input string
+	fileFriendly = regex.sub('', txt)
 
-# img_resized.save(save_location + '/sample.jpg')
-image.save(save_location + '/sample.png')
+	# img_resized.save(save_location + '/sample.jpg')
+	outName = os.path.join(sys.path[0], 'patches', fileFriendly + '.png')
+	image.save(outName)
+	
+	return outName
+	
+if __name__ == "__main__":
+	text_to_image("test img")
