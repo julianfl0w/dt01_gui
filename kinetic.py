@@ -6,6 +6,8 @@ from text_to_image import *
 
 allpatches = dict()
 last_released = 0
+BUTTON_WIDTH  = 200
+BUTTON_HEIGHT = 50
 
 class MainWindow(QWidget):
 
@@ -16,7 +18,7 @@ class MainWindow(QWidget):
 		my_button, colorTuple, x = allpatches[id(sender)]
 		
 		sender.setIcon(QIcon(colorTuple[2]))
-		sender.setIconSize(QSize(200, 70))
+		sender.setIconSize(QSize(BUTTON_WIDTH, BUTTON_HEIGHT))
 		
 		global last_released
 		allpatches[id(my_button)] = (my_button, colorTuple, 2)
@@ -28,7 +30,7 @@ class MainWindow(QWidget):
 		sender = self.sender()
 		my_button, colorTuple, x = allpatches[id(sender)]
 		sender.setIcon(QIcon(colorTuple[1]))
-		sender.setIconSize(QSize(200, 70))
+		sender.setIconSize(QSize(BUTTON_WIDTH, BUTTON_HEIGHT))
 		allpatches[id(sender)] = (sender, colorTuple, 1)
 		
 		# apply patch now
@@ -68,7 +70,7 @@ class MainWindow(QWidget):
 			_icon = QIcon(labelImage.replace("__COLOR__", '0'))
 			my_button = QPushButton()
 			my_button.setIcon(_icon)
-			my_button.setIconSize(QSize(200, 70))
+			my_button.setIconSize(QSize(BUTTON_WIDTH, BUTTON_HEIGHT))
 			my_button.pressed.connect(self.showPressed) 
 			my_button.released.connect(self.showReleased) 
 			scroll_layout.addRow(my_button)

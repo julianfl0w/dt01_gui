@@ -4,29 +4,28 @@ import re
 import sys
 
 # make sure you have the fonts locally in a fonts/ directory
-pacifico = 'patches/pacifico.ttf'
+pacifico = 'patches/Pacifico.ttf'
 
 regex = re.compile('[^a-zA-Z]')
 #First parameter is the replacement, second parameter is your input string
 regex.sub('', 'ab3d*E')
 #Out: 'abdE'
 
-def text_to_image(txt):
+def text_to_image(txt, size = (200, 70)):
 	regex = re.compile('[^a-zA-Z0-9]')
 	#First parameter is the replacement, second parameter is your input string
 	fileFriendly = regex.sub('', txt)
 		
 	colors = [(0,164,201), (164,201,0), (201,164,0)]
 	
-	# W, H = (1280, 720) # image size
 	W, H = (200, 70) # image size
-	background = color # white
 	fontsize = 35
 	print("font: " + pacifico)
 	font = ImageFont.truetype(pacifico, fontsize)
 
 	outName = os.path.join(sys.path[0], 'patches', fileFriendly + '__COLOR__.png')
 	for i, color in enumerate(colors):
+		background = color # white
 
 		image = Image.new('RGBA', (W, H), background)
 		draw = ImageDraw.Draw(image)
