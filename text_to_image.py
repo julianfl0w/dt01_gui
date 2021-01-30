@@ -19,7 +19,7 @@ def text_to_image(txt, size = (200, 70)):
 	colors = [(0,164,201), (164,201,0), (201,164,0)]
 	
 	W, H = size # image size
-	fontsize = size(1) - 5
+	fontsize = size[1] - 5
 	print("font: " + pacifico)
 	font = ImageFont.truetype(pacifico, fontsize)
 
