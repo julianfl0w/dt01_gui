@@ -18,13 +18,15 @@ def text_to_image(txt):
 		
 	colors = [(0,164,201), (164,201,0), (201,164,0)]
 	
+	# W, H = (1280, 720) # image size
+	W, H = (200, 70) # image size
+	background = color # white
+	fontsize = 35
+        print("font: " + pacifico)
+	font = ImageFont.truetype(pacifico, fontsize)
+
 	outName = os.path.join(sys.path[0], 'patches', fileFriendly + '__COLOR__.png')
 	for i, color in enumerate(colors):
-		# W, H = (1280, 720) # image size
-		W, H = (200, 70) # image size
-		background = color # white
-		fontsize = 35
-		font = ImageFont.truetype(pacifico, fontsize)
 
 		image = Image.new('RGBA', (W, H), background)
 		draw = ImageDraw.Draw(image)
