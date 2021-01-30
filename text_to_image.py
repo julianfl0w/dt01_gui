@@ -4,7 +4,7 @@ import re
 import sys
 
 # make sure you have the fonts locally in a fonts/ directory
-pacifico = 'patches/Pacifico.ttf'
+pacifico = os.path.join(sys.path[0], 'patches/Pacifico.ttf')
 
 regex = re.compile('[^a-zA-Z]')
 #First parameter is the replacement, second parameter is your input string
@@ -20,7 +20,7 @@ def text_to_image(txt, size = (200, 70)):
 	
 	W, H = size # image size
 	fontsize = size[1] - 5
-	print("font: " + pacifico)
+	#print("font: " + pacifico)
 	font = ImageFont.truetype(pacifico, fontsize)
 
 	outName = os.path.join(sys.path[0], 'patches', fileFriendly + '__COLOR__.png')
