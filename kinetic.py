@@ -73,7 +73,7 @@ class MainWindow(QWidget):
 			my_button.setIcon(_icon)
 			my_button.setIconSize(QSize(BUTTON_WIDTH, BUTTON_HEIGHT))
 			my_button.pressed.connect(self.showPressed) 
-			my_button.released.connect(self.showReleased) 
+			#my_button.released.connect(self.showReleased) 
 			scroll_layout.addRow(my_button)
 			colorTuple = (labelImage.replace("__COLOR__", '0'), labelImage.replace("__COLOR__", '1'), labelImage.replace("__COLOR__", '2'))
 			allpatches[id(my_button)] = [my_button, colorTuple, 0]
