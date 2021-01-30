@@ -9,7 +9,7 @@ fileButtons = dict()
 dir_last_released = 0
 file_last_released = 0
 BUTTON_WIDTH  = 200
-BUTTON_HEIGHT = 40
+BUTTON_HEIGHT = 50
 
 		
 class JulianButton(QPushButton):

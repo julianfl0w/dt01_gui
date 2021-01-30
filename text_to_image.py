@@ -35,7 +35,7 @@ def text_to_image(txt, size = (200, 70)):
 			# w, h = draw.textsize(txt) # not that accurate in getting font size
 			w, h = font.getsize(txt)
 
-			draw.text((10,(H-h)/2+5), txt, fill='white', font=font)
+			draw.text((10,(H-h)/2-10), txt, fill='white', font=font)
 			# draw.text((10, 0), txt, (0,0,0), font=font)
 			# img_resized = image.resize((188,45), Image.ANTIALIAS)
 			
