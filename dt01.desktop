@@ -1,0 +1,5 @@
+[Desktop Entry]
+Name=Your Application Name
+Type=Application
+Comment=Some Comments about your program
+Exec=/home/pi/dt01_gui/startscript.sh
