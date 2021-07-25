@@ -67,8 +67,8 @@ while(1):
     # GFILTER!
     # passthrough control options
     # write patchage speed at 0
-    spi.xfer2( format_command(mm_noteno, GFILTER_ENV_SPEED, 0, 0, 0.5 / 32)) 
-    spi.xfer2( format_command_3bezier_targets(mm_noteno, GFILTER_3TARGETS, 0, 0, 1.0, 1.0, 1.0)) 
+    spi.xfer2( format_command(mm_noteno, GFILTER_ENV_SPEED, 0, 0, 0)) 
+    spi.xfer2( format_command_3bezier_targets(mm_noteno, GFILTER_3TARGETS, 0, 0, 0.0, 0.0, 0.0)) 
 
     # PITCH BEND         
     # set bezier triple
@@ -78,24 +78,24 @@ while(1):
 
     # Harmonic width effect!
     # write patchage speed at 0
-    spi.xfer2( format_command(mm_noteno, HWIDTH_ENV_SPEED, 0, 0, 0.1 / 32))
-    spi.xfer2( format_command_3bezier_targets(mm_noteno, HWIDTH_3TARGETS, 0, 0, 0.5, 0.5, 1.0))  
+    spi.xfer2( format_command(mm_noteno, HWIDTH_ENV_SPEED, 0, 0, 0))
+    spi.xfer2( format_command_3bezier_targets(mm_noteno, HWIDTH_3TARGETS, 0, 0, 0.0, 0.0, 0.0))  
 
     # NFILTER!
     # write patchage speed at 0
-    spi.xfer2( format_command(mm_noteno, NFILTER_ENV_SPEED, 0, 0, 0.5 / 32)) 
-    spi.xfer2( format_command_3bezier_targets(mm_noteno, NFILTER_3TARGETS, 0, 0, 1.0, 1.0, 1.0))  
+    spi.xfer2( format_command(mm_noteno, NFILTER_ENV_SPEED, 0, 0, 0)) 
+    spi.xfer2( format_command_3bezier_targets(mm_noteno, NFILTER_3TARGETS, 0, 0, 0.0, 0.0, 0.0)) 
             
     # harmonic parameters
-    spi.xfer2( format_command_int(mm_noteno, HARMONIC_WIDTH,    0, 0, HWIDTH)) 
-    spi.xfer2( format_command    (mm_noteno, HARMONIC_WIDTH_INV,0, 0, 1.0/HWIDTH)) 
-    spi.xfer2( format_command_int(mm_noteno, HARMONIC_BASENOTE, 0, 0, 4800*1.5))
-    spi.xfer2( format_command_int(mm_noteno, HARMONIC_ENABLE,   0, 0, 0x00008000)) 
-    spi.xfer2( format_command_int(mm_noteno, centsinc, 0, 0, 5))
-    spi.xfer2( format_command    (mm_noteno, HARMONIC_WIDTH_INV,0, 0, 1.0/HWIDTH)) 
+    spi.xfer2( format_command_int(mm_noteno, HARMONIC_WIDTH,    0, 0, 0)) 
+    spi.xfer2( format_command    (mm_noteno, HARMONIC_WIDTH_INV,0, 0, 0)) 
+    spi.xfer2( format_command_int(mm_noteno, HARMONIC_BASENOTE, 0, 0, 0))
+    #spi.xfer2( format_command_int(mm_noteno, HARMONIC_ENABLE,   0, 0, 0)) 
+    spi.xfer2( format_command_int(mm_noteno, centsinc, 0, 0, 0))
+    spi.xfer2( format_command    (mm_noteno, HARMONIC_WIDTH_INV,0, 0, 0)) 
 	
-    spi.xfer2( format_command_int(0, gain,0, 0, 2**10)) 
-    spi.xfer2( format_command_int(1, gain,1, 1, 2**10)) 
+    spi.xfer2( format_command_int(0, gain,0, 0, 1)) 
+    spi.xfer2( format_command_int(1, gain,1, 1, 1)) 
       
     #spi.readbytes(100)
     
