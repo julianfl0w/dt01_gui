@@ -1,0 +1,42 @@
+{
+    "control": {
+        "1": [
+            [
+                "param_fmdepth",
+                "x*(2**16)"
+            ]
+        ]
+    },
+    "pitchwheel": {
+        "True": [
+            [
+                "param_pitch",
+                "pow(2, x/128.0)"
+            ]
+        ]
+    },
+    "aftertouch": [
+        "True": [
+            [
+                "param_pitch",
+                "pow(2, x/128.0)"
+            ]
+        ]
+    ],
+    "note_on": {
+        "msg.note > 64": [
+            [
+                "spawn_note",
+                "(440.0 / 32) * (2 ** ((note - 9) / 12))"
+            ]
+        ]
+    },
+    "note_off": {
+        "msg.note > 64": [
+            [
+                "despawn_note",
+                "0"
+            ]
+        ]
+    }
+}

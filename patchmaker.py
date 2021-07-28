@@ -1,48 +1,75 @@
+
+cmd_fmdepth            = 68 
+cmd_fmmod_selector     = 69 
+cmd_ammod_selector     = 71 
+cmd_pitchshiftdepth    = 87 
+cmd_gain               = 90 
+cmd_gain_porta         = 91 
+cmd_increment          = 92 
+cmd_increment_porta    = 93 
+cmd_mastergain_right   = 95 
+cmd_mastergain_left    = 96 
+cmd_flushspi           = 120
+cmd_passthrough        = 121
+cmd_shift              = 122
+
+HWIDTH = 1 
+
 import struct
 import sys
 import numpy as np 
-from dt01 import *
+
+def format_command_real(mm_paramno = 0, noteno = 0,  payload = 0):
+	payload = payload*(2**16)
+	payload = struct.pack(">I", int(payload))
+	payload = [mm_paramno, 0, 0, noteno] + [int(i) for i in payload]
+	#print([hex(p) for p in payload])
+	return payload
+	
+def format_command_int(mm_paramno = 0, mm_opno = 0,  noteno = 0,  payload = 0):
+	payload = struct.pack(">I", int(payload))
+	payload = [mm_paramno, mm_opno, 0, noteno] + [int(i) for i in payload]
+	print([hex(p) for p in payload])
+	return payload
+	
+def format_command_3bezier_targets(mm_paramno = 0, noteno = 0,  bt0 = 0, bt1 = 0, bt2 = 0):
+	payload = struct.pack(">I", (int(bt0*(2**28)) & 0x3FF00000) + (int(bt1*(2**18)) & 0x000FFC00) + (int(bt2*(2**8)) & 0x000003FF))
+	payload = [mm_paramno, 0, 0, noteno] + [int(p) for p in payload]
+	#print([hex(p) for p in payload])
+	return payload
+	
 import spidev
+spi = spidev.SpiDev()
+
+spi.open(1, 0)
+
+speed = 20000000
+spi.max_speed_hz=speed
+
+
 import time
 import rtmidi
 from rtmidi.midiutil import *
 import mido
 import math
-import json
-
 
 def noteToFreq(note):
 	a = 440.0 #frequency of A (coomon value is 440Hz)
 	return (a / 32) * (2 ** ((note - 9) / 12))
 
 MIDINOTES      = 128
+POLYPHONYCOUNT = 512
+OPERATORCOUNT  = 8
 CONTROLCOUNT   = 128
 
-# gotta be global
 noteno = 0
 
 class MidiInputHandler(object):
-	def loadPatch(patchFilename):
-		with open(patchFilename) as f:
-			return json.loads(f.read())
-		
 	def __init__(self, port):
-
-		TCP_IP = '127.0.0.1'
-		TCP_PORT = 5000 + port
-		BUFFER_SIZE = 50  # Normally 1024, but we want fast response
-
-		self.s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-		self.s.bind((TCP_IP, TCP_PORT))
-		self.s.setBlocking(False)
-	
-		patchFilename = os.path.join(sys.path[0], "patches/Classic/default.json")
-		self.patch = self.loadPatch(patchFilename)
-		self.port  = port
+		self.port = port
 		self._wallclock  = time.time() 
 		self.increment   = np.zeros((POLYPHONYCOUNT, OPERATORCOUNT))
 		self.heldNotes   = -np.ones((MIDINOTES), dtype=int)
-		self.voice2note  = -np.ones((POLYPHONYCOUNT), dtype=int)
 		self.controlVals = np.zeros((CONTROLCOUNT), dtype=int)
 		self.pitchWheel  = 0.5
 		self.afterTouch  = 0.0
@@ -66,25 +93,23 @@ class MidiInputHandler(object):
 	
 		self.gainporta = 100
 		self.voicegain = 0
-		for voice, note in enumerate(voice2note):
-			if message.note == note
-				#print(note)
-				spi.xfer2( format_command_int(cmd_gain_porta	 , 0, note, self.patch["volume_porta"][-1]))
-				spi.xfer2( format_command_int(cmd_gain			 , 0, note, self.patch["volume"][-1])
-				spi.xfer2( format_command_int(cmd_increment_porta, 0, note, self.patch["pitch_porta"][-1]))
-				spi.xfer2( format_command_int(cmd_increment      , 0, note, self.patch["pitch"][-1]))
-				
-				# if a note is still held, and mono mode, drop to highest held note
-				if any(self.heldNotes + 1) and POLYPHONYCOUNT == 1: 
-					message.note     = np.max(np.where(self.heldNotes))
-					message.velocity = self.velocitylast
-					self.routine_noteon(message)
-				# otherwise, just remove it
-				else:
-					self.voice2note[voice] = -1
-					self.heldNotes[note] = -1
-			
-				
+		noteToSilence = int(self.heldNotes[message.note])
+		print(noteToSilence)
+		spi.xfer2( format_command_int(cmd_gain_porta	 , 0, noteToSilence, self.gainporta			))
+		spi.xfer2( format_command_int(cmd_gain			 , 0, noteToSilence, self.voicegain				   ))
+		spi.xfer2( format_command_int(cmd_increment_porta, 0, noteToSilence, 500 ))
+		
+		# delete this note
+		print("deletomg")
+		self.heldNotes[message.note] = -1
+		
+		if not any(self.heldNotes + 1) or POLYPHONYCOUNT > 1: 
+			return
+		message.note     = np.max(np.where(self.heldNotes))
+		message.velocity = self.velocitylast
+		
+		self.routine_noteon(message)
+		
 		
 
 	def routine_noteon(self, message):
@@ -96,10 +121,10 @@ class MidiInputHandler(object):
 		self.increment[noteno][0] = thisinc
 		self.incporta  = 2**16
 			
-		spi.xfer2( format_command_int(cmd_gain_porta	 , 0, note, self.patch["volume_porta"][0]))
-		spi.xfer2( format_command_int(cmd_gain			 , 0, note, self.patch["volume"][0])
-		spi.xfer2( format_command_int(cmd_increment_porta, 0, note, self.patch["pitch_porta"][0]))
-		spi.xfer2( format_command_int(cmd_increment      , 0, note, self.patch["pitch"][0]))
+		spi.xfer2( format_command_int(cmd_gain_porta	 , 0, noteno, self.gainporta))
+		spi.xfer2( format_command_int(cmd_gain			 , 0, noteno, self.voicegain))
+		spi.xfer2( format_command_int(cmd_increment_porta, 0, noteno, self.incporta))
+		spi.xfer2( format_command_int(cmd_increment		 , 0, noteno, thisinc * self.pitchWheel))
 		spi.xfer2( format_command_int(cmd_fmmod_selector , 0, noteno, 1))
 		spi.xfer2( format_command_int(cmd_fmdepth        , 0, noteno, self.fmdepth_spawn))
 		
@@ -189,53 +214,39 @@ class MidiInputHandler(object):
 		#spi.xfer2( format_command_int(cmd_increment_adj	, noteno, 0))
 		#spi.xfer2( format_command_int(cmd_mod_selector	 , noteno, 0))
 		
-	
-
-if __name__ == "__main__":
-
-	spi = spidev.SpiDev()
-
-	spi.open(1, 0)
-	spi.max_speed_hz=maxSpiSpeed
-
 		
-	port = sys.argv[1] if len(sys.argv) > 1 else None
-	api=rtmidi.API_UNSPECIFIED
-	midiDev = []
-	midiin = rtmidi.MidiIn(get_api_from_environment(api))
-	ports  = midiin.get_ports()
-	print(ports)
-	for port in ports:
-		try:
-			midiin, port_name = open_midiinput(port)
-			midiDev += [midiin]
-		except (EOFError, KeyboardInterrupt):
-			sys.exit()
-
-
-		print("Attaching MIDI input callback handler.")
-		midiin.set_callback(MidiInputHandler(port_name))
-
-	spi.xfer2( format_command_int(cmd_mastergain_right, 0, 0, 2**16))
-	spi.xfer2( format_command_int(cmd_mastergain_left , 0, 0, 2**16))
-
-	spi.xfer2( format_command_int(cmd_flushspi , 0, 0, 1))
-	spi.xfer2( format_command_int(cmd_passthrough, 0, 0, 0))
-	spi.xfer2( format_command_int(cmd_shift, 0, 0, 4))
-
-	print("Entering main loop. Press Control-C to exit.")
+port = sys.argv[1] if len(sys.argv) > 1 else None
+api=rtmidi.API_UNSPECIFIED
+midiin = rtmidi.MidiIn(get_api_from_environment(api))
+ports  = midiin.get_ports()
+print(ports)
+for port in ports:
 	try:
-		# Just wait for keyboard interrupt,
-		# everything else is handled via the input callback.
-		while True:
-			for dev in midiDev:
-				data = dev.s.recv(BUFFER_SIZE)
-				if len(data):
-					dev.loadPatch(data)
-			
-	except KeyboardInterrupt:
-		print('')
-	finally:
-		print("Exit.")
-		midiin.close_port()
-		del midiin
+		midiin, port_name = open_midiinput(port)
+	except (EOFError, KeyboardInterrupt):
+		sys.exit()
+
+
+	print("Attaching MIDI input callback handler.")
+	midiin.set_callback(MidiInputHandler(port_name))
+
+spi.xfer2( format_command_int(cmd_mastergain_right, 0, 0, 2**16))
+spi.xfer2( format_command_int(cmd_mastergain_left , 0, 0, 2**16))
+
+spi.xfer2( format_command_int(cmd_flushspi , 0, 0, 1))
+spi.xfer2( format_command_int(cmd_passthrough, 0, 0, 0))
+spi.xfer2( format_command_int(cmd_shift, 0, 0, 4))
+
+print("Entering main loop. Press Control-C to exit.")
+try:
+	# Just wait for keyboard interrupt,
+	# everything else is handled via the input callback.
+	while True:
+		time.sleep(1)
+		
+except KeyboardInterrupt:
+	print('')
+finally:
+	print("Exit.")
+	midiin.close_port()
+	del midiin
