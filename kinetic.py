@@ -105,8 +105,8 @@ class MainWindow(QWidget):
 			dirButton.pressed.connect(self.dirPressed) 
 			
 			for j, file in enumerate(os.listdir(x[0])):
-				if file.endswith(".patch"):
-					buttonLabel = file.replace('.patch', '') 
+				if file.endswith(".json"):
+					buttonLabel = file.replace('.json', '') 
 					patchButton = JulianButton(buttonLabel, self.fileScroll_layout, None, j)
 					patchButton.pressed.connect(self.patchPressed) 
 					
