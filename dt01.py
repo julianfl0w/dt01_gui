@@ -51,7 +51,7 @@ class dt01():
 	def format_command_int(self, mm_paramno, mm_opno,  noteno,  payload):
 		payload_packed = struct.pack(">I", int(payload))
 		payload_array = [mm_paramno, mm_opno, 0, noteno] + [int(i) for i in payload_packed]
-		#print([hex(p) for p in payload_array])
+		print([hex(p) for p in payload_array])
 		return payload_array
 		
 	def format_command_3bezier_targets(self, mm_paramno, noteno,  bt0, bt1, bt2):
@@ -71,6 +71,6 @@ class dt01():
 	def send(self, param, mm_opno,  voiceno,  payload):
 		print(param.ljust(20) + " operator:" + str(mm_opno) + " voice:" + str(voiceno) + " payload:" + str(payload))
 		tosend = self.format_command_int(self.cmdDict[param], mm_opno, voiceno, payload)
-		self.lock.acquire()
+		#self.lock.acquire()
 		spi.xfer2(tosend)
-		self.lock.release()
+		#self.lock.release()

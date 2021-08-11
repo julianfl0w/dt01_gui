@@ -92,13 +92,10 @@ class Patch:
 		elif command == "cmd_ammod_selector"    :
 			payload = 0
 		elif command == "cmd_gain"              :
-			if msg.type == "note_on":
-				if operator == 0:
-					payload = int(2**16 * (self.control[2]/128.0))
-				else:
-					payload = 0
-			else:
+			if msg.type == "note_off" or (msg.type == "note_on" and msg.velocity == 0):
 				payload = 0
+			else:
+				payload = int(2**16 * (self.control[2]/128.0))
 		elif command == "cmd_gain_porta"        :
 			payload = 2**28
 		elif command == "cmd_increment"         :
@@ -108,7 +105,7 @@ class Patch:
 				payload = self.pitchwheel * voice.controlNote.defaultIncrement * (2**int((self.control[3] -64) / 16)) * (1 + self.aftertouch/128.0) * (2 ** (voice.indexInCluster - (self.voicesPerNote-1)/2))
 		
 		elif command == "cmd_increment_porta"   :
-			payload = 2**30*(self.control[4]/128.0)
+			payload = 2**28*(self.control[4]/128.0)
 		elif command == "cmd_mastergain_right"  :
 			payload = 2**16
 		elif command == "cmd_mastergain_left"   :
@@ -120,7 +117,7 @@ class Patch:
 		elif command == "cmd_env_clkdiv"        :
 			payload = 8
 		elif command == "cmd_flushspi"          :
-			payload = 1
+			payload = 0
 		elif command == "cmd_passthrough"       :
 			payload = 0
 		elif command == "cmd_shift"             :
@@ -135,14 +132,16 @@ class Patch:
 			
 		msgtype = msg.type
 		
-		if msg.type == "note_off":
+		if msg.type == "note_off" or (msg.type == "note_on" and msg.velocity == 0):
 			note = self.allNotes[msg.note] 
 			note.velocity = 0
+			for voice in note.controlledVoices:
+				voice.controlNote = None
+				self.sendParam(msg, voice, "cmd_gain", 0)
+				self.sendParam(msg, voice, "cmd_gain", 1)
+
 			note.controlledVoices = []
 			note.held = False
-			
-			for voice in note.controlledVoices:
-				self.sendParam(msg, voice, "cmd_gain", 0)
 			
 			# implement rising mono porta
 			for note in self.allNotes[::-1]:
@@ -150,18 +149,7 @@ class Patch:
 					self.processEvent(note.msg)
 					break
 				
-			for voiceno in range(self.voicesPerNote):
-				self.currVoiceIndex = (self.currVoiceIndex + 1) % self.polyphony
-				self.currVoice = self.voices[self.currVoiceIndex]
-				logger.debug("applying to " + str(self.currVoice))
-				self.currVoice.controlNote = note
-				self.currVoice.sounding = True
-				self.currVoice.indexInCluser = voiceno
-				note.controlledVoices += [self.currVoice]
 				
-				self.sendParam(msg, self.currVoice, "cmd_gain",      0)
-				self.sendParam(msg, self.currVoice, "cmd_gain",      1)
-					
 		elif msg.type == "note_on":
 			note = self.allNotes[msg.note]
 			note.velocity = msg.velocity
