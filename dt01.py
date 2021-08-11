@@ -61,11 +61,11 @@ class dt01():
 		return payload
 		
 	def getVoice(self, controlPatch):
-		self.lock.acquire()
+		#self.lock.acquire()
 		toreturn = self.voices[self.voiceno]
 		toreturn.controlPatch = controlPatch
 		self.voiceno += 1
-		self.lock.release()
+		#self.lock.release()
 		return toreturn
 		
 	def send(self, param, mm_opno,  voiceno,  payload):

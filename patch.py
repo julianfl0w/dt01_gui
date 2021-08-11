@@ -76,7 +76,7 @@ class Patch:
 				#self.sendParam(None, voice, "cmd_gain_porta", 1)
 	
 	def sendParam(self, msg, voice, command, operator):
-		payload = 0
+		payload = 2**16
 		if command == "cmd_fmdepth"           :
 			if operator == 0:
 				#payload = int(2**14 * (self.control[1]/128.0))
@@ -99,13 +99,15 @@ class Patch:
 		elif command == "cmd_gain_porta"        :
 			payload = 2**28
 		elif command == "cmd_increment"         :
-			if operator == 0:
-				payload = self.pitchwheel * voice.controlNote.defaultIncrement * (2 ** (voice.indexInCluster - (self.voicesPerNote-1)/2)) * (1 + self.aftertouch/128.0)
-			else:
-				payload = self.pitchwheel * voice.controlNote.defaultIncrement * (2**int((self.control[3] -64) / 16)) * (1 + self.aftertouch/128.0) * (2 ** (voice.indexInCluster - (self.voicesPerNote-1)/2))
+			payload = 2**26
+			#if operator == 0:
+			#	payload = self.pitchwheel * voice.controlNote.defaultIncrement * (2 ** (voice.indexInCluster - (self.voicesPerNote-1)/2)) * (1 + self.aftertouch/128.0)
+			#else:
+			#	payload = self.pitchwheel * voice.controlNote.defaultIncrement * (2**int((self.control[3] -64) / 16)) * (1 + self.aftertouch/128.0) * (2 ** (voice.indexInCluster - (self.voicesPerNote-1)/2))
 		
 		elif command == "cmd_increment_porta"   :
-			payload = 2**28*(self.control[4]/128.0)
+			#payload = 2**28*(self.control[4]/128.0)
+			payload = 2**28
 		elif command == "cmd_mastergain_right"  :
 			payload = 2**16
 		elif command == "cmd_mastergain_left"   :
@@ -115,7 +117,8 @@ class Patch:
 		elif command == "cmd_gainexp"           :
 			payload = 1
 		elif command == "cmd_env_clkdiv"        :
-			payload = 8
+			#payload = 8
+			payload = 0
 		elif command == "cmd_flushspi"          :
 			payload = 0
 		elif command == "cmd_passthrough"       :
@@ -153,26 +156,23 @@ class Patch:
 		elif msg.type == "note_on":
 			note = self.allNotes[msg.note]
 			note.velocity = msg.velocity
-			if msg.velocity > 0:
-				note.held = True
-				note.msg = msg
-				# spawn some voices!
-				for voiceno in range(self.voicesPerNote):
-					self.currVoiceIndex = (self.currVoiceIndex + 1) % self.polyphony
-					self.currVoice = self.voices[self.currVoiceIndex]
-					logger.debug("applying to " + str(self.currVoice))
-					self.currVoice.controlNote = note
-					self.currVoice.sounding = True
-					self.currVoice.indexInCluser = voiceno
-					note.controlledVoices += [self.currVoice]
+			note.held = True
+			note.msg = msg
+			# spawn some voices!
+			for voiceno in range(self.voicesPerNote):
+				self.currVoiceIndex = (self.currVoiceIndex + 1) % self.polyphony
+				self.currVoice = self.voices[self.currVoiceIndex]
+				logger.debug("applying to " + str(self.currVoice))
+				self.currVoice.controlNote = note
+				self.currVoice.sounding = True
+				self.currVoice.indexInCluser = voiceno
+				note.controlledVoices += [self.currVoice]
+				
+				self.sendParam(msg, self.currVoice, "cmd_gain",      0)
+				self.sendParam(msg, self.currVoice, "cmd_increment", 0)
+				self.sendParam(msg, self.currVoice, "cmd_gain",      1)
+				self.sendParam(msg, self.currVoice, "cmd_increment", 1)
 					
-					self.sendParam(msg, self.currVoice, "cmd_gain",      0)
-					self.sendParam(msg, self.currVoice, "cmd_increment", 0)
-					self.sendParam(msg, self.currVoice, "cmd_gain",      1)
-					self.sendParam(msg, self.currVoice, "cmd_increment", 1)
-					
-			else:
-				note.held = False
 				
 				
 		elif msg.type == 'pitchwheel':
@@ -185,12 +185,12 @@ class Patch:
 			
 		elif msg.type == 'control_change':
 			self.control[msg.control] = msg.value
-			if msg.control == 1:
-				for voice in self.voices:
-					self.sendParam(msg, voice, "cmd_fmdepth", 0)
-			if msg.control == 2:
-				for voice in self.voices:
-					self.sendParam(msg, voice, "cmd_gain", 0)
+			#if msg.control == 1:
+			#	for voice in self.voices:
+			#		self.sendParam(msg, voice, "cmd_fmdepth", 0)
+			#if msg.control == 2:
+			#	for voice in self.voices:
+			#		self.sendParam(msg, voice, "cmd_gain", 0)
 			
 			
 		elif msg.type == 'polytouch':
