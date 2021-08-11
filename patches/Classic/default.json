@@ -1,91 +1,35 @@
 {
+	"initExpressions": #evaluated at init
+		[
+		],
+	
 	"metaDict":{
-		"polyphony":32
 	},
-	
-	"voiceDict":{
-		"cmd_mastergain_right":"2**16",
-		"cmd_mastergain_left":"2**16"
-	},
-	
-	"opParamDict":{
-		"0":{
-			"init":{
-				"cmd_increment_porta":"2**30*(self.midiInputInst.control[12]/128.0)",
-				"cmd_fmmod_selector":"voice.getFmMod(opno, 1)",
-				"cmd_ammod_selector":"0",
-				"cmd_incexp":"1",
-				"cmd_gainexp":"1"
-			},
-			"note_on":{
-				"msg.note == voice.controlNote.index":{
-					"cmd_gain_porta":"2**13",
-					"cmd_increment":"self.midiInputInst.pitchwheel * voice.controlNote.defaultIncrement * (1 + self.midiInputInst.aftertouch/128.0)",
-					"cmd_fmdepth":"int(2**14 * (self.midiInputInst.control[1]/128.0))",
-					"cmd_gain":"int(2**16 * math.pow(msg.velocity/128.0, 4.0))"
-				}
-			},
-			"note_off":{
-				"msg.note == voice.controlNote.index":{
-					"cmd_gain_porta":"2**2",
-					"cmd_gain":"0"
-				}
-			},
-			"pitchwheel":{
-				"True":{
-					"cmd_increment":"self.midiInputInst.pitchwheel * voice.controlNote.defaultIncrement * (1 + self.midiInputInst.aftertouch/128.0)"
-				}
-			},
-			"aftertouch":{
-				"True":{
-					"cmd_increment":"self.midiInputInst.pitchwheel * voice.controlNote.defaultIncrement * (1 + self.midiInputInst.aftertouch/128.0)"
-				}
-			},
-			"control_change":{
-				"msg.control == 1":{
-					"cmd_fmdepth":"int(2**14 * (self.midiInputInst.control[1]/128.0))"
-				},
-				"msg.control == 12":{
-					"cmd_increment_porta":"2**30*(self.midiInputInst.control[12]/128.0)"
-				}
-			}
-		},
 		
-		"1":{
-			"init":{
-				"cmd_increment_porta":"2**30",
-				"cmd_fmmod_selector":"voice.getFmMod(opno, 2)",
-				"cmd_ammod_selector":"0",
-				"cmd_gain_porta":"2**13",
-				"cmd_incexp":"1",
-				"cmd_gainexp":"1",
-				"cmd_fmdepth":"0"
-			},
-			"aftertouch":{
-				"True":{
-					"cmd_increment":"self.midiInputInst.pitchwheel * voice.controlNote.defaultIncrement * (1 + self.midiInputInst.aftertouch/128.0)"
-				}
-			},
-			"note_on":{
-				"msg.note == voice.controlNote.index":{
-					"cmd_increment":"self.midiInputInst.pitchwheel * voice.controlNote.defaultIncrement * (1 + self.midiInputInst.aftertouch/128.0)",
-					"cmd_gain":"0"
-				}
-			},
-			"pitchwheel":{
-				"True":{
-					"cmd_increment":"self.midiInputInst.pitchwheel * voice.controlNote.defaultIncrement * (1 + self.midiInputInst.aftertouch/128.0)"
-				}
-			}
+	"voiceExpressions":{ # the expression to be evaluated when called by sensitivity
+	},
+	"operatorExpressions": {
+	
+	"init":{ # list of parameters to be called when a note is begun
+		"voiceParams": ["cmd_mastergain_right", "cmd_mastergain_left"],
+		"operatorParams": {
 		}
 	},
-
 	
-	"selfParamDict":
-	{
-		"cmd_env_clkdiv":8,
-		"cmd_flushspi":"1",
-		"cmd_passthrough":"0",
-		"cmd_shift":5
+	"note_on":{ # list of parameters to be called when a note is begun
+		"voiceParams": [],
+		"operatorParams": {
+		}
+	},
+	
+	},
+	
+	
+	"aftertouch":{
+		"voiceParams": [],
+		"operatorParams": {
+			"0": ["cmd_increment"],
+			"1": ["cmd_increment"]
+		}
 	}
 }

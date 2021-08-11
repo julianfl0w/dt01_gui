@@ -1,0 +1,6 @@
+{
+	"cmd_env_clkdiv":"8",
+	"cmd_flushspi":"1",
+	"cmd_passthrough":"0",
+	"cmd_shift":"5"
+}

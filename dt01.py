@@ -6,31 +6,10 @@ spi = spidev.SpiDev()
 spi.open(1, 0)
 spi.max_speed_hz=maxSpiSpeed
 from bitarray import bitarray
+import threading
+from note import Note
+from voice import Voice
 
-class Voice:
-	def __init__(self, index, dt01_inst):
-		self.dt01_inst = dt01_inst
-		self.index = index
-		self.controlNote = None
-		self.controlPatch = None
-		self.sounding = True    
-		self.fmMod = 0
-		
-	def __unicode__(self):
-		return "#" + str(self.index)
-		
-	def __str__(self):
-		return "#" + str(self.index)
-
-	def send(self, mm_paramno, mm_opno, payload):
-		self.dt01_inst.send(mm_paramno, mm_opno, self.index, payload)
-	
-	def getFmMod(self, opno, modno):
-		mask  = 0x07 << 3*opno
-		newval= (0x07 & modno) << 3*opno
-		self.fmMod = (self.fmMod & ~mask) | newval	
-		return self.fmMod
-		
 		
 class dt01():
 
@@ -44,25 +23,9 @@ class dt01():
 			self.voices += [Voice(i, self)]
 
 		self.cmdDict = dict()
-		self.cmdDict["cmd_ENVELOPE_MIDnEND" ] = 1  
-		self.cmdDict["cmd_ENVELOPE_ENV_SPEED"] = 3  
-		self.cmdDict["cmd_PBEND_MIDnEND"    ] = 16 
-		self.cmdDict["cmd_PBEND_ENV_SPEED"  ] = 18 
-		self.cmdDict["cmd_HWIDTH_3TARGETS"  ] = 32 
-		self.cmdDict["cmd_HWIDTH_ENV_SPEED" ] = 34 
-		self.cmdDict["cmd_NFILTER_3TARGETS" ] = 48 
-		self.cmdDict["cmd_NFILTER_ENV_SPEED"] = 50 
-		self.cmdDict["cmd_GFILTER_3TARGETS" ] = 64 
-		self.cmdDict["cmd_GFILTER_ENV_SPEED"] = 67 
 		self.cmdDict["cmd_fmdepth"          ] = 68 
 		self.cmdDict["cmd_fmmod_selector"   ] = 69 
 		self.cmdDict["cmd_ammod_selector"   ] = 71 
-		self.cmdDict["cmd_HARMONIC_WIDTH"   ] = 80 
-		self.cmdDict["cmd_HARMONIC_WIDTH_INV"] = 81 
-		self.cmdDict["cmd_HARMONIC_BASENOTE"] = 82 
-		self.cmdDict["cmd_HARMONIC_ENABLE"  ] = 83 
-		self.cmdDict["cmd_pitchshiftdepth"  ] = 87 
-		self.cmdDict["cmd_centsinc"         ] = 88 
 		self.cmdDict["cmd_gain"             ] = 90
 		self.cmdDict["cmd_gain_porta"       ] = 91
 		self.cmdDict["cmd_increment"        ] = 92
@@ -76,6 +39,7 @@ class dt01():
 		self.cmdDict["cmd_passthrough"] = 121
 		self.cmdDict["cmd_shift"] = 122
 		
+		self.lock = threading.Lock()
 
 	def format_command_real(self, mm_paramno, noteno,  payload):
 		payload = payload*(2**16)
@@ -87,7 +51,7 @@ class dt01():
 	def format_command_int(self, mm_paramno, mm_opno,  noteno,  payload):
 		payload_packed = struct.pack(">I", int(payload))
 		payload_array = [mm_paramno, mm_opno, 0, noteno] + [int(i) for i in payload_packed]
-		print([hex(p) for p in payload_array])
+		#print([hex(p) for p in payload_array])
 		return payload_array
 		
 	def format_command_3bezier_targets(self, mm_paramno, noteno,  bt0, bt1, bt2):
@@ -97,15 +61,16 @@ class dt01():
 		return payload
 		
 	def getVoice(self, controlPatch):
+		self.lock.acquire()
 		toreturn = self.voices[self.voiceno]
 		toreturn.controlPatch = controlPatch
 		self.voiceno += 1
+		self.lock.release()
 		return toreturn
 		
-	def send(self, mm_paramno, mm_opno,  noteno,  payload):
-		#print(mm_paramno)
-		if type(mm_paramno) == str:
-			mm_paramno = self.cmdDict[mm_paramno]
-		#print(mm_paramno)
-		tosend = self.format_command_int(mm_paramno, mm_opno, noteno, payload)
+	def send(self, param, mm_opno,  voiceno,  payload):
+		print(param.ljust(20) + " operator:" + str(mm_opno) + " voice:" + str(voiceno) + " payload:" + str(payload))
+		tosend = self.format_command_int(self.cmdDict[param], mm_opno, voiceno, payload)
+		self.lock.acquire()
 		spi.xfer2(tosend)
+		self.lock.release()
