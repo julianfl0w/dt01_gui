@@ -84,18 +84,19 @@ class Patch:
 			else:
 				payload = 0
 		elif command == "cmd_fmmod_selector"    :
-			if operator == 0:
-				payload = voice.getFmMod(operator, 1) # operator 1 is the FM mod for this operator
-			else:
-				payload = 0
-				
+			#if operator == 0:
+			#	payload = voice.getFmMod(operator, 1) # operator 1 is the FM mod for this operator
+			#else:
+			#	payload = 0
+			#	
+			payload = 2
 		elif command == "cmd_ammod_selector"    :
 			payload = 0
 		elif command == "cmd_gain"              :
-			if msg.type == "note_off" or (msg.type == "note_on" and msg.velocity == 0):
-				payload = 0
-			else:
-				payload = int(2**16 * (self.control[2]/128.0))
+			#if msg.type == "note_off" or (msg.type == "note_on" and msg.velocity == 0):
+			#	payload = 0
+			#else:
+			payload = int(2**16 * (self.control[2]/128.0))
 		elif command == "cmd_gain_porta"        :
 			payload = 2**28
 		elif command == "cmd_increment"         :

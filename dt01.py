@@ -74,3 +74,25 @@ class dt01():
 		#self.lock.acquire()
 		spi.xfer2(tosend)
 		#self.lock.release()
+		
+if __name__ == "__main__":
+	dt01_inst = dt01()
+	# run testbench
+	opno = 0
+	voiceno = 0
+	dt01_inst.send("cmd_mastergain_left", opno, voiceno, 2**16)
+	dt01_inst.send("cmd_mastergain_right", opno, voiceno, 2**16)
+	dt01_inst.send("cmd_gain_porta", opno, voiceno, 2**16)
+	dt01_inst.send("cmd_gain", opno, voiceno, 2**16)
+	dt01_inst.send("cmd_increment_porta", opno, voiceno, 2**30)
+	dt01_inst.send("cmd_increment", opno, voiceno, 123956524)
+	dt01_inst.send("cmd_fmmod_selector", opno, voiceno, 1)
+	dt01_inst.send("cmd_fmdepth", opno, voiceno, 2**15)
+
+	opno = 1
+	dt01_inst.send("cmd_increment_porta", opno, voiceno, 2**30)
+	dt01_inst.send("cmd_increment", opno, voiceno, 123956524)
+	
+	dt01_inst.send("cmd_flushspi", 0, 0, 0)
+	dt01_inst.send("cmd_shift", 0, 0, 0)
+		

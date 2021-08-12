@@ -25,6 +25,7 @@ formatter = logging.Formatter('{"debug": %(asctime)s %(message)s}')
 ch = logging.StreamHandler()
 ch.setFormatter(formatter)
 logger.addHandler(ch)
+logger.setLevel(1)
 
 		
 		
@@ -82,7 +83,7 @@ class MidiInputHandler(object):
 
 
 if __name__ == "__main__":
-
+	
 		
 	midi_portname = sys.argv[1] if len(sys.argv) > 1 else None
 	api=rtmidi.API_UNSPECIFIED
@@ -91,11 +92,11 @@ if __name__ == "__main__":
 	midi_ports  = midiin.get_ports()
 	dt01_inst = dt01()
 	
-	with open(os.path.join(sys.path[0], "global.json")) as f:
-		globaldict = json.loads(f.read())
-	
-	for key, value in globaldict.items():
-		 dt01_inst.send(key , 0, 0, value)
+	#with open(os.path.join(sys.path[0], "global.json")) as f:
+	#	globaldict = json.loads(f.read())
+	#
+	#for key, value in globaldict.items():
+	#	 dt01_inst.send(key , 0, 0, value)
 	
 	logger.debug(midi_ports)
 	#for i, midi_portname in enumerate(midi_ports):
