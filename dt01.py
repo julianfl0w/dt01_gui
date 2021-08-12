@@ -1,7 +1,7 @@
 
 import spidev
 import struct
-maxSpiSpeed = 20000000
+maxSpiSpeed = 25000000
 spi = spidev.SpiDev()
 spi.open(1, 0)
 spi.max_speed_hz=maxSpiSpeed
@@ -9,12 +9,13 @@ from bitarray import bitarray
 import threading
 from note import Note
 from voice import Voice
+import logging
 
+logger = logging.getLogger('DT01')
 		
 class dt01():
 
 	POLYPHONYCOUNT = 512
-	OPERATORCOUNT  = 8
 
 	def __init__(self):
 		self.voiceno = 0# round robin voice allocation
@@ -41,22 +42,22 @@ class dt01():
 		
 		self.lock = threading.Lock()
 
-	def format_command_real(self, mm_paramno, noteno,  payload):
+	def format_command_real(self, mm_paramno, voiceno,  payload):
 		payload = payload*(2**16)
 		payload = struct.pack(">I", int(payload))
-		payload = [mm_paramno, 0, 0, noteno] + [int(i) for i in payload]
+		payload = [mm_paramno, 0, 0, voiceno] + [int(i) for i in payload]
 		#print([hex(p) for p in payload])
 		return payload
 		
-	def format_command_int(self, mm_paramno, mm_opno,  noteno,  payload):
+	def format_command_int(self, mm_paramno, mm_opno,  voiceno,  payload):
 		payload_packed = struct.pack(">I", int(payload))
-		payload_array = [mm_paramno, mm_opno, 0, noteno] + [int(i) for i in payload_packed]
-		print([hex(p) for p in payload_array])
+		payload_array = [mm_paramno, mm_opno, 0, voiceno] + [int(i) for i in payload_packed]
+		#print([hex(p) for p in payload_array])
 		return payload_array
 		
-	def format_command_3bezier_targets(self, mm_paramno, noteno,  bt0, bt1, bt2):
+	def format_command_3bezier_targets(self, mm_paramno, voiceno,  bt0, bt1, bt2):
 		payload = struct.pack(">I", (int(bt0*(2**28)) & 0x3FF00000) + (int(bt1*(2**18)) & 0x000FFC00) + (int(bt2*(2**8)) & 0x000003FF))
-		payload = [mm_paramno, 0, 0, noteno] + [int(p) for p in payload]
+		payload = [mm_paramno, 0, 0, voiceno] + [int(p) for p in payload]
 		#print([hex(p) for p in payload])
 		return payload
 		
@@ -69,29 +70,39 @@ class dt01():
 		return toreturn
 		
 	def send(self, param, mm_opno,  voiceno,  payload):
-		print(param.ljust(20) + " operator:" + str(mm_opno) + " voice:" + str(voiceno) + " payload:" + str(payload))
 		tosend = self.format_command_int(self.cmdDict[param], mm_opno, voiceno, payload)
-		#self.lock.acquire()
+		self.lock.acquire()
+		logger.debug(param.ljust(20) + " operator:" + str(mm_opno) + " voice:" + str(voiceno) + " payload:" + str(payload))
 		spi.xfer2(tosend)
-		#self.lock.release()
+		#logger.debug("sent")
+		self.lock.release()
 		
 if __name__ == "__main__":
 	dt01_inst = dt01()
+	
+	#for voiceno in range(dt01_inst.POLYPHONYCOUNT):
+	#	for opno in range(dt01_inst.OPERATORCOUNT):
+	#		for command in dt01_inst.cmdDict.keys():
+	#			dt01_inst.send(command, opno, voiceno, 0)
+				
 	# run testbench
+	dt01_inst.send("cmd_env_clkdiv", 0, 0, 0)
+	
 	opno = 0
 	voiceno = 0
-	dt01_inst.send("cmd_mastergain_left", opno, voiceno, 2**16)
 	dt01_inst.send("cmd_mastergain_right", opno, voiceno, 2**16)
 	dt01_inst.send("cmd_gain_porta", opno, voiceno, 2**16)
 	dt01_inst.send("cmd_gain", opno, voiceno, 2**16)
 	dt01_inst.send("cmd_increment_porta", opno, voiceno, 2**30)
-	dt01_inst.send("cmd_increment", opno, voiceno, 123956524)
+	dt01_inst.send("cmd_increment", opno, voiceno, 2**22)
 	dt01_inst.send("cmd_fmmod_selector", opno, voiceno, 1)
-	dt01_inst.send("cmd_fmdepth", opno, voiceno, 2**15)
+	dt01_inst.send("cmd_fmdepth", opno, voiceno, 0)
 
 	opno = 1
 	dt01_inst.send("cmd_increment_porta", opno, voiceno, 2**30)
-	dt01_inst.send("cmd_increment", opno, voiceno, 123956524)
+	dt01_inst.send("cmd_increment", opno, voiceno, 2**22)
+	dt01_inst.send("cmd_fmdepth", opno, voiceno, 0)
+	dt01_inst.send("cmd_fmmod_selector", opno, voiceno, 2)
 	
 	dt01_inst.send("cmd_flushspi", 0, 0, 0)
 	dt01_inst.send("cmd_shift", 0, 0, 0)

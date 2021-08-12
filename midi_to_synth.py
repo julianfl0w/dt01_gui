@@ -33,7 +33,7 @@ class MidiInputHandler(object):
 		
 	def __init__(self, midi_portname, dt01_inst):
 
-		print("__init__")
+		logger.debug("__init__")
 		self.lock = threading.Lock()
 		TCP_IP = '127.0.0.1'
 		TCP_midi_portname = 5000 + int(midi_portname)
@@ -54,9 +54,9 @@ class MidiInputHandler(object):
 		
 		
 	def __call__(self, event, data=None):
-		print("__CALL__")
+		logger.debug("__CALL__")
 		#return 0
-		self.lock.acquire()
+		#self.lock.acquire()
 		starttime = time.time()
 		msg, deltatime = event
 		logger.debug(msg)
@@ -74,12 +74,12 @@ class MidiInputHandler(object):
 			#try: 
 			#	patch.processEvent(msg)
 			#except Exception as e:
-			#	print(type(e))
+			#	logger.debug(type(e))
 			#	
 		# remove active voices afterwards
 			
-		print(time.time() - starttime)
-		self.lock.release()
+		logger.debug(time.time() - starttime)
+		#self.lock.release()
 
 
 if __name__ == "__main__":
@@ -92,11 +92,6 @@ if __name__ == "__main__":
 	midi_ports  = midiin.get_ports()
 	dt01_inst = dt01()
 	
-	#with open(os.path.join(sys.path[0], "global.json")) as f:
-	#	globaldict = json.loads(f.read())
-	#
-	#for key, value in globaldict.items():
-	#	 dt01_inst.send(key , 0, 0, value)
 	
 	logger.debug(midi_ports)
 	#for i, midi_portname in enumerate(midi_ports):
@@ -125,7 +120,7 @@ if __name__ == "__main__":
 			#		if len(data):
 			#			dev.loadPatch(data)
 			#	except Exception as e:
-			#		#print(Exception)
+			#		#logger.debug(Exception)
 			#		pass
 			pass
 				
