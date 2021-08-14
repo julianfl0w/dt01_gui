@@ -1,7 +1,7 @@
 
 import spidev
 import struct
-maxSpiSpeed = 25000000
+maxSpiSpeed = 22000000
 spi = spidev.SpiDev()
 spi.open(1, 0)
 spi.max_speed_hz=maxSpiSpeed
@@ -18,20 +18,23 @@ class dt01():
 	POLYPHONYCOUNT = 512
 
 	def __init__(self):
+		self.lock = threading.Lock()
 		self.voiceno = 0# round robin voice allocation
 		self.voices  = []
+		expressionDict = dict()
 		for i in range(self.POLYPHONYCOUNT):
-			self.voices += [Voice(i, self)]
+			newVoice = Voice(i, self)
+			self.voices += [newVoice]
 
 		self.cmdDict = dict()
 		self.cmdDict["cmd_fmdepth"          ] = 68 
 		self.cmdDict["cmd_fmmod_selector"   ] = 69 
-		self.cmdDict["cmd_ammod_selector"   ] = 71 
+		self.cmdDict["cmd_ammod_selector"   ] = 71  
 		self.cmdDict["cmd_gain"             ] = 90
 		self.cmdDict["cmd_gain_porta"       ] = 91
 		self.cmdDict["cmd_increment"        ] = 92
 		self.cmdDict["cmd_increment_porta"  ] = 93
-		self.cmdDict["cmd_mastergain_right" ] = 95
+		self.cmdDict["cmd_mastergain_right" ] = 95 
 		self.cmdDict["cmd_mastergain_left"  ] = 96
 		self.cmdDict["cmd_incexp"           ] = 97
 		self.cmdDict["cmd_gainexp"] = 98
@@ -40,7 +43,12 @@ class dt01():
 		self.cmdDict["cmd_passthrough"] = 121
 		self.cmdDict["cmd_shift"] = 122
 		
-		self.lock = threading.Lock()
+		
+		self.send("cmd_env_clkdiv"   , 0, 0, 2)
+		self.send("cmd_flushspi"     , 0, 0, 0)
+		self.send("cmd_passthrough"  , 0, 0, 0)
+		self.send("cmd_shift"        , 0, 0, 2)
+		
 
 	def format_command_real(self, mm_paramno, voiceno,  payload):
 		payload = payload*(2**16)

@@ -57,7 +57,7 @@ class MidiInputHandler(object):
 		logger.debug("__CALL__")
 		#return 0
 		#self.lock.acquire()
-		starttime = time.time()
+		starttime = time.time() 
 		msg, deltatime = event
 		logger.debug(msg)
 		self._wallclock += deltatime

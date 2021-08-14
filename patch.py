@@ -40,24 +40,27 @@ class Patch:
 		self.pitchwheel  = 1
 		self.aftertouch = 0
 		
-		self.allNotes = []
-		for i in range(MIDINOTES):
-			self.allNotes+= [Note(i)]
-		for voicetoclaim in range(self.polyphony):
-			claimedVoice = self.midiInputInst.dt01_inst.getVoice(self)
-			logger.debug("claimed: " + str(claimedVoice.index))
-			claimedVoice.controlNote = self.allNotes[0]
-			self.voices += [claimedVoice]
-			
-		self.toRelease   = []
-	
-		logger.debug("init ")
-		
 		#initialize some controls
 		self.control[1]  = 128
 		self.control[2]  = 128
 		self.control[3]  = 64
 		self.control[4] = 128
+		
+		self.allNotes = []
+		for i in range(MIDINOTES):
+			self.allNotes+= [Note(i)]
+		for voicetoclaim in range(self.polyphony):
+			claimedVoice = self.midiInputInst.dt01_inst.getVoice(self)
+			claimedVoice.patch = self
+			logger.debug("claimed: " + str(claimedVoice.index))
+			claimedVoice.note = self.allNotes[0]
+			self.voices += [claimedVoice]
+			claimedVoice.setAll()
+			
+		self.toRelease   = []
+	
+		logger.debug("init ")
+		
 		
 		#with open(os.path.join(sys.path[0], "global.json")) as f:
 		#	globaldict = json.loads(f.read())
@@ -70,72 +73,9 @@ class Patch:
 	
 		# initialize all voices
 		for voice in self.voices:
-			dt01_inst.send("cmd_mastergain_left",   0, voice.index, 2**16)
-			dt01_inst.send("cmd_mastergain_right",  0, voice.index, 2**16)
-			for opno in range(8):
-				dt01_inst.send("cmd_gain_porta",        opno, voice.index, 2**11)
-				dt01_inst.send("cmd_gain",        opno, voice.index, 0)
-				dt01_inst.send("cmd_increment",        opno, voice.index, 0)
-				dt01_inst.send("cmd_increment_porta",   opno, voice.index, 2**22)
-				dt01_inst.send("cmd_fmdepth",           opno, voice.index, 0)
-				self.sendParam(None, voice, "cmd_fmmod_selector",  opno)
-				dt01_inst.send("cmd_incexp",    opno, voice.index, 1)
-				dt01_inst.send("cmd_gainexp",    opno, voice.index, 1)
-	
-	def sendParam(self, msg, voice, command, operator):
-		payload = 0
-		if command == "cmd_fmdepth"           :
-			if operator == 0:
-				payload = int(2**14 * (self.control[1]/128.0))
-			else:
-				payload = 0
-		elif command == "cmd_fmmod_selector"    :
-			if operator == 0:
-				payload = voice.getFmMod(operator, 1) # operator 1 is the FM mod for this operator
-			else:
-				payload = voice.getFmMod(operator, 0)
+			voice.operators[0].fmmod_selector = 1
+			voice.setAll()
 				
-			payload = 2
-		elif command == "cmd_ammod_selector"    :
-			payload = 0
-		elif command == "cmd_gain"              :
-			payload = 0
-			if msg.type == "note_off" or (msg.type == "note_on" and msg.velocity == 0):
-				payload = 0
-			else:
-				if operator == 0:
-					payload = int(2**16 * (self.control[2]/128.0))
-		elif command == "cmd_gain_porta"        :
-			payload = 2**28
-		elif command == "cmd_increment"         :
-			payload = 2**22
-			if operator == 0:
-				payload = self.pitchwheel * voice.controlNote.defaultIncrement * (2 ** (voice.indexInCluster - (self.voicesPerNote-1)/2)) * (1 + self.aftertouch/128.0)
-			else:
-				payload = self.pitchwheel * voice.controlNote.defaultIncrement * (2**int((self.control[3] -64) / 16)) * (1 + self.aftertouch/128.0) * (2 ** (voice.indexInCluster - (self.voicesPerNote-1)/2))
-		
-		elif command == "cmd_increment_porta"   :
-			payload = 2**22*(self.control[4]/128.0)
-		elif command == "cmd_mastergain_right"  :
-			payload = 2**16
-		elif command == "cmd_mastergain_left"   :
-			payload = 2**16
-		elif command == "cmd_incexp"            :
-			payload = 1
-		elif command == "cmd_gainexp"           :
-			payload = 1
-		elif command == "cmd_env_clkdiv"        :
-			#payload = 8
-			payload = 4
-		elif command == "cmd_flushspi"          :
-			payload = 0
-		elif command == "cmd_passthrough"       :
-			payload = 0
-		elif command == "cmd_shift"             :
-			payload = 0
-			
-		voice.send(command, operator, payload)
-	
 	def processEvent(self, msg):
 	
 		logger.debug("processing " + msg.type)
@@ -147,10 +87,9 @@ class Patch:
 			note = self.allNotes[msg.note] 
 			note.velocity = 0
 			for voice in note.controlledVoices:
-				voice.controlNote = None
-				self.sendParam(msg, voice, "cmd_gain", 0)
-				self.sendParam(msg, voice, "cmd_gain", 1)
-
+				voice.operators[0].setGain()
+				voice.operators[1].setGain()
+				
 			note.controlledVoices = []
 			note.held = False
 			
@@ -171,15 +110,15 @@ class Patch:
 				self.currVoiceIndex = (self.currVoiceIndex + 1) % self.polyphony
 				self.currVoice = self.voices[self.currVoiceIndex]
 				logger.debug("applying to " + str(self.currVoice))
-				self.currVoice.controlNote = note
+				self.currVoice.note = note
 				self.currVoice.sounding = True
 				self.currVoice.indexInCluser = voiceno
 				note.controlledVoices += [self.currVoice]
 				
-				self.sendParam(msg, self.currVoice, "cmd_gain",      0)
-				self.sendParam(msg, self.currVoice, "cmd_increment", 0)
-				self.sendParam(msg, self.currVoice, "cmd_gain",      1)
-				self.sendParam(msg, self.currVoice, "cmd_increment", 1)
+				self.currVoice.operators[0].setGain()
+				self.currVoice.operators[0].setIncrement()
+				self.currVoice.operators[1].setGain()
+				self.currVoice.operators[1].setIncrement()
 					
 				
 				
@@ -188,21 +127,22 @@ class Patch:
 			amountchange = msg.pitch / 8192.0
 			self.pitchwheel = pow(2, amountchange)
 			for voice in self.voices:
-				self.sendParam(msg, voice, "cmd_increment", 0)
-				self.sendParam(msg, voice, "cmd_increment", 1)
-			
+				for operator in voice.operators:
+					operator.setIncrement()
+				
 		elif msg.type == 'control_change':
 			self.control[msg.control] = msg.value
 			if msg.control == 1:
 				for voice in self.voices:
-					self.sendParam(msg, voice, "cmd_fmdepth", 0)
-					self.sendParam(msg, voice, "cmd_fmmod_selector", 0)
+					for operator in voice.operators:
+						operator.setFMDepth()
 			if msg.control == 2:
 				for voice in self.voices:
-					self.sendParam(msg, voice, "cmd_gain", 0)
+					for operator in voice.operators:
+						operator.setGain()
 			if msg.control == 4:
-				for voice in self.voices:
-					self.sendParam(msg, voice, "cmd_increment_porta", 0)
+				for operator in voice.operators:
+					operator.setIncrementPorta()
 			
 			
 		elif msg.type == 'polytouch':
@@ -211,8 +151,8 @@ class Patch:
 		elif msg.type == 'aftertouch':
 			self.aftertouch = msg.value
 			for voice in self.voices:
-				self.sendParam(msg, voice, "cmd_increment", 0)
-				self.sendParam(msg, voice, "cmd_increment", 1)
+				for operator in voice.operators:
+					operator.setIncrement()
 			
 		elif msg.type == 'note_off':
 			self.routine_noteoff(msg)
