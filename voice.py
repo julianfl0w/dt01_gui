@@ -34,8 +34,11 @@ class Operator:
 		return "#" + str(self.index)
 
 	def send(self, param, payload):
-		self.stateDict[param] = payload
-		self.dt01_inst.send(param, self.index, self.voice.index, payload)
+		# only write the thing if it changed
+		#if payload != self.stateDict.get(param):
+		if  True:
+			self.stateDict[param] = payload
+			self.dt01_inst.send(param, self.index, self.voice.index, payload)
 	
 
 class Voice:
@@ -77,6 +80,7 @@ class Voice:
 		self.defaultIncrement = 0
 		self.indexInCluster = 0
 		self.OPERATORCOUNT  = 2
+		self.stateDict = dict()
 		self.operators = []
 		self.operators += [self.Operator0(self, 0, dt01_inst)]
 		self.operators += [self.Operator1(self, 1, dt01_inst)]
@@ -111,7 +115,10 @@ class Voice:
 		return "#" + str(self.index)
 
 	def send(self, param, payload):
-		self.dt01_inst.send(param, 0, self.index, payload)
+		#if payload != self.stateDict.get(param):
+		if  True:
+			self.stateDict[param] = payload
+			self.dt01_inst.send(param, 0, self.index, payload)
 	
 	def getFmMod(self):
 		fmMod = 0

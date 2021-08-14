@@ -31,7 +31,7 @@ class Patch:
 		self.control     = np.zeros((CONTROLCOUNT), dtype=int)
 		
 		self.voicesPerNote = 1
-		self.polyphony = 1
+		self.polyphony = 32
 		self.dt01_inst  = dt01_inst
 		self.midiInputInst = midiInputInst
 		self.voices = []
