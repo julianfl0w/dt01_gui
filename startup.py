@@ -17,26 +17,43 @@ from note import *
 from voice import *
 from patch import *
 import traceback
+import re
 
 faulthandler.enable()
  
 logger = logging.getLogger('DT01')
-formatter = logging.Formatter('{"debug": %(asctime)s %(message)s}')
+formatter = logging.Formatter('{"debug": %(asctime)s {%(pathname)s:%(lineno)d} %(message)s}')
 ch = logging.StreamHandler()
 ch.setFormatter(formatter)
 logger.addHandler(ch)
 logger.setLevel(1)
 
 		
-		
-class MidiInputHandler(object):
-		
-	def __init__(self, midi_portname, dt01_inst):
+def noteToFreq(note):
+	a = 440.0 #frequency of A (coomon value is 440Hz)
+	return (a / 32) * (2 ** ((note - 9) / 12))
 
+
+class Note:
+	def __init__(self, index):
+		self.index  = index
+		self.voices = []
+		self.velocity = 0
+		self.held  = False
+		self.polyAftertouch = 0
+		self.msg  = None
+		self.defaultIncrement = 2**32 * (noteToFreq(index) / 96000.0)
+		
+class MidiDevice(object):
+		
+	def __init__(self, i, midi_portname, dt01_inst):
+		print(midi_portname)
+		midi_portname_file = re.sub(r'\W+', '', midi_portname) + ".txt"
+		faulthandler.dump_traceback(file=open(midi_portname_file, "w+"), all_threads=False)
 		logger.debug("__init__")
 		self.lock = threading.Lock()
 		TCP_IP = '127.0.0.1'
-		TCP_midi_portname = 5000 + int(midi_portname)
+		TCP_midi_portname = 5000 + int(i)
 		BUFFER_SIZE = 50  # Normally 1024, but we want fast response
 
 		#self.s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -47,7 +64,7 @@ class MidiInputHandler(object):
 		self.midi_portname  = midi_portname
 		self._wallclock  = time.time() 
 		
-		self.hold = 0
+		self.hold = 0 
 		
 		self.patches = [Patch(self, dt01_inst)]
 		
@@ -85,7 +102,6 @@ class MidiInputHandler(object):
 if __name__ == "__main__":
 	
 		
-	midi_portname = sys.argv[1] if len(sys.argv) > 1 else None
 	api=rtmidi.API_UNSPECIFIED
 	midiDev = []
 	midiin = rtmidi.MidiIn(get_api_from_environment(api))
@@ -103,10 +119,10 @@ if __name__ == "__main__":
 
 
 		logger.debug("Attaching MIDI input callback handler.")
-		MidiInputHandler_inst = MidiInputHandler(i, dt01_inst)
-		midiin.set_callback(MidiInputHandler_inst)
+		MidiDevice_inst = MidiDevice(i, str(midi_portname), dt01_inst)
+		midiin.set_callback(MidiDevice_inst)
 		logger.debug("Handler: " + str(midiin))
-		midiDev += [MidiInputHandler_inst]
+		#midiDev += [MidiDevice_inst]
 
 
 	logger.debug("Entering main loop. Press Control-C to exit.")
