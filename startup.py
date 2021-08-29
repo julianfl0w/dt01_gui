@@ -1,7 +1,7 @@
 import struct
 import sys
 import numpy as np 
-from dt01 import dt01
+from dt01 import *
 import time
 import rtmidi
 from rtmidi.midiutil import *
@@ -13,8 +13,6 @@ import os
 import logging
 import threading
 import faulthandler
-from note import *
-from voice import *
 from patch import *
 import traceback
 import re

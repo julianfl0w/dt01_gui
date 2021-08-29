@@ -10,8 +10,6 @@ import math
 import hjson as json
 import socket
 import os
-from note  import *
-from voice import *
 import traceback
  
 import logging
@@ -143,29 +141,4 @@ class Patch:
 		elif msg.type == 'note_off':
 			self.routine_noteoff(msg)
 			
-		class Operator0(Operator):	
-			def setFMDepth(self)       : self.send("cmd_fmdepth"        ,  payload = int(2**14 * (self.voice.patch.control[1]/128.0)))
-			def __init__(self, voice, index, dt01_inst):
-				super().__init__(voice, index, dt01_inst)
-		class Operator1(Operator):	
-			def __init__(self, voice, index, dt01_inst):
-				super().__init__(voice, index, dt01_inst)
-		class Operator2(Operator):	
-			def __init__(self, voice, index, dt01_inst):
-				super().__init__(voice, index, dt01_inst)
-		class Operator3(Operator):	
-			def __init__(self, voice, index, dt01_inst):
-				super().__init__(voice, index, dt01_inst)
-		class Operator4(Operator):	
-			def __init__(self, voice, index, dt01_inst):
-				super().__init__(voice, index, dt01_inst)
-		class Operator5(Operator):	
-			def __init__(self, voice, index, dt01_inst):
-				super().__init__(voice, index, dt01_inst)
-		class Operator6(Operator):	
-			def __init__(self, voice, index, dt01_inst):
-				super().__init__(voice, index, dt01_inst)
-		class Operator7(Operator):	
-			def __init__(self, voice, index, dt01_inst):
-				super().__init__(voice, index, dt01_inst)
 

@@ -5,8 +5,6 @@ spi = spidev.SpiDev()
 spi.open(1, 0)
 spi.max_speed_hz=maxSpiSpeed
 from bitarray import bitarray
-from note import Note
-from voice import Voice
 import logging
 import RPi.GPIO as GPIO
 GPIO.setmode(GPIO.BCM)
@@ -38,14 +36,14 @@ class Voice:
 		self.OPERATORCOUNT  = 2
 		self.stateInFPGA = dict()
 		self.operators = []
-		self.operators += [self.Operator0(self, 0, dt01_inst)]
-		self.operators += [self.Operator1(self, 1, dt01_inst)]
-		self.operators += [self.Operator2(self, 2, dt01_inst)]
-		self.operators += [self.Operator3(self, 3, dt01_inst)]
-		self.operators += [self.Operator4(self, 4, dt01_inst)]
-		self.operators += [self.Operator5(self, 5, dt01_inst)]
-		self.operators += [self.Operator6(self, 6, dt01_inst)]
-		self.operators += [self.Operator7(self, 7, dt01_inst)]
+		self.operators += [Operator0(self, 0, dt01_inst)]
+		self.operators += [Operator1(self, 1, dt01_inst)]
+		self.operators += [Operator2(self, 2, dt01_inst)]
+		self.operators += [Operator3(self, 3, dt01_inst)]
+		self.operators += [Operator4(self, 4, dt01_inst)]
+		self.operators += [Operator5(self, 5, dt01_inst)]
+		self.operators += [Operator6(self, 6, dt01_inst)]
+		self.operators += [Operator7(self, 7, dt01_inst)]
 		self.computedState = dict()
 		for key in self.functionDict.keys():
 			self.update(key)
@@ -162,6 +160,32 @@ class Operator:
 
 	def note_off(self):
 		self.send("cmd_gain"     )
+		
+class Operator0(Operator):	
+	def setFMDepth(self)       : self.send("cmd_fmdepth"        ,  payload = int(2**14 * (self.voice.patch.control[1]/128.0)))
+	def __init__(self, voice, index, dt01_inst):
+		super().__init__(voice, index, dt01_inst)
+class Operator1(Operator):	
+	def __init__(self, voice, index, dt01_inst):
+		super().__init__(voice, index, dt01_inst)
+class Operator2(Operator):	
+	def __init__(self, voice, index, dt01_inst):
+		super().__init__(voice, index, dt01_inst)
+class Operator3(Operator):	
+	def __init__(self, voice, index, dt01_inst):
+		super().__init__(voice, index, dt01_inst)
+class Operator4(Operator):	
+	def __init__(self, voice, index, dt01_inst):
+		super().__init__(voice, index, dt01_inst)
+class Operator5(Operator):	
+	def __init__(self, voice, index, dt01_inst):
+		super().__init__(voice, index, dt01_inst)
+class Operator6(Operator):	
+	def __init__(self, voice, index, dt01_inst):
+		super().__init__(voice, index, dt01_inst)
+class Operator7(Operator):	
+	def __init__(self, voice, index, dt01_inst):
+		super().__init__(voice, index, dt01_inst)
 
 class dt01():
 
