@@ -35,14 +35,14 @@ class DT01_Voice:
 		self.OPERATORCOUNT  = 8
 		self.stateInFPGA = dict()
 		self.operators = []
-		self.operators += [Operator0(self, 0, dt01_inst)]
-		self.operators += [Operator1(self, 1, dt01_inst)]
-		self.operators += [Operator2(self, 2, dt01_inst)]
-		self.operators += [Operator3(self, 3, dt01_inst)]
-		self.operators += [Operator4(self, 4, dt01_inst)]
-		self.operators += [Operator5(self, 5, dt01_inst)]
-		self.operators += [Operator6(self, 6, dt01_inst)]
-		self.operators += [Operator7(self, 7, dt01_inst)]
+		self.operators += [DT01_Operator0(self, 0, dt01_inst)]
+		self.operators += [DT01_Operator1(self, 1, dt01_inst)]
+		self.operators += [DT01_Operator2(self, 2, dt01_inst)]
+		self.operators += [DT01_Operator3(self, 3, dt01_inst)]
+		self.operators += [DT01_Operator4(self, 4, dt01_inst)]
+		self.operators += [DT01_Operator5(self, 5, dt01_inst)]
+		self.operators += [DT01_Operator6(self, 6, dt01_inst)]
+		self.operators += [DT01_Operator7(self, 7, dt01_inst)]
 		self.computedState = dict()
 		for key in self.functionDict.keys():
 			self.compute(key)
@@ -99,13 +99,13 @@ class DT01_Voice:
 
 	def computeAndSend(self, param):
 		self.compute(param)
-		payload = self.computedState[param]
 		# only write the thing if it changed
-		if payload != self.stateInFPGA.get(param):
-			self.stateInFPGA[param] = payload
-			self.dt01_inst.computeAndSend(param, self.index, self.index, payload)
+		if self.computedState[param] != self.stateInFPGA.get(param):
+			self.stateInFPGA[param] = self.computedState[param]
+			self.dt01_inst.send(param, 0, self.index, self.computedState[param])
 		else:
-			logger.debug("Not sending")
+			pass
+			#logger.debug("Not sending")
 			
 			
 
@@ -152,7 +152,7 @@ class DT01_Operator:
 
 	def computeAndSendAll(self):
 		for param in self.functionDict.keys():
-			self.computedState[param] = self.functionDict[param]()
+			self.computeAndSend(param)
 
 	def compute(self, param):
 		self.computedState[param] = self.functionDict[param]()
@@ -165,13 +165,13 @@ class DT01_Operator:
 
 	def computeAndSend(self, param):
 		self.compute(param)
-		payload = self.computedState[param]
 		# only write the thing if it changed
-		if payload != self.stateInFPGA.get(param):
-			self.stateInFPGA[param] = payload
-			self.dt01_inst.computeAndSend(param, self.index, self.voice.index, payload)
+		if self.computedState[param] != self.stateInFPGA.get(param):
+			self.stateInFPGA[param] = self.computedState[param]
+			self.dt01_inst.send(param, self.index, self.voice.index, self.computedState[param])
 		else:
-			logger.debug("Not sending")
+			pass
+			#logger.debug("Not sending")
 
 	def note_on(self):
 		self.computeAndSend("cmd_gain"     )
@@ -189,6 +189,40 @@ class DT01_Operator:
 	def aftertouch(self):
 		self.computeAndSend("cmd_increment")
 		
+	def control_change(self):
+		pass
+		
+
+		
+		
+class DT01_Operator0(DT01_Operator):	
+	def setFMDepth(self)       : self.send("cmd_fmdepth"        ,  payload = int(2**14 * (self.voice.patch.control[1]/128.0)))
+	def control_change(self):
+		self.computeAndSend("cmd_fmdepth")
+	def __init__(self, voice, index, dt01_inst):
+		super().__init__(voice, index, dt01_inst)
+class DT01_Operator1(DT01_Operator):	
+	def __init__(self, voice, index, dt01_inst):
+		super().__init__(voice, index, dt01_inst)
+class DT01_Operator2(DT01_Operator):	
+	def __init__(self, voice, index, dt01_inst):
+		super().__init__(voice, index, dt01_inst)
+class DT01_Operator3(DT01_Operator):	
+	def __init__(self, voice, index, dt01_inst):
+		super().__init__(voice, index, dt01_inst)
+class DT01_Operator4(DT01_Operator):	
+	def __init__(self, voice, index, dt01_inst):
+		super().__init__(voice, index, dt01_inst)
+class DT01_Operator5(DT01_Operator):	
+	def __init__(self, voice, index, dt01_inst):
+		super().__init__(voice, index, dt01_inst)
+class DT01_Operator6(DT01_Operator):	
+	def __init__(self, voice, index, dt01_inst):
+		super().__init__(voice, index, dt01_inst)
+class DT01_Operator7(DT01_Operator):	
+	def __init__(self, voice, index, dt01_inst):
+		super().__init__(voice, index, dt01_inst)
+
 		
 			
 class dt01():
@@ -200,7 +234,7 @@ class dt01():
 		self.voices  = []
 		expressionDict = dict()
 		for i in range(self.POLYPHONYCOUNT):
-			newVoice = Voice(i, self)
+			newVoice = DT01_Voice(i, self)
 			self.voices += [newVoice]
 
 		self.cmdDict = dict()
@@ -221,10 +255,10 @@ class dt01():
 		self.cmdDict["cmd_shift"            ] = 122
 		
 		
-		self.computeAndSend("cmd_env_clkdiv"   , 0, 0, 2)
-		self.computeAndSend("cmd_flushspi"     , 0, 0, 0)
-		self.computeAndSend("cmd_passthrough"  , 0, 0, 0)
-		self.computeAndSend("cmd_shift"        , 0, 0, 2)
+		self.send("cmd_env_clkdiv"   , 0, 0, 2)
+		self.send("cmd_flushspi"     , 0, 0, 0)
+		self.send("cmd_passthrough"  , 0, 0, 0)
+		self.send("cmd_shift"        , 0, 0, 2)
 		
 
 	def format_command_real(self, mm_paramno, voiceno,  payload):
@@ -270,7 +304,7 @@ class dt01():
 			spi.xfer2(tosend[:4] + payload_packed)
 			#logger.debug("sent")
 	
-	def computeAndSend(self, param, mm_opno,  voiceno,  payload):
+	def send(self, param, mm_opno,  voiceno,  payload):
 		tosend = self.format_command_int(self.cmdDict[param], mm_opno, voiceno, payload)
 		with ILock('jlock'):
 			logger.debug(param.ljust(20) + " operator:" + str(mm_opno) + " voice:" + str(voiceno) + " payload:" + str(payload))
@@ -283,27 +317,27 @@ if __name__ == "__main__":
 	#for voiceno in range(dt01_inst.POLYPHONYCOUNT):
 	#	for opno in range(dt01_inst.OPERATORCOUNT):
 	#		for command in dt01_inst.cmdDict.keys():
-	#			dt01_inst.computeAndSend(command, opno, voiceno, 0)
+	#			dt01_inst.send(command, opno, voiceno, 0)
 				
 	# run testbench
-	dt01_inst.computeAndSend("cmd_env_clkdiv", 0, 0, 0)
+	dt01_inst.send("cmd_env_clkdiv", 0, 0, 0)
 	
 	opno = 0
 	voiceno = 0
-	dt01_inst.computeAndSend("cmd_mastergain_right", opno, voiceno, 2**16)
-	dt01_inst.computeAndSend("cmd_gain_porta"      , opno, voiceno, 2**16)
-	dt01_inst.computeAndSend("cmd_gain"            , opno, voiceno, 2**16)
-	dt01_inst.computeAndSend("cmd_increment_porta" , opno, voiceno, 2**30)
-	dt01_inst.computeAndSend("cmd_increment"       , opno, voiceno, 2**22)
-	dt01_inst.computeAndSend("cmd_algorithm"       , opno, voiceno, 1)
-	dt01_inst.computeAndSend("cmd_fmdepth"         , opno, voiceno, 0)
+	dt01_inst.send("cmd_mastergain_right", opno, voiceno, 2**16)
+	dt01_inst.send("cmd_gain_porta"      , opno, voiceno, 2**16)
+	dt01_inst.send("cmd_gain"            , opno, voiceno, 2**16)
+	dt01_inst.send("cmd_increment_porta" , opno, voiceno, 2**30)
+	dt01_inst.send("cmd_increment"       , opno, voiceno, 2**22)
+	dt01_inst.send("cmd_algorithm"       , opno, voiceno, 1)
+	dt01_inst.send("cmd_fmdepth"         , opno, voiceno, 0)
 
 	opno = 1
-	dt01_inst.computeAndSend("cmd_increment_porta", opno, voiceno, 2**30)
-	dt01_inst.computeAndSend("cmd_increment"      , opno, voiceno, 2**22)
-	dt01_inst.computeAndSend("cmd_fmdepth"        , opno, voiceno, 0)
-	dt01_inst.computeAndSend("cmd_algorithm"      , opno, voiceno, 2)
+	dt01_inst.send("cmd_increment_porta", opno, voiceno, 2**30)
+	dt01_inst.send("cmd_increment"      , opno, voiceno, 2**22)
+	dt01_inst.send("cmd_fmdepth"        , opno, voiceno, 0)
+	dt01_inst.send("cmd_algorithm"      , opno, voiceno, 2)
 	
-	dt01_inst.computeAndSend("cmd_flushspi", 0, 0, 0)
-	dt01_inst.computeAndSend("cmd_shift"   , 0, 0, 0)
+	dt01_inst.send("cmd_flushspi", 0, 0, 0)
+	dt01_inst.send("cmd_shift"   , 0, 0, 0)
 		

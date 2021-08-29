@@ -27,20 +27,6 @@ logger.addHandler(ch)
 logger.setLevel(1)
 
 		
-def noteToFreq(note):
-	a = 440.0 #frequency of A (coomon value is 440Hz)
-	return (a / 32) * (2 ** ((note - 9) / 12))
-
-
-class Note:
-	def __init__(self, index):
-		self.index  = index
-		self.voices = []
-		self.velocity = 0
-		self.held  = False
-		self.polyAftertouch = 0
-		self.msg  = None
-		self.defaultIncrement = 2**32 * (noteToFreq(index) / 96000.0)
 
 class MidiDevice(object):
 		
@@ -76,22 +62,14 @@ class MidiDevice(object):
 		msg, deltatime = event
 		logger.debug(msg)
 		self._wallclock += deltatime
-		#logger.debug("[%s] @%0.6f %r" % (self.midi_portname, self._wallclock, msg))
-		#logger.debug(msg)
+		
 		msg = mido.Message.from_bytes(msg)
 		logger.debug("processing " + msg.type)
-		
 		
 		logger.debug("\n\n\n---------------")
 		logger.debug(msg.type)
 		for patch in self.patches:
 			patch.processEvent(msg)
-			#try: 
-			#	patch.processEvent(msg)
-			#except Exception as e:
-			#	logger.debug(type(e))
-			#	
-		# remove active voices afterwards
 			
 		logger.debug(time.time() - starttime)
 		#self.lock.release()
@@ -105,7 +83,7 @@ if __name__ == "__main__":
 	midiin = rtmidi.MidiIn(get_api_from_environment(api))
 	midi_ports  = midiin.get_ports()
 	dt01_inst = dt01()
-	GLOBAL_DEFAULT_PATCH = Patch(self, dt01_inst)
+	GLOBAL_DEFAULT_PATCH = Patch(dt01_inst)
 	
 	logger.debug(midi_ports)
 	#for i, midi_portname in enumerate(midi_ports):

@@ -1,7 +1,7 @@
 import struct
 import sys
 import numpy as np 
-from dt01 import dt01
+from dt01 import *
 import time
 import rtmidi
 from rtmidi.midiutil import *
@@ -17,6 +17,22 @@ logger = logging.getLogger('DT01')
 
 MIDINOTES      = 128
 CONTROLCOUNT   = 128
+
+
+def noteToFreq(note):
+	a = 440.0 #frequency of A (coomon value is 440Hz)
+	return (a / 32) * (2 ** ((note - 9) / 12))
+
+
+class Note:
+	def __init__(self, index):
+		self.index  = index
+		self.voices = []
+		self.velocity = 0
+		self.held  = False
+		self.polyAftertouch = 0
+		self.msg  = None
+		self.defaultIncrement = 2**32 * (noteToFreq(index) / 96000.0)
 
 class Voice(DT01_Voice):
 
@@ -38,42 +54,17 @@ class Voice(DT01_Voice):
 # voice controls
 # operator
 		
-class Operator0(DT01_Operator):	
-	def setFMDepth(self)       : self.send("cmd_fmdepth"        ,  payload = int(2**14 * (self.voice.patch.control[1]/128.0)))
-	def __init__(self, voice, index, dt01_inst):
-		super().__init__(voice, index, dt01_inst)
-class Operator1(DT01_Operator):	
-	def __init__(self, voice, index, dt01_inst):
-		super().__init__(voice, index, dt01_inst)
-class Operator2(DT01_Operator):	
-	def __init__(self, voice, index, dt01_inst):
-		super().__init__(voice, index, dt01_inst)
-class Operator3(DT01_Operator):	
-	def __init__(self, voice, index, dt01_inst):
-		super().__init__(voice, index, dt01_inst)
-class Operator4(DT01_Operator):	
-	def __init__(self, voice, index, dt01_inst):
-		super().__init__(voice, index, dt01_inst)
-class Operator5(DT01_Operator):	
-	def __init__(self, voice, index, dt01_inst):
-		super().__init__(voice, index, dt01_inst)
-class Operator6(DT01_Operator):	
-	def __init__(self, voice, index, dt01_inst):
-		super().__init__(voice, index, dt01_inst)
-class Operator7(DT01_Operator):	
-	def __init__(self, voice, index, dt01_inst):
-		super().__init__(voice, index, dt01_inst)
-
-		
 # patch holds all state, including note and control state
 class Patch:
 
 	def __init__(self, dt01_inst):
+		logger.debug("patch init ")
+		
 		# each patch has its own controls so they can be independantly initialized
 		self.control     = np.ones((CONTROLCOUNT), dtype=int) * 128
 		
 		self.voicesPerNote = 1
-		self.polyphony = 32
+		self.polyphony  = 32
 		self.dt01_inst  = dt01_inst
 		self.voices = []
 		self.currVoiceIndex = 0
@@ -92,18 +83,12 @@ class Patch:
 		
 		for voice in self.voices:
 			logger.debug("claimed: " + str(voice.index))
-			voice.computeAndSendAll()
 			voice.note  = self.allNotes[0]
 			voice.patch = self
 			voice.computeAndSendAll()
 				
 		self.toRelease   = []
 	
-		logger.debug("init ")
-		
-		# initialize all voices
-		for voice in self.voices:
-			voice.computeAndSendAll()
 	
 	
 	def processEvent(self, msg):
@@ -156,7 +141,7 @@ class Patch:
 				voice.control_change()
 			
 		elif msg.type == 'polytouch':
-			self.allNotes[msg.index].polytouch = msg.value
+			self.allNotes[msg.note].polytouch = msg.value
 			note = self.allNotes[msg.note]
 			for voice in note.voices:
 				voice.polytouch()
@@ -165,13 +150,4 @@ class Patch:
 			self.aftertouch = msg.value
 			for voice in self.voices:
 				voice.aftertouch()
-			
-		elif msg.type == 'note_off':
-			note = self.allNotes[msg.note]
-			note.velocity = 0
-			note.held = False
-			for voice in note.voices:
-				voice.note_off()
-			
-			
 
