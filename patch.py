@@ -18,16 +18,63 @@ logger = logging.getLogger('DT01')
 MIDINOTES      = 128
 CONTROLCOUNT   = 128
 
+class Voice(DT01_Voice):
+
+	def __init__(self, index, dt01_inst):
+		super().__init__(voice, index, dt01_inst)
+
+	def fn_mastergain_right(self)   : return  2**16 
+	def fn_mastergain_left (self)   : return  2**16 
+	def fn_algorithm (self)         : return 0x00000001
+
+	def __unicode__(self):
+		return "#" + str(self.index)
+
+	def __str__(self):
+		return "#" + str(self.index)
+
+# heirarchy:
+# patch controls
+# voice controls
+# operator
+		
+class Operator0(DT01_Operator):	
+	def setFMDepth(self)       : self.send("cmd_fmdepth"        ,  payload = int(2**14 * (self.voice.patch.control[1]/128.0)))
+	def __init__(self, voice, index, dt01_inst):
+		super().__init__(voice, index, dt01_inst)
+class Operator1(DT01_Operator):	
+	def __init__(self, voice, index, dt01_inst):
+		super().__init__(voice, index, dt01_inst)
+class Operator2(DT01_Operator):	
+	def __init__(self, voice, index, dt01_inst):
+		super().__init__(voice, index, dt01_inst)
+class Operator3(DT01_Operator):	
+	def __init__(self, voice, index, dt01_inst):
+		super().__init__(voice, index, dt01_inst)
+class Operator4(DT01_Operator):	
+	def __init__(self, voice, index, dt01_inst):
+		super().__init__(voice, index, dt01_inst)
+class Operator5(DT01_Operator):	
+	def __init__(self, voice, index, dt01_inst):
+		super().__init__(voice, index, dt01_inst)
+class Operator6(DT01_Operator):	
+	def __init__(self, voice, index, dt01_inst):
+		super().__init__(voice, index, dt01_inst)
+class Operator7(DT01_Operator):	
+	def __init__(self, voice, index, dt01_inst):
+		super().__init__(voice, index, dt01_inst)
+
+		
+# patch holds all state, including note and control state
 class Patch:
 
-	def __init__(self, midiInputInst, dt01_inst):
+	def __init__(self, dt01_inst):
 		# each patch has its own controls so they can be independantly initialized
-		self.control     = np.zeros((CONTROLCOUNT), dtype=int)
+		self.control     = np.ones((CONTROLCOUNT), dtype=int) * 128
 		
 		self.voicesPerNote = 1
 		self.polyphony = 32
 		self.dt01_inst  = dt01_inst
-		self.midiInputInst = midiInputInst
 		self.voices = []
 		self.currVoiceIndex = 0
 		self.currVoice = 0
@@ -35,10 +82,7 @@ class Patch:
 		self.aftertouch = 0
 		
 		#initialize some controls
-		self.control[1]  = 128
-		self.control[2]  = 128
 		self.control[3]  = 64
-		self.control[4] = 128
 		
 		self.allNotes = []
 		for i in range(MIDINOTES):
@@ -48,25 +92,18 @@ class Patch:
 		
 		for voice in self.voices:
 			logger.debug("claimed: " + str(voice.index))
-			voice.updateAll()
+			voice.computeAndSendAll()
 			voice.note  = self.allNotes[0]
 			voice.patch = self
-			voice.updateAll()
+			voice.computeAndSendAll()
 				
 		self.toRelease   = []
 	
 		logger.debug("init ")
 		
-		#with open(os.path.join(sys.path[0], "global.json")) as f:
-		#	globaldict = json.loads(f.read())
-		#
-		#for key, value in globaldict.items():
-		#	 dt01_inst.send(key , 0, 0, value)
-	
 		# initialize all voices
 		for voice in self.voices:
-			voice.operators[0].algorithm = 1
-			voice.updateAll()
+			voice.computeAndSendAll()
 	
 	
 	def processEvent(self, msg):
@@ -111,34 +148,30 @@ class Patch:
 			amountchange = msg.pitch / 8192.0
 			self.pitchwheel = pow(2, amountchange)
 			for voice in self.voices:
-				for operator in voice.operators:
-					operator.setIncrement()
+				voice.pitchwheel()
 				
 		elif msg.type == 'control_change':
 			self.control[msg.control] = msg.value
-			if msg.control == 1:
-				for voice in self.voices:
-					for operator in voice.operators:
-						operator.setFMDepth()
-			if msg.control == 2:
-				for voice in self.voices:
-					for operator in voice.operators:
-						operator.setGain()
-			if msg.control == 4:
-				for operator in voice.operators:
-					operator.setIncrementPorta()
-			
+			for voice in self.voices:
+				voice.control_change()
 			
 		elif msg.type == 'polytouch':
-			self.allNotes[msg.index].polyAftertouch = msg.value
+			self.allNotes[msg.index].polytouch = msg.value
+			note = self.allNotes[msg.note]
+			for voice in note.voices:
+				voice.polytouch()
 			
 		elif msg.type == 'aftertouch':
 			self.aftertouch = msg.value
 			for voice in self.voices:
-				for operator in voice.operators:
-					operator.setIncrement()
+				voice.aftertouch()
 			
 		elif msg.type == 'note_off':
-			self.routine_noteoff(msg)
+			note = self.allNotes[msg.note]
+			note.velocity = 0
+			note.held = False
+			for voice in note.voices:
+				voice.note_off()
+			
 			
 
