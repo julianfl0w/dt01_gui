@@ -64,7 +64,7 @@ class MainWindow(QWidget):
 		
 
 	def patchPressed(self):
-		global patch_last_released
+		global patch_last_released 
 		sender = self.sender()
 		
 		for k in range(sender.parentLayout.rowCount()):
@@ -124,7 +124,6 @@ class MainWindow(QWidget):
 		
 		
 if __name__ == '__main__':
-	sys.exit()
 	app = QApplication(sys.argv)
 	main_window = MainWindow()
 	main_window.showFullScreen()

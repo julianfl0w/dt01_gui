@@ -13,7 +13,6 @@ import os
 import logging
 import threading
 import faulthandler
-from patch import *
 import traceback
 import re
 
@@ -64,9 +63,9 @@ class MidiDevice(object):
 		self._wallclock += deltatime
 		
 		msg = mido.Message.from_bytes(msg)
+		logger.debug("\n\n\n---------------")
 		logger.debug("processing " + msg.type)
 		
-		logger.debug("\n\n\n---------------")
 		logger.debug(msg.type)
 		for patch in self.patches:
 			patch.processEvent(msg)
