@@ -143,7 +143,8 @@ import inspect
 class FPGA_component:
 
 	# need to call super.init
-	def __init__(self, index, fpga_interface_inst):
+	def __init__(self, index, fpga_interface_inst, patch):
+		self.patch = patch
 		self.allChildren = []
 		self.computedState  = dict()
 		self.stateInFPGA    = dict()
@@ -218,6 +219,7 @@ class FPGA_component:
 		#logger.debug(str(self) + " processing " + event)
 		for actionTuple in self.event2action[event]:
 			param, fn = actionTuple
+			#logger.debug(str(actionTuple))
 			self.compute(param, fn)
 			self.send(param)
 		
@@ -271,10 +273,31 @@ class FPGA_component:
 # operator
 		
 # patch holds all state, including note and control state
-class Patch:
+class Patch(FPGA_component):
 
+
+	def fn_env_clkdiv (self) : return control[100]
+	def fn_flushspi   (self) : return control[101]
+	def fn_passthrough(self) : return control[102]
+	def fn_shift      (self) : return control[103]
+	
+	def getVoices(self, controlPatch, voicesToGet = 32):
+		toreturn = []
+		with ILock('jlock', lock_directory=sys.path[0]):
+			for i in range(voicesToGet):
+				toreturn += [self.voices[self.voiceno]]
+				self.voices[self.voiceno].controlPatch = controlPatch
+				self.voiceno += 1
+		return toreturn
+		
+	def send(self, param):
+		self.fpga_interface_inst.send(param, 0, 0, self.computedState[param])
+		
 	def __init__(self, fpga_interface_inst):
 		logger.debug("patch init ")
+		self.fpga_interface_inst  = fpga_interface_inst
+		super().__init__(0, self.fpga_interface_inst, self)
+		self.polyphony  = 2
 				
 		self.control = [0]*CONTROLCOUNT
 		self.control[0] = 0  #"vibrato_env"  # modwheel. tie it to vibrato (Pitch LFO)
@@ -292,56 +315,56 @@ class Patch:
 		self.control[71] = 0 #"filter_resonance"# common midi control
 		self.control[74] = 0 #"filter_cutoff"   # common midi control
 
-		self.control[14] = 1 # "op0_env"            
+		self.control[14] = 127 # "op0_env"            
 		self.control[15] = 0 # "op0_env_porta"      
 		self.control[16] = 1 # "op0_envexp"         
 		self.control[17] = 1 # "op0_increment"      
 		self.control[18] = 0 # "op0_increment_porta"
 		self.control[19] = 1 # "op0_incexp"         
 
-		self.control[20] = 1 # "env"            
+		self.control[20] = 0 # "env"            
 		self.control[21] = 0 # "env_porta"      
 		self.control[22] = 1 # "envexp"         
 		self.control[23] = 1 # "increment"      
 		self.control[24] = 0 # "increment_porta"
 		self.control[25] = 1 # "incexp"         
 
-		self.control[30] = 1 # "env"            
+		self.control[30] = 0 # "env"            
 		self.control[31] = 0 # "env_porta"      
 		self.control[32] = 1 # "envexp"         
 		self.control[33] = 1 # "increment"      
 		self.control[34] = 0 # "increment_porta"
 		self.control[35] = 1 # "incexp"         
 
-		self.control[40] = 1 # "env"            
+		self.control[40] = 0 # "env"            
 		self.control[41] = 0 # "env_porta"      
 		self.control[42] = 1 # "envexp"         
 		self.control[43] = 1 # "increment"      
 		self.control[44] = 0 # "increment_porta"
 		self.control[45] = 1 # "incexp"         
 
-		self.control[50] = 1 # "env"            
+		self.control[50] = 0 # "env"            
 		self.control[51] = 0 # "env_porta"      
 		self.control[52] = 1 # "envexp"         
 		self.control[53] = 1 # "increment"      
 		self.control[54] = 0 # "increment_porta"
 		self.control[55] = 1 # "incexp"         
 
-		self.control[56] = 1 # "env"            
+		self.control[56] = 0 # "env"            
 		self.control[57] = 0 # "env_porta"      
 		self.control[58] = 1 # "envexp"         
 		self.control[59] = 1 # "increment"      
 		self.control[60] = 0 # "increment_porta"
 		self.control[61] = 1 # "incexp"         
 
-		self.control[80] = 1 # "env"            
+		self.control[80] = 0 # "env"            
 		self.control[81] = 0 # "env_porta"      
 		self.control[82] = 1 # "envexp"         
 		self.control[83] = 1 # "increment"      
 		self.control[84] = 0 # "increment_porta"
 		self.control[85] = 1 # "incexp"         
 
-		self.control[90] = 1 # "env"            
+		self.control[90] = 0 # "env"            
 		self.control[91] = 0 # "env_porta"      
 		self.control[92] = 1 # "envexp"         
 		self.control[93] = 1 # "increment"      
@@ -352,13 +375,11 @@ class Patch:
 		self.control[101] = 0 #"flushspi"       
 		self.control[102] = 0 #"passthrough"    
 		self.control[103] = 2 #"shift"          
-
-		# each patch has its own controls so they can be independantly initialized
-		self.control     = np.zeros((CONTROLCOUNT), dtype=int)
 		
+		for i in range(len(self.control)):
+			self.control[i] = self.control[i] / 128.0
+			
 		self.voicesPerNote = 1
-		self.polyphony  = 2
-		self.fpga_interface_inst  = fpga_interface_inst
 		self.voices = []
 		self.currVoiceIndex = 0
 		self.currVoice = 0
@@ -369,20 +390,30 @@ class Patch:
 		for i in range(MIDINOTES):
 			self.allNotes+= [Note(i)]
 			
-		self.voices = self.fpga_interface_inst.getVoices(self, self.polyphony)
+		self.voiceno = 0# round robin voice allocation
 		
+		for i in range(self.polyphony):
+			newVoice = Voice(i, self.fpga_interface_inst, self)
+			self.voices += [newVoice]
+
+		self.allChildren = self.voices
+		self.computeDicts(recursive = False)
+	
+		self.event2action["control[100]"] = [("cmd_env_clkdiv" , self.fn_env_clkdiv )]
+		self.event2action["control[101]"] = [("cmd_flushspi"   , self.fn_flushspi   )]
+		self.event2action["control[102]"] = [("cmd_passthrough", self.fn_passthrough)]
+		self.event2action["control[103]"] = [("cmd_shift"      , self.fn_shift      )]
+			
 		for voice in self.voices:
 			logger.debug("claimed: " + str(voice.index))
 			voice.note  = self.allNotes[0]
 			voice.patch = self
-			voice.computeDicts()
-			voice.computeAndSendAll()
 				
 		self.toRelease   = []
 	
 		#defaults!
 		for i, val in enumerate(self.control):
-			self.processEvent(mido.Message('control_change', control=  i, value = val)) # volume
+			self.processEvent(mido.Message('control_change', control=  i, value = int(val*128))) # volume
 	
 	
 	def processEvent(self, msg):
@@ -405,7 +436,7 @@ class Patch:
 				
 		elif msg.type == "note_on":
 			note = self.allNotes[msg.note]
-			note.velocity = msg.velocity
+			note.velocity = msg.velocity/128.0
 			note.held = True
 			note.msg = msg
 			# spawn some voices!
@@ -423,7 +454,7 @@ class Patch:
 			self.pitchwheel = pow(2, amountchange)
 				
 		elif msg.type == 'control_change':
-			self.control[msg.control] = msg.value
+			self.control[msg.control] = msg.value/128.0
 			event = "control[" + str(msg.control) + "]"
 			
 		elif msg.type == 'polytouch':
@@ -445,23 +476,28 @@ class Patch:
 					break
 
 class Channel(FPGA_component):
-	def __init__(self, voice, index, fpga_interface_inst):
-		super().__init__(index, fpga_interface_inst)
+	def __init__(self, voice, index, fpga_interface_inst, patch):
+		super().__init__(index, fpga_interface_inst, patch)
 		self.voice = voice
 		self.event2action["control[7]"]   = [("cmd_voicegain", self.fn_voicegain)]
 		self.event2action["control[10]"]  = [("cmd_voicegain", self.fn_voicegain)]
 		self.fpga_interface_inst = fpga_interface_inst
 		
 	# control 7 = volume, 10 = pan
-	def fn_voicegain (self)   : return  2**16*(control[7])*(self.index - (control[10])) # assume 2 channels
+	def fn_voicegain (self)   : 
+		if self.index == 0:
+			return  2**16*self.patch.control[7]*self.patch.control[10] # assume 2 channels
+		else:
+			logger.debug(self.patch.control[10])
+			return  2**16*self.patch.control[7]*(1 - self.patch.control[10]) # assume 2 channels
 	
 	def send(self, param):
 		self.fpga_interface_inst.send(param, self.index, self.voice.index, self.computedState[param])
 
 class Voice(FPGA_component):
 		
-	def __init__(self, index, fpga_interface_inst):
-		super().__init__(index, fpga_interface_inst)
+	def __init__(self, index, fpga_interface_inst, patch):
+		super().__init__(index, fpga_interface_inst, patch)
 		
 	
 		self.index = index
@@ -473,13 +509,13 @@ class Voice(FPGA_component):
 		self.OPERATORCOUNT  = 8
 		self.operators = []
 		for opindex in range(self.OPERATORCOUNT):
-			self.operators += [Operator(self, opindex, fpga_interface_inst)]
+			self.operators += [Operator(self, opindex, fpga_interface_inst, patch)]
 		
 		self.operators[0].fn_env  = self.operators[0].override_env_standard
 		
 		self.channels = []
-		self.channels += [Channel(self, 0, fpga_interface_inst)]
-		self.channels += [Channel(self, 1, fpga_interface_inst)]
+		self.channels += [Channel(self, 0, fpga_interface_inst, patch)]
+		self.channels += [Channel(self, 1, fpga_interface_inst, patch)]
 		
 		self.allChildren = self.channels + self.operators 
 			
@@ -489,7 +525,7 @@ class Voice(FPGA_component):
 		self.event2action["control[4]"]  = [("cmd_fbgain"       , self.fn_fbgain )]
 		self.event2action["control[5]"]  = [("cmd_fbsrc"        , self.fn_fbsrc )]
 
-	def fn_vol_lfo_depth (self)     : return 2**16 * self.control[1] #= "tremolo_env"  # breath control
+	def fn_vol_lfo_depth (self)     : return 2**16 * self.patch.control[1] #= "tremolo_env"  # breath control
 	
 	# match DX7
 	def fn_algorithm (self)         : return self.patch.control[2] # TODO
@@ -517,9 +553,9 @@ class Note:
 
 # OPERATOR DESCRIPTIONS
 class Operator(FPGA_component):
-	def __init__(self, voice, index, fpga_interface_inst):
+	def __init__(self, voice, index, fpga_interface_inst, patch):
 		self.voice = voice
-		super().__init__(index, fpga_interface_inst)
+		super().__init__(index, fpga_interface_inst, patch)
 		self.base  = OPBASE[self.index]
 		# provide a set of actions to be run when event happens
 		self.event2action["note_on"]                           = [("cmd_env",       self.override_env_standard), ("cmd_increment", self.fn_increment)]
@@ -540,17 +576,17 @@ class Operator(FPGA_component):
 		return "control[" + str(int(self.base + OPOFFSET[paramName])) + "]"
 		
 	# TODO : WRITE FPGA CODE FOR SOUNDING vs NONSOUNDING OSC
-	def fn_env_porta      (self) : return 2**15 * (1 - control[self.base + OPOFFSET["env_porta"]]) * (1 - control[65]) # 65 is portamento control
-	def fn_env            (self) : return 2**16 * control[self.base + OPOFFSET["env"]]                      
-	def override_env_standard   (self) : return self.voice.note.velocity*(2**16) * control[self.base + OPOFFSET["env"]] 
+	def fn_env_porta      (self) : return 2**15 * (1 - self.patch.control[self.base + OPOFFSET["env_porta"]]) * (1 - self.patch.control[65]) # 65 is portamento self.patch.control
+	def fn_env            (self) : return 2**16 * self.patch.control[self.base + OPOFFSET["env"]]                      
+	def override_env_standard   (self) : return self.voice.note.velocity*(2**16) * self.patch.control[self.base + OPOFFSET["env"]] 
 	def fn_increment      (self) : 
 		pwadj = self.voice.patch.pitchwheel * self.voice.note.defaultIncrement
 		indexOffset = (2 ** (self.voice.indexInCluster - (self.voice.patch.voicesPerNote-1)/2))
-		return pwadj * indexOffset * (1 + self.voice.patch.aftertouch) * control[self.base + OPOFFSET["increment"]]
-	#def fn_increment_porta(self) : return 2**22*(self.voice.patch.control[4]/128.0)  
-	def fn_increment_porta(self) : return 2**21 * control[1+OPBASE[self.index]]
-	def fn_incexp         (self) : return 2*control[self.base + OPOFFSET["incexp"]]  
-	def fn_envexp         (self) : return 2*control[self.base + OPOFFSET["envexp"]]  
+		return pwadj * indexOffset * (1 + self.voice.patch.aftertouch) * self.patch.control[self.base + OPOFFSET["increment"]]
+	#def fn_increment_porta(self) : return 2**22*(self.voice.patch.self.patch.control[4]/128.0)  
+	def fn_increment_porta(self) : return 2**21 * (1 - self.patch.control[OPBASE[self.index] + OPOFFSET["increment_porta"]])
+	def fn_incexp         (self) : return int(129*self.patch.control[self.base + OPOFFSET["incexp"]])  
+	def fn_envexp         (self) : return int(129*self.patch.control[self.base + OPOFFSET["envexp"]])  
 
 	def send(self, param):
 		self.fpga_interface_inst.send(param, self.index, self.voice.index, self.computedState[param])
@@ -560,46 +596,6 @@ class Operator(FPGA_component):
 			return str(str(type(self))) + " #" + str(self.index) + " of Voice " + str(self.voice) 
 		else:
 			return str(type(self)) + " #" + "ALL"
-
-			
-class dt01(FPGA_component):
-
-	POLYPHONYCOUNT = 32*4
-
-	def __init__(self):
-		self.fpga_interface_inst = fpga_interface()
-		super().__init__(0, self.fpga_interface_inst)
-		self.voiceno = 0# round robin voice allocation
-		self.voices  = []
-		
-		for i in range(self.POLYPHONYCOUNT):
-			newVoice = Voice(i, self.fpga_interface_inst)
-			self.voices += [newVoice]
-
-		self.allChildren = self.voices
-		self.computeDicts(recursive = False)
-	
-		self.event2action["control[100]"] = [("cmd_env_clkdiv" , self.fn_env_clkdiv )]
-		self.event2action["control[101]"] = [("cmd_flushspi"   , self.fn_flushspi   )]
-		self.event2action["control[102]"] = [("cmd_passthrough", self.fn_passthrough)]
-		self.event2action["control[103]"] = [("cmd_shift"      , self.fn_shift      )]
-		
-	def fn_env_clkdiv (self) : return control[100]
-	def fn_flushspi   (self) : return control[101]
-	def fn_passthrough(self) : return control[102]
-	def fn_shift      (self) : return control[103]
-	
-	def getVoices(self, controlPatch, voicesToGet = 32):
-		toreturn = []
-		with ILock('jlock', lock_directory=sys.path[0]):
-			for i in range(voicesToGet):
-				toreturn += [self.voices[self.voiceno]]
-				self.voices[self.voiceno].controlPatch = controlPatch
-				self.voiceno += 1
-		return toreturn
-		
-	def send(self, param):
-		self.fpga_interface_inst.send(param, 0, 0, self.computedState[param])
 
 
 class fpga_interface():

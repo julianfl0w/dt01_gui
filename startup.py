@@ -29,7 +29,7 @@ logger.setLevel(1)
 
 class MidiDevice(object):
 		
-	def __init__(self, i, patch, midi_portname, dt01_inst):
+	def __init__(self, i, patch, midi_portname):
 		print(midi_portname)
 		midi_portname_file = re.sub(r'\W+', '', midi_portname) + ".txt"
 		faulthandler.dump_traceback(file=open(midi_portname_file, "w+"), all_threads=False)
@@ -43,7 +43,6 @@ class MidiDevice(object):
 		#self.s.bind((TCP_IP, TCP_midi_portname))
 		#self.s.setblocking(False)
 	
-		self.dt01_inst = dt01_inst
 		self.midi_portname  = midi_portname
 		self._wallclock  = time.time() 
 		
@@ -81,8 +80,8 @@ if __name__ == "__main__":
 	midiDev = []
 	midiin = rtmidi.MidiIn(get_api_from_environment(api))
 	midi_ports  = midiin.get_ports()
-	dt01_inst = dt01()
-	GLOBAL_DEFAULT_PATCH = Patch(dt01_inst)
+	fpga_interface_inst = fpga_interface()
+	GLOBAL_DEFAULT_PATCH = Patch(fpga_interface_inst)
 	
 	logger.debug(midi_ports)
 	#for i, midi_portname in enumerate(midi_ports):
@@ -94,7 +93,7 @@ if __name__ == "__main__":
 
 
 		logger.debug("Attaching MIDI input callback handler.")
-		MidiDevice_inst = MidiDevice(i, GLOBAL_DEFAULT_PATCH, str(midi_portname), dt01_inst)
+		MidiDevice_inst = MidiDevice(i, GLOBAL_DEFAULT_PATCH, str(midi_portname))
 		midiin.set_callback(MidiDevice_inst)
 		logger.debug("Handler: " + str(midiin))
 		#midiDev += [MidiDevice_inst]
