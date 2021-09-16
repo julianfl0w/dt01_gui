@@ -41,6 +41,7 @@ controlName[3] = "am_algo"
 controlName[4] = "fbgain"         
 controlName[5] = "fbsrc"          
 
+
 controlName[7]  = "voicegain"       # common midi control
 controlName[10] = "pan"             # common midi control
 controlName[11] = "expression"      # common midi control
@@ -50,7 +51,9 @@ controlName[71] = "filter_resonance"# common midi control
 controlName[74] = "filter_cutoff"   # common midi control
 
 
+OPBASE = [0]*8
 # begin operator parameters
+OPBASE[0]  = 14
 controlName[14] = "op0_env"            
 controlName[15] = "op0_env_porta"      
 controlName[16] = "op0_envexp"         
@@ -58,6 +61,7 @@ controlName[17] = "op0_increment"
 controlName[18] = "op0_increment_porta"
 controlName[19] = "op0_incexp"         
 
+OPBASE[1]  = 20
 controlName[20] = "op1_env"            
 controlName[21] = "op1_env_porta"      
 controlName[22] = "op1_envexp"         
@@ -65,6 +69,16 @@ controlName[23] = "op1_increment"
 controlName[24] = "op1_increment_porta"
 controlName[25] = "op1_incexp"         
 
+
+OPOFFSET = {}
+OPOFFSET["env"            ] = 0
+OPOFFSET["env_porta"      ] = 1
+OPOFFSET["envexp"         ] = 2
+OPOFFSET["increment"      ] = 3
+OPOFFSET["increment_porta"] = 4
+OPOFFSET["incexp"         ] = 5
+
+OPBASE[2]  = 30
 controlName[30] = "op2_env"            
 controlName[31] = "op2_env_porta"      
 controlName[32] = "op2_envexp"         
@@ -72,6 +86,7 @@ controlName[33] = "op2_increment"
 controlName[34] = "op2_increment_porta"
 controlName[35] = "op2_incexp"         
 
+OPBASE[3]  = 40
 controlName[40] = "op3_env"            
 controlName[41] = "op3_env_porta"      
 controlName[42] = "op3_envexp"         
@@ -79,6 +94,8 @@ controlName[43] = "op3_increment"
 controlName[44] = "op3_increment_porta"
 controlName[45] = "op3_incexp"         
 
+
+OPBASE[4]  = 50
 controlName[50] = "op4_env"            
 controlName[51] = "op4_env_porta"      
 controlName[52] = "op4_envexp"         
@@ -86,13 +103,16 @@ controlName[53] = "op4_increment"
 controlName[54] = "op4_increment_porta"
 controlName[55] = "op4_incexp"         
 
-controlName[70] = "op5_env"            
-controlName[72] = "op5_env_porta"      
-controlName[73] = "op5_envexp"         
-controlName[75] = "op5_increment"      
-controlName[76] = "op5_increment_porta"
-controlName[77] = "op5_incexp"         
 
+OPBASE[5]  = 56
+controlName[56] = "op5_env"            
+controlName[57] = "op5_env_porta"      
+controlName[58] = "op5_envexp"         
+controlName[59] = "op5_increment"      
+controlName[60] = "op5_increment_porta"
+controlName[61] = "op5_incexp"         
+
+OPBASE[6]  = 80
 controlName[80] = "vibrato_env"            
 controlName[81] = "vibrato_env_porta"      
 controlName[82] = "vibrato_envexp"         
@@ -100,6 +120,9 @@ controlName[83] = "vibrato_increment"
 controlName[84] = "vibrato_increment_porta"
 controlName[85] = "vibrato_incexp"         
 
+
+
+OPBASE[7]  = 90
 controlName[90] = "tremolo_env"            
 controlName[91] = "tremolo_env_porta"      
 controlName[92] = "tremolo_envexp"         
@@ -107,11 +130,13 @@ controlName[93] = "tremolo_increment"
 controlName[94] = "tremolo_increment_porta"
 controlName[95] = "tremolo_incexp"         
 
+
 # begin global params
 controlName[100] = "env_clkdiv"     
 controlName[101] = "flushspi"       
 controlName[102] = "passthrough"    
 controlName[103] = "shift"          
+
 
 import inspect
 # master class for FPGA elements
@@ -119,7 +144,7 @@ class FPGA_component:
 
 	# need to call super.init
 	def __init__(self, index, fpga_interface_inst):
-	
+		self.allChildren = []
 		self.computedState  = dict()
 		self.stateInFPGA    = dict()
 		self.commonChildrenSensitivities = collections.defaultdict(list)
@@ -143,36 +168,37 @@ class FPGA_component:
 		logger.debug("initialized " + str(self))
 		
 	def computeDicts(self, recursive = True):
-		logger.debug("computing dicts " + str(self))
-		self.allChildrenDict = collections.defaultdict(list)
-		self.allChildren = []
-		for membername, member in inspect.getmembers(self):
-			# sometimes they may be elements of a list
-			if isinstance(member,list):
-				for v in member:
-					if (isinstance(v, FPGA_component)):
-						#logger.debug("child " + str(v))
-						self.allChildrenDict[str(type(v))] += [v]
-						self.allChildren += [v]
-			
-			# if its a function starting with fn
-			if membername.startswith("fn_") and callable(member):
-				#logger.debug("found function " + membername)
-				for keyword, events in self.keyword2events.items():
-					#logger.debug("kw " + keyword)
-					#logger.debug("events " + str(events))
-					if keyword in inspect.getsource(member):
-						#logger.debug(keyword + ", yeah its in " + str(inspect.getsource(member)))
-						for event in events:
-							#logger.debug("adding " + membername + " to " + event)
-							self.event2action[event] += [(membername.replace("fn_", "cmd_"), member)]
-							
-				# if the function contains no keywords, send it
-				if not any([keyword in inspect.getsource(member) for keyword in self.keyword2events.keys()]):
-					self.computeAndSend((membername.replace("fn_", "cmd_"),member))
-		if recursive:
-			for child in self.allChildren:
-				child.computeDicts()
+		pass
+		#logger.debug("computing dicts " + str(self))
+		#self.allChildrenDict = collections.defaultdict(list)
+		#self.allChildren = []
+		#for membername, member in inspect.getmembers(self):
+		#	# sometimes they may be elements of a list
+		#	if isinstance(member,list):
+		#		for v in member:
+		#			if (isinstance(v, FPGA_component)):
+		#				#logger.debug("child " + str(v))
+		#				self.allChildrenDict[str(type(v))] += [v]
+		#				self.allChildren += [v]
+		#	
+		#	# if its a function starting with fn
+		#	#if membername.startswith("fn_") and callable(member):
+		#	#	#logger.debug("found function " + membername)
+		#	#	for keyword, events in self.keyword2events.items():
+		#	#		#logger.debug("kw " + keyword)
+		#	#		#logger.debug("events " + str(events))
+		#	#		if keyword in inspect.getsource(member):
+		#	#			#logger.debug(keyword + ", yeah its in " + str(inspect.getsource(member)))
+		#	#			for event in events:
+		#	#				#logger.debug("adding " + membername + " to " + event)
+		#	#				self.event2action[event] += [(membername.replace("fn_", "cmd_"), member)]
+		#	#				
+		#	#	# if the function contains no keywords, send it
+		#	#	if not any([keyword in inspect.getsource(member) for keyword in self.keyword2events.keys()]):
+		#	#		self.computeAndSend((membername.replace("fn_", "cmd_"),member))
+		#if recursive:
+		#	for child in self.allChildren:
+		#		child.computeDicts()
 		
 		# find common sensitivities in all children of a list
 		#logger.debug(self.allChildrenDict.items())
@@ -249,10 +275,86 @@ class Patch:
 
 	def __init__(self, fpga_interface_inst):
 		logger.debug("patch init ")
-		
+				
+		self.control = [0]*CONTROLCOUNT
+		self.control[0] = 0  #"vibrato_env"  # modwheel. tie it to vibrato (Pitch LFO)
+		self.control[1] = 0  #"tremolo_env"  # breath control
+		self.control[2] = 0  #"algorithm"
+		self.control[3] = 0  #"am_algo"            
+		self.control[4] = 0  #"fbgain"             
+		self.control[5] = 0  #"fbsrc"              
+
+		self.control[7]  = 127 #"voicegain"       # common midi control
+		self.control[10] = 64  #"pan"             # common midi control
+		self.control[11] = 0   #"expression"      # common midi control
+		self.control[64] = 0   #"sustain"         # common midi control
+		self.control[65] = 0   #"portamento"      # common midi control
+		self.control[71] = 0 #"filter_resonance"# common midi control
+		self.control[74] = 0 #"filter_cutoff"   # common midi control
+
+		self.control[14] = 1 # "op0_env"            
+		self.control[15] = 0 # "op0_env_porta"      
+		self.control[16] = 1 # "op0_envexp"         
+		self.control[17] = 1 # "op0_increment"      
+		self.control[18] = 0 # "op0_increment_porta"
+		self.control[19] = 1 # "op0_incexp"         
+
+		self.control[20] = 1 # "env"            
+		self.control[21] = 0 # "env_porta"      
+		self.control[22] = 1 # "envexp"         
+		self.control[23] = 1 # "increment"      
+		self.control[24] = 0 # "increment_porta"
+		self.control[25] = 1 # "incexp"         
+
+		self.control[30] = 1 # "env"            
+		self.control[31] = 0 # "env_porta"      
+		self.control[32] = 1 # "envexp"         
+		self.control[33] = 1 # "increment"      
+		self.control[34] = 0 # "increment_porta"
+		self.control[35] = 1 # "incexp"         
+
+		self.control[40] = 1 # "env"            
+		self.control[41] = 0 # "env_porta"      
+		self.control[42] = 1 # "envexp"         
+		self.control[43] = 1 # "increment"      
+		self.control[44] = 0 # "increment_porta"
+		self.control[45] = 1 # "incexp"         
+
+		self.control[50] = 1 # "env"            
+		self.control[51] = 0 # "env_porta"      
+		self.control[52] = 1 # "envexp"         
+		self.control[53] = 1 # "increment"      
+		self.control[54] = 0 # "increment_porta"
+		self.control[55] = 1 # "incexp"         
+
+		self.control[56] = 1 # "env"            
+		self.control[57] = 0 # "env_porta"      
+		self.control[58] = 1 # "envexp"         
+		self.control[59] = 1 # "increment"      
+		self.control[60] = 0 # "increment_porta"
+		self.control[61] = 1 # "incexp"         
+
+		self.control[80] = 1 # "env"            
+		self.control[81] = 0 # "env_porta"      
+		self.control[82] = 1 # "envexp"         
+		self.control[83] = 1 # "increment"      
+		self.control[84] = 0 # "increment_porta"
+		self.control[85] = 1 # "incexp"         
+
+		self.control[90] = 1 # "env"            
+		self.control[91] = 0 # "env_porta"      
+		self.control[92] = 1 # "envexp"         
+		self.control[93] = 1 # "increment"      
+		self.control[94] = 0 # "increment_porta"
+		self.control[95] = 1 # "incexp"         
+
+		self.control[100] = 5 #"env_clkdiv"     
+		self.control[101] = 0 #"flushspi"       
+		self.control[102] = 0 #"passthrough"    
+		self.control[103] = 2 #"shift"          
+
 		# each patch has its own controls so they can be independantly initialized
 		self.control     = np.zeros((CONTROLCOUNT), dtype=int)
-		
 		
 		self.voicesPerNote = 1
 		self.polyphony  = 2
@@ -262,10 +364,7 @@ class Patch:
 		self.currVoice = 0
 		self.pitchwheel  = 1
 		self.aftertouch = 0
-		
-		#initialize some controls
-		self.control[3]  = 64
-		
+				
 		self.allNotes = []
 		for i in range(MIDINOTES):
 			self.allNotes+= [Note(i)]
@@ -282,8 +381,8 @@ class Patch:
 		self.toRelease   = []
 	
 		#defaults!
-		self.processEvent(mido.Message('control_change', control=  7, value = 64)) # volume
-		self.processEvent(mido.Message('control_change', control= 10, value = 64)) # pan
+		for i, val in enumerate(self.control):
+			self.processEvent(mido.Message('control_change', control=  i, value = val)) # volume
 	
 	
 	def processEvent(self, msg):
@@ -328,12 +427,12 @@ class Patch:
 			event = "control[" + str(msg.control) + "]"
 			
 		elif msg.type == 'polytouch':
-			self.allNotes[msg.note].polytouch = msg.value
+			self.allNotes[msg.note].polytouch = msg.value/128.0
 			note = self.allNotes[msg.note]
 			voicesToUpdate = note.voices
 			
 		elif msg.type == 'aftertouch':
-			self.aftertouch = msg.value
+			self.aftertouch = msg.value/128.0
 						
 		for voice in voicesToUpdate:
 			voice.computeAndSendEvent(event)
@@ -349,10 +448,12 @@ class Channel(FPGA_component):
 	def __init__(self, voice, index, fpga_interface_inst):
 		super().__init__(index, fpga_interface_inst)
 		self.voice = voice
+		self.event2action["control[7]"]   = [("cmd_voicegain", self.fn_voicegain)]
+		self.event2action["control[10]"]  = [("cmd_voicegain", self.fn_voicegain)]
 		self.fpga_interface_inst = fpga_interface_inst
 		
 	# control 7 = volume, 10 = pan
-	def fn_voicegain (self)   : return  2**16*(control[7] / 128.0)*(self.index - (control[10] / 128.0))
+	def fn_voicegain (self)   : return  2**16*(control[7])*(self.index - (control[10])) # assume 2 channels
 	
 	def send(self, param):
 		self.fpga_interface_inst.send(param, self.index, self.voice.index, self.computedState[param])
@@ -380,16 +481,21 @@ class Voice(FPGA_component):
 		self.channels += [Channel(self, 0, fpga_interface_inst)]
 		self.channels += [Channel(self, 1, fpga_interface_inst)]
 		
+		self.allChildren = self.channels + self.operators 
 			
-	def fn_vol_lfo_depth (self)     : return 0x00000000
+		self.event2action["control[1]"]  = [("cmd_vol_lfo_depth", self.fn_vol_lfo_depth )]
+		self.event2action["control[2]"]  = [("cmd_algorithm"    , self.fn_algorithm )]
+		self.event2action["control[3]"]  = [("cmd_am_algo"      , self.fn_am_algo   )]
+		self.event2action["control[4]"]  = [("cmd_fbgain"       , self.fn_fbgain )]
+		self.event2action["control[5]"]  = [("cmd_fbsrc"        , self.fn_fbsrc )]
+
+	def fn_vol_lfo_depth (self)     : return 2**16 * self.control[1] #= "tremolo_env"  # breath control
 	
 	# match DX7
-	def fn_algorithm (self)         : 
-		if control[
-		return 0x00000000
-	def fn_am_algo (self)           : return 0x00000000
-	def fn_fbgain (self)            : return 0x00000000
-	def fn_fbsrc (self)             : return 0x00000000
+	def fn_algorithm (self)         : return self.patch.control[2] # TODO
+	def fn_am_algo (self)           : return self.patch.control[3]
+	def fn_fbgain (self)            : return 2**16 * self.patch.control[4]
+	def fn_fbsrc (self)             : return self.patch.control[5]
 
 	def send(self, param):
 		self.fpga_interface_inst.send(param, 0, self.index, self.computedState[param])
@@ -414,16 +520,37 @@ class Operator(FPGA_component):
 	def __init__(self, voice, index, fpga_interface_inst):
 		self.voice = voice
 		super().__init__(index, fpga_interface_inst)
+		self.base  = OPBASE[self.index]
+		# provide a set of actions to be run when event happens
+		self.event2action["note_on"]                           = [("cmd_env",       self.override_env_standard), ("cmd_increment", self.fn_increment)]
+		self.event2action["note_off"]                          = [("cmd_env",       self.override_env_standard)]
+		self.event2action["pitchwheel"]                        = [("cmd_increment", self.fn_increment)]
+		self.event2action["aftertouch"]                        = [("cmd_increment", self.fn_increment)]
+		self.event2action["polytouch"]                         = []
+		self.event2action[self.getCtrlNum("env"            )]  = [("cmd_env"            , self.fn_env           )]
+		self.event2action[self.getCtrlNum("env_porta"      )]  = [("cmd_env_porta"      , self.fn_env_porta     )]
+		self.event2action[self.getCtrlNum("envexp"         )]  = [("cmd_envexp"         , self.fn_envexp        )]
+		self.event2action[self.getCtrlNum("increment"      )]  = [("cmd_increment"      , self.fn_increment     )]
+		self.event2action[self.getCtrlNum("increment_porta")]  = [("cmd_increment_porta", self.fn_increment_porta)]
+		self.event2action[self.getCtrlNum("incexp"         )]  = [("cmd_incexp"         , self.fn_incexp        )]
 		
-
-	def fn_env_porta      (self) : return 2**15                                                        
-	def fn_env            (self) : return 0                      
-	def override_env_standard   (self) : return self.voice.note.velocity*(2**16)/128.0                      
-	def fn_increment      (self) : return self.voice.patch.pitchwheel * self.voice.note.defaultIncrement * (2 ** (self.voice.indexInCluster - (self.voice.patch.voicesPerNote-1)/2)) * (1 + self.voice.patch.aftertouch/128.0)
+		
+	
+	def getCtrlNum(self, paramName):
+		return "control[" + str(int(self.base + OPOFFSET[paramName])) + "]"
+		
+	# TODO : WRITE FPGA CODE FOR SOUNDING vs NONSOUNDING OSC
+	def fn_env_porta      (self) : return 2**15 * (1 - control[self.base + OPOFFSET["env_porta"]]) * (1 - control[65]) # 65 is portamento control
+	def fn_env            (self) : return 2**16 * control[self.base + OPOFFSET["env"]]                      
+	def override_env_standard   (self) : return self.voice.note.velocity*(2**16) * control[self.base + OPOFFSET["env"]] 
+	def fn_increment      (self) : 
+		pwadj = self.voice.patch.pitchwheel * self.voice.note.defaultIncrement
+		indexOffset = (2 ** (self.voice.indexInCluster - (self.voice.patch.voicesPerNote-1)/2))
+		return pwadj * indexOffset * (1 + self.voice.patch.aftertouch) * control[self.base + OPOFFSET["increment"]]
 	#def fn_increment_porta(self) : return 2**22*(self.voice.patch.control[4]/128.0)  
-	def fn_increment_porta(self) : return 2**21  	
-	def fn_incexp         (self) : return 1                                                            
-	def fn_envexp         (self) : return 1                                                            
+	def fn_increment_porta(self) : return 2**21 * control[1+OPBASE[self.index]]
+	def fn_incexp         (self) : return 2*control[self.base + OPOFFSET["incexp"]]  
+	def fn_envexp         (self) : return 2*control[self.base + OPOFFSET["envexp"]]  
 
 	def send(self, param):
 		self.fpga_interface_inst.send(param, self.index, self.voice.index, self.computedState[param])
@@ -449,13 +576,18 @@ class dt01(FPGA_component):
 			newVoice = Voice(i, self.fpga_interface_inst)
 			self.voices += [newVoice]
 
-		
+		self.allChildren = self.voices
 		self.computeDicts(recursive = False)
 	
-	def fn_env_clkdiv (self) : return 5
-	def fn_flushspi   (self) : return 0
-	def fn_passthrough(self) : return 0
-	def fn_shift      (self) : return 2
+		self.event2action["control[100]"] = [("cmd_env_clkdiv" , self.fn_env_clkdiv )]
+		self.event2action["control[101]"] = [("cmd_flushspi"   , self.fn_flushspi   )]
+		self.event2action["control[102]"] = [("cmd_passthrough", self.fn_passthrough)]
+		self.event2action["control[103]"] = [("cmd_shift"      , self.fn_shift      )]
+		
+	def fn_env_clkdiv (self) : return control[100]
+	def fn_flushspi   (self) : return control[101]
+	def fn_passthrough(self) : return control[102]
+	def fn_shift      (self) : return control[103]
 	
 	def getVoices(self, controlPatch, voicesToGet = 32):
 		toreturn = []
@@ -530,7 +662,7 @@ class fpga_interface():
 	def send(self, paramName, mm_opno,  voiceno,  payload):
 		tosend = self.format_command_int(self.cmdName2number[paramName], mm_opno, voiceno, payload)
 		with ILock('jlock', lock_directory=sys.path[0]):
-			#logger.debug("sending " + paramName + " operator:" + str(mm_opno) + " voice:" + str(voiceno) + " payload:" + str(payload))
+			logger.debug("sending " + paramName + " operator:" + str(mm_opno) + " voice:" + str(voiceno) + " payload:" + str(payload))
 			#logger.debug(tosend)
 			spi.xfer2(tosend)
 			#logger.debug("sent")
