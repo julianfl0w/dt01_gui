@@ -50,6 +50,8 @@ class MidiDevice(object):
 		
 		self.patches = [patch]
 		
+		self.timeTaken = []
+		self.iteration = 0
 		
 		
 	def __call__(self, event, data=None):
@@ -68,8 +70,19 @@ class MidiDevice(object):
 		logger.debug(msg.type)
 		for patch in self.patches:
 			patch.processEvent(msg)
+		
+		#if self.iteration == 20:
+		#	self.iteration = 0
+		#	logger.setLevel(1)
+		#	#lvl = logger.getLevel()
+		#	logger.debug(self.timeTaken )
+		#	#self.timeTaken = []
+		#	#logger.setLevel(0)
+		#else:
+		#self.timeTaken += [time.time() - starttime]
+		logger.warning(time.time() - starttime)
 			
-		logger.debug(time.time() - starttime)
+		self.iteration += 1
 		#self.lock.release()
 
 
