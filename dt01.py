@@ -30,54 +30,54 @@ logger = logging.getLogger('DT01')
 MIDINOTES      = 128
 CONTROLCOUNT   = 128
 
-controlNum2Name = [""]*CONTROLCOUNT
+controlNum2ParamName = [""]*CONTROLCOUNT
 
 # common midi controls https://professionalcomposers.com/midi-cc-list/
 
 # begin voice parameters
-controlNum2Name[0 ] = "vibrato_env"  # modwheel. tie it to vibrato (Pitch LFO)
-controlNum2Name[1 ] = "tremolo_env"  # breath control
-controlNum2Name[4 ] = "fbgain"         
-controlNum2Name[5 ] = "fbsrc"          
+controlNum2ParamName[0 ] = "vibrato_env"  # modwheel. tie it to vibrato (Pitch LFO)
+controlNum2ParamName[1 ] = "tremolo_env"  # breath control
+controlNum2ParamName[4 ] = "fbgain"         
+controlNum2ParamName[5 ] = "fbsrc"          
 
-controlNum2Name[7 ]  = "voicegain"       # common midi control
-controlNum2Name[9 ]  = "baseincrement"       # 
-controlNum2Name[10] = "pan"             # common midi control
-controlNum2Name[11] = "expression"      # common midi control
+controlNum2ParamName[7 ]  = "voicegain"       # common midi control
+controlNum2ParamName[9 ]  = "baseincrement"       # 
+controlNum2ParamName[10] = "pan"             # common midi control
+controlNum2ParamName[11] = "expression"      # common midi control
 
 
 OPBASE = [0]*8
 # begin operator parameters
-controlNum2Name[13] = "opno"            
+controlNum2ParamName[13] = "opno"            
 OPBASE[0]  = 14
-controlNum2Name[14] = "env"            
-controlNum2Name[15] = "env_porta"      
-controlNum2Name[16] = "envexp"         
-controlNum2Name[17] = "increment"      
-controlNum2Name[18] = "increment_porta"
-controlNum2Name[19] = "incexp"         
-controlNum2Name[20] = "fmsrc"         
-controlNum2Name[21] = "amsrc"         
-controlNum2Name[22] = "static"         
-controlNum2Name[23] = "sounding"         
+controlNum2ParamName[14] = "env"            
+controlNum2ParamName[15] = "env_porta"      
+controlNum2ParamName[16] = "envexp"         
+controlNum2ParamName[17] = "increment"      
+controlNum2ParamName[18] = "increment_porta"
+controlNum2ParamName[19] = "incexp"         
+controlNum2ParamName[20] = "fmsrc"         
+controlNum2ParamName[21] = "amsrc"         
+controlNum2ParamName[22] = "static"         
+controlNum2ParamName[23] = "sounding"         
    
 
 # common midi controls
-controlNum2Name[64] = "sustain"         # common midi control
-controlNum2Name[65] = "portamento"      # common midi control
-controlNum2Name[71] = "filter_resonance"# common midi control
-controlNum2Name[74] = "filter_cutoff"   # common midi control
+controlNum2ParamName[64] = "sustain"         # common midi control
+controlNum2ParamName[65] = "portamento"      # common midi control
+controlNum2ParamName[71] = "filter_resonance"# common midi control
+controlNum2ParamName[74] = "filter_cutoff"   # common midi control
 
 
 # begin global params
-controlNum2Name[110] = "env_clkdiv"     
-controlNum2Name[111] = "flushspi"       
-controlNum2Name[112] = "passthrough"    
-controlNum2Name[113] = "shift"          
+controlNum2ParamName[110] = "env_clkdiv"     
+controlNum2ParamName[111] = "flushspi"       
+controlNum2ParamName[112] = "passthrough"    
+controlNum2ParamName[113] = "shift"          
 
-controlName2Num = {}
-for i, name in enumerate(controlNum2Name):
-	controlName2Num[name] = i
+paramName2Num = {}
+for i, name in enumerate(controlNum2ParamName):
+	paramName2Num[name] = i
 
 import inspect
 # master class for FPGA elements
@@ -218,15 +218,15 @@ class Patch(FPGA_component):
 	def send(self, param, value):
 		self.fpga_interface_inst.send(param, 0, 0, value)
 	
-	def processControl(self, controlName, value):
-		self.processEvent(mido.Message('control_change', control = controlName2Num [controlName], value = value)) #
+	def processControl(self, paramName, value):
+		self.processEvent(mido.Message('control_change', control = paramName2Num [paramName], value = value)) #
 		
 	
 	def __init__(self, fpga_interface_inst):
 		logger.debug("patch init ")
 		self.fpga_interface_inst  = fpga_interface_inst
 		super().__init__(0, self.fpga_interface_inst, self)
-		self.polyphony  = 2
+		self.polyphony  = 1
 				
 		self.voicesPerNote = 1
 		self.voices = []
@@ -259,19 +259,33 @@ class Patch(FPGA_component):
 	
 		self.control = [0]*CONTROLCOUNT
 		self.controlReal = [0]*CONTROLCOUNT
-		self.controlName2Val = {}
-		self.controlName2Real= {}
+
+		# establish defaults
+		self.paramName2Val = {}
+		self.paramName2Real= {}
+		for paramName in controlNum2ParamName:
+			self.paramName2Val [paramName] = 0
+			self.paramName2Real[paramName] = 0
 		
 		self.processControl("vibrato_env", value = 0) #
 		self.processControl("tremolo_env", value = 0) #
-		self.processControl("portamento", value = 0) #
+		self.processControl( "fbgain"       , value = 0)
+		self.processControl( "fbsrc"        , value = 0)
+		self.processControl( "baseincrement", value = 127)     # 
+		self.processControl( "pan"          , value = 64) # common midi control
+		self.processControl( "expression"   , value = 0) # common midi control
+		
+		self.processControl("opno"            , value = 0) #
+		self.processControl( "voicegain"    , value = 127) # common midi control
+		self.processControl("opno"            , value = 1) #
+		self.processControl( "voicegain"    , value = 127) # common midi control
 		
 		self.processControl("opno"            , value = 0) #
 		self.processControl("env"             , value = 127) #
 		self.processControl("env_porta"       , value = 64  ) #
 		self.processControl("envexp"          , value = 1  ) #
 		self.processControl("increment"       , value = 127) #
-		self.processControl("increment_porta" , value = 64  ) #
+		self.processControl("increment_porta" , value = 0  ) #
 		self.processControl("incexp"          , value = 1  ) #
 		self.processControl("fmsrc"           , value = 7  ) #fm off
 		self.processControl("amsrc"           , value = 0  ) #am off
@@ -286,7 +300,7 @@ class Patch(FPGA_component):
 		self.processControl("increment_porta" , value = 0  ) #
 		self.processControl("incexp"          , value = 1  ) #
 		self.processControl("fmsrc"           , value = 7  ) #fm off
-		self.processControl("increment"       , value = 0  ) #am off
+		self.processControl("amsrc"           , value = 0  ) #am off
 		self.processControl("static"          , value = 0  ) #
 		self.processControl("sounding"        , value = 0  ) #
 		
@@ -298,7 +312,7 @@ class Patch(FPGA_component):
 		self.processControl("increment_porta" , value = 0  ) #
 		self.processControl("incexp"          , value = 1  ) #
 		self.processControl("fmsrc"           , value = 7  ) #fm off
-		self.processControl("increment"       , value = 0  ) #am off
+		self.processControl("amsrc"           , value = 0  ) #am off
 		self.processControl("static"          , value = 0  ) #
 		self.processControl("sounding"        , value = 0  ) #
 		
@@ -310,7 +324,7 @@ class Patch(FPGA_component):
 		self.processControl("increment_porta" , value = 0  ) #
 		self.processControl("incexp"          , value = 1  ) #
 		self.processControl("fmsrc"           , value = 7  ) #fm off
-		self.processControl("increment"       , value = 0  ) #am off
+		self.processControl("amsrc"           , value = 0  ) #am off
 		self.processControl("static"          , value = 0  ) #
 		self.processControl("sounding"        , value = 0  ) #
 		
@@ -322,7 +336,7 @@ class Patch(FPGA_component):
 		self.processControl("increment_porta" , value = 0  ) #
 		self.processControl("incexp"          , value = 1  ) #
 		self.processControl("fmsrc"           , value = 7  ) #fm off
-		self.processControl("increment"       , value = 0  ) #am off
+		self.processControl("amsrc"           , value = 0  ) #am off
 		self.processControl("static"          , value = 0  ) #
 		self.processControl("sounding"        , value = 0  ) #
 		
@@ -334,7 +348,7 @@ class Patch(FPGA_component):
 		self.processControl("increment_porta" , value = 0  ) #
 		self.processControl("incexp"          , value = 1  ) #
 		self.processControl("fmsrc"           , value = 7  ) #fm off
-		self.processControl("increment"       , value = 0  ) #am off
+		self.processControl("amsrc"           , value = 0  ) #am off
 		self.processControl("static"          , value = 0  ) #
 		self.processControl("sounding"        , value = 0  ) #
 		
@@ -346,39 +360,42 @@ class Patch(FPGA_component):
 		self.processControl("increment_porta" , value = 0  ) #
 		self.processControl("incexp"          , value = 1  ) #
 		self.processControl("fmsrc"           , value = 7  ) #fm off
-		self.processControl("increment"       , value = 0  ) #am off
+		self.processControl("amsrc"           , value = 0  ) #am off
 		self.processControl("static"          , value = 0  ) #
 		self.processControl("sounding"        , value = 0  ) #
 		
 		self.processControl("opno"            , value = 7) #
-		self.processControl("env"             , value = 0  ) #
+		self.processControl("env"             , value = 0) #
 		self.processControl("env_porta"       , value = 0  ) #
 		self.processControl("envexp"          , value = 1  ) #
-		self.processControl("increment"       , value = 12 ) #
+		self.processControl("increment"       , value = 0) #
 		self.processControl("increment_porta" , value = 0  ) #
 		self.processControl("incexp"          , value = 1  ) #
 		self.processControl("fmsrc"           , value = 7  ) #fm off
-		self.processControl("increment"       , value = 0  ) #am off
+		self.processControl("amsrc"           , value = 0  ) #am off
 		self.processControl("static"          , value = 0  ) #
 		self.processControl("sounding"        , value = 0  ) #
 		
+		# common midi controls
+		self.processControl("sustain"         , value = 0)# common midi control
+		self.processControl("portamento"      , value = 0)# common midi control
+		self.processControl("filter_resonance", value = 0)# common midi control
+		self.processControl("filter_cutoff"   , value = 0)# common midi control
+
 		self.processControl("env_clkdiv"      , value = 8) #   
 		self.processControl("flushspi"        , value = 0) #   
 		self.processControl("passthrough"     , value = 0) #   
 		self.processControl("shift"           , value = 2) #   
 					
-		#defaults!
-		for i, val in enumerate(self.control):
-			logger.debug(val)
-			self.processEvent(mido.Message('control_change', control=  i, value = int(val)))
 		self.processEvent(mido.Message('pitchwheel', pitch = 64))
 		self.processEvent(mido.Message('aftertouch', value = 0))
 		for note in self.allNotes:
 			self.processEvent(mido.Message('polytouch', note = note.index, value = 0))
 			
+		self.processEvent(mido.Message('control_change', control = 114, value = 0)) #
 	
 	def getCtrlString(self, ctrlName):
-		return "control[" + str(int(controlName2Num[ctrlName])) + "]"
+		return "control[" + str(int(paramName2Num[ctrlName])) + "]"
 	
 	def processEvent(self, msg):
 	
@@ -412,44 +429,52 @@ class Patch(FPGA_component):
 				self.currVoice.note = note
 				note.voices += [self.currVoice]
 			voicesToUpdate = note.voices
+			self.processEvent(mido.Message('control_change', control = 114, value = 0)) #
 				
 		elif msg.type == 'pitchwheel':
 			logger.debug("PW: " + str(msg.pitch))
 			self.pitchwheel = msg.pitch
 			amountchange = msg.pitch / 8192.0
 			self.pitchwheelReal = pow(2, amountchange)
+			logger.debug("PWREAL " + str(self.pitchwheelReal))
 				
 		elif msg.type == 'control_change':
-			logger.debug("control : " + str(msg.control) + " (" + controlNum2Name[msg.control] +  "): " + str(msg.value))
+		
+			logger.debug("control : " + str(msg.control) + " (" + controlNum2ParamName[msg.control] +  "): " + str(msg.value))
 			self.control[msg.control]     = msg.value
 			self.controlReal[msg.control] = msg.value/127.0
-			self.controlName2Val [controlNum2Name[msg.control]] = msg.value
-			self.controlName2Real[controlNum2Name[msg.control]] = msg.value/127.0
+			self.paramName2Val [controlNum2ParamName[msg.control]] = msg.value
+			self.paramName2Real[controlNum2ParamName[msg.control]] = msg.value/127.0
 			event = "control[" + str(msg.control) + "]"
 			
 			# forward some controls
-			if msg.control == 0:
-				self.processEvent(mido.Message('control_change', control= controlName2Num["opno"      ], value = 6 ))
-				self.processEvent(mido.Message('control_change', control= controlName2Num["env"      ], value = msg.value ))
-			if msg.control == 1:
-				self.processEvent(mido.Message('control_change', control= controlName2Num["opno"      ], value = 7 ))
-				self.processEvent(mido.Message('control_change', control= controlName2Num["env"      ], value = msg.value ))
+			# PUT THIS BACK
+			
+			#if msg.control == 0:
+			#	self.processEvent(mido.Message('control_change', control= paramName2Num["opno"      ], value = 6 ))
+			#	self.processEvent(mido.Message('control_change', control= paramName2Num["env"      ], value = msg.value ))
+			#if msg.control == 1:
+			#	self.processEvent(mido.Message('control_change', control= paramName2Num["opno"      ], value = 7 ))
+			#	self.processEvent(mido.Message('control_change', control= paramName2Num["env"      ], value = msg.value ))
 				
 			# route control3 to control 7 because sometimes 3 is volume control
 			if msg.control == 3:
 				self.processEvent(mido.Message('control_change', control= 7, value = msg.value ))
 				
-			if msg.control == controlName2Num["env_clkdiv"]:
-				self.send("cmd_env_clkdiv" , self.controlName2Val["env_clkdiv"])
+			if msg.control == paramName2Num["env_clkdiv"]:
+				self.send("cmd_env_clkdiv" , self.paramName2Val["env_clkdiv"])
 				
-			if msg.control == controlName2Num["flushspi"]:
-				self.send("cmd_flushspi", self.controlName2Val["flushspi"])
+			if msg.control == paramName2Num["flushspi"]:
+				self.send("cmd_flushspi", self.paramName2Val["flushspi"])
 				
-			if msg.control == controlName2Num["passthrough"]:
-				self.send("cmd_passthrough", self.controlName2Val["passthrough"])
+			if msg.control == paramName2Num["passthrough"]:
+				self.send("cmd_passthrough", self.paramName2Val["passthrough"])
 				
-			if msg.control == controlName2Num["shift"]:
-				self.send("cmd_shift" , self.controlName2Val["shift"])
+			if msg.control == paramName2Num["shift"]:
+				self.send("cmd_shift" , self.paramName2Val["shift"])
+				
+			if msg.control == 114:
+				logger.debug(self.stateInFPGA)
 						
 			
 		elif msg.type == 'polytouch':
@@ -463,6 +488,7 @@ class Patch(FPGA_component):
 						
 		
 		for voice in voicesToUpdate:
+			#logger.debug("\n\n------------------\nselecting voice " + str(voice.index))
 			voice.processEvent(msg)
 
 		if msg.type == "note_off" or (msg.type == "note_on" and msg.velocity == 0):
@@ -471,8 +497,9 @@ class Patch(FPGA_component):
 				if heldnote.held and self.polyphony == self.voicesPerNote :
 					self.processEvent(heldnote.msg)
 					break
+			self.processEvent(mido.Message('control_change', control = 114, value = 0)) #
 					
-					
+		
 
 def noteToFreq(note):
 	a = 440.0 #frequency of A (coomon value is 440Hz)
@@ -517,55 +544,62 @@ class Voice(FPGA_component):
 		# first, update the children
 		for child in self.allChildren:
 			child.processEvent(msg)
-	
+			
 		# base increment
-		if msg.type == "note_on" or msg.type == "pitchwheel" or (msg.type == "control_change" and msg.control == controlName2Num["baseincrement"] and \
-			self.patch.controlName2Val["opno"] == self.index) or msg.type == "aftertouch": 
+		if msg.type == "note_on" or msg.type == "pitchwheel" or (msg.type == "control_change" and msg.control == paramName2Num["baseincrement"] and \
+			self.patch.paramName2Val["opno"] == self.index) or msg.type == "aftertouch": 
 			# send the base increment
-			logger.debug(str(self.patch.controlName2Real["baseincrement"]) + " " + str(self.patch.pitchwheelReal) + " " + str(1 + self.patch.aftertouchReal) + " " +  str(self.note.defaultIncrement))
-			self.send("cmd_baseincrement", self.patch.controlName2Real["baseincrement"] * self.patch.pitchwheelReal * (1 + self.patch.aftertouchReal) * self.note.defaultIncrement)
+			logger.debug(str(self.patch.paramName2Real["baseincrement"]) + " " + str(self.patch.pitchwheelReal) + " " + str(1 + self.patch.aftertouchReal) + " " +  str(self.note.defaultIncrement))
+			self.send("cmd_baseincrement", self.patch.paramName2Real["baseincrement"] * self.patch.pitchwheelReal * (1 + self.patch.aftertouchReal) * self.note.defaultIncrement)
 		
 		# on control change
-		if (msg.type == "control_change" and self.patch.controlName2Val["opno"] == self.index):
+		if (msg.type == "control_change"):
 			# FM Algo
-			if msg.control == controlName2Num["fmsrc"]:
+			if msg.control == paramName2Num["fmsrc"]:
 				sendVal = 0
 				for i in reversed(range(self.OPERATORCOUNT)):
 					sendVal = int(sendVal) << int(math.log2(self.OPERATORCOUNT))
-					sendVal += self.operators[i].fmsrc
+					sendVal += int(self.operators[i].fmsrc)
+					#logger.debug(bin(sendVal))
 				self.send("cmd_fm_algo", sendVal)
 			
 			#am algo
-			if msg.control == controlName2Num["amsrc"]:
+			if msg.control == paramName2Num["amsrc"]:
 				sendVal = 0
 				for i in reversed(range(self.OPERATORCOUNT)):
 					sendVal = int(sendVal) << int(math.log2(self.OPERATORCOUNT))
-					sendVal += self.operators[i].amsrc
+					sendVal += int(self.operators[i].amsrc)
+					#logger.debug(bin(sendVal))
 				self.send("cmd_am_algo", sendVal)
 				
-			if msg.control == controlName2Num["fbgain"]:
-				self.send("cmd_fbgain"   , 2**16 * self.patch.controlName2Real["fbgain"]  )
+			if msg.control == paramName2Num["fbgain"]:
+				self.send("cmd_fbgain"   , 2**16 * self.patch.paramName2Real["fbgain"]  )
 				
-			if msg.control == controlName2Num["fbsrc"]:
-				self.send("cmd_fbsrc"    , self.patch.controlName2Val["fbsrc"]   )
+			if msg.control == paramName2Num["fbsrc"]:
+				self.send("cmd_fbsrc"    , self.patch.paramName2Val["fbsrc"]   )
 	
-			if msg.control == controlName2Num["sounding"]: 
+			if msg.control == paramName2Num["sounding"]: 
 				sendVal = 0
 				for i in reversed(range(self.OPERATORCOUNT)):
-					logger.debug("sounding " + str(i) + ": " + str(self.operators[i].sounding))
 					sendVal = int(sendVal) << 1
-					sendVal += self.operators[i].sounding
+					sendVal += int(self.operators[i].sounding)
+					#logger.debug(bin(sendVal))
 				self.send("cmd_sounding", sendVal)
 				
-			if msg.control == controlName2Num["static"]: 
+			if msg.control == paramName2Num["static"]: 
 				sendVal = 0
 				for i in reversed(range(self.OPERATORCOUNT)):
 					sendVal = int(sendVal) << 1
-					sendVal += self.operators[i].static
+					sendVal += int(self.operators[i].static)
 				self.send("cmd_static", sendVal)
 	
+			if msg.control == 114:
+				logger.debug(str(self) + " STATE :")
+				logger.debug(self.stateInFPGA)
+						
 	def send(self, param, value):
-		if self.stateInFPGA.get(param) != value:
+		#if self.stateInFPGA.get(param) != value:
+		if True: # better for debugging
 			self.fpga_interface_inst.send(param, 0, self.index, value)
 		self.stateInFPGA[param] = value
 
@@ -575,20 +609,37 @@ class Channel(FPGA_component):
 		super().__init__(index, fpga_interface_inst, patch)
 		self.voice = voice
 		self.fpga_interface_inst = fpga_interface_inst
+		self.selected = False
 		
 	# control 7 = volume, 10 = pan
 	def processEvent(self, msg):
-		if (msg.type == "control_change" and self.patch.controlName2Val["opno"] == self.index):
-			if msg.control == controlName2Num["voicegain"] or msg.control == controlName2Num["pan"] : 
-				baseVolume = 2**16*controlName2Real["voicegain"]
-				if self.index == 0:
-					self.send("cmd_voicegain", baseVolume*controlName2Real["pan"]) # assume 2 channels
+		# on control change
+		if msg.type == "control_change":
+		
+			# selection
+			if msg.control == paramName2Num["opno"]:
+				if msg.value == self.index:
+					logger.debug("\n\n------------------\nselecting channel " + str(self.index))
+					self.selected = True
 				else:
-					#logger.debug(self.patch.controlReal[10])
-					self.send("cmd_voicegain", baseVolume*(1 - controlName2Real["pan"])) # assume 2 channels
+					self.selected = False
+					
+			if self.selected:
+				if msg.control == paramName2Num["voicegain"] or msg.control == paramName2Num["pan"] : 
+					baseVolume = 2**16*self.patch.paramName2Real["voicegain"]
+					if self.index == 0:
+						self.send("cmd_voicegain", baseVolume*self.patch.paramName2Real["pan"]) # assume 2 channels
+					else:
+						#logger.debug(self.patch.controlReal[10])
+						self.send("cmd_voicegain", baseVolume*(1 - self.patch.paramName2Real["pan"])) # assume 2 channels
 	
+			if msg.control == 114:
+				logger.debug(str(self) + " STATE :")
+				logger.debug(self.stateInFPGA)
+							
 	def send(self, param, value):
-		if self.stateInFPGA.get(param) != value:
+		#if self.stateInFPGA.get(param) != value:
+		if True: # better for debugging
 			self.fpga_interface_inst.send(param, self.index, self.voice.index, value)
 		self.stateInFPGA[param] = value
 		
@@ -603,52 +654,80 @@ class Operator(FPGA_component):
 		self.fmsrc    = 7
 		self.amsrc    = 0
 		self.static   = 0 
-	
+		self.selected = False
+		
+		# establish defaults
+		self.paramName2Val = {}
+		self.paramName2Real= {}
+		for paramName in controlNum2ParamName:
+			self.paramName2Val [paramName] = 0
+			self.paramName2Real[paramName] = 0
+			
 	def processEvent(self, msg):
 		if msg.type == "note_on" or msg.type == "note_off":
 			if (self.voice.stateInFPGA.get("cmd_static") is not None and (int(self.voice.stateInFPGA.get("cmd_static")) & (1 << self.index))):
-				self.send("cmd_env"            , (2**16) * self.patch.controlName2Real["env"]               )
+				self.send("cmd_env"            , (2**16) * self.paramName2Real["env"]               )
 			else:
-				self.send("cmd_env"            , self.voice.note.velocityReal * (2**16) * self.patch.controlName2Real["env"])
+				self.send("cmd_env"            , self.voice.note.velocityReal * (2**16) * self.paramName2Real["env"])
 
 		# on control change
-		if (msg.type == "control_change" and self.patch.controlName2Val["opno"] == self.index):
-			if msg.control == controlName2Num["env"]: 
-				if (self.voice.stateInFPGA.get("cmd_static") is not None and (int(self.voice.stateInFPGA.get("cmd_static")) & (1 << self.index))):
-					self.send("cmd_env"            , (2**16) * self.patch.controlName2Real["env"] )
+		if msg.type == "control_change":
+		
+			if msg.control == 114:
+				logger.debug(str(self) + " STATE :")
+				logger.debug(self.stateInFPGA)
+				
+			# selection
+			if msg.control == paramName2Num["opno"]:
+				if msg.value == self.index:
+					logger.debug("\n\n------------------\nselecting opno " + str(self.index))
+					#if self.index == 7:
+					#	logger.debug(print(sys.exc_info()[2]))
+					#	traceback.print_stack()
+					self.selected = True
 				else:
-					self.send("cmd_env"            , self.voice.note.velocityReal * (2**16) * self.patch.controlName2Real["env"])
+					self.selected = False
+				
+			if self.selected:
+				self.paramName2Val [controlNum2ParamName[msg.control]] = msg.value
+				self.paramName2Real[controlNum2ParamName[msg.control]] = msg.value/127.0
 					
-			if msg.control == controlName2Num["env_porta"]: 
-				self.send("cmd_env_porta"      , 2**16 * (1 - self.patch.controlName2Real["env_porta"]) * (1 - self.patch.controlName2Real["portamento"]) )
-	# static oscillators do not have velocity-dependant env
-				
-			if msg.control == controlName2Num["increment"]: 
-				self.send("cmd_increment"      , 2**16 * self.patch.controlName2Real["increment"]) # * self.patch.controlName2Real["increment"]
-				
-			if msg.control == controlName2Num["increment_porta"]: 
-				self.send("cmd_increment_porta", 2**12 * self.patch.controlName2Real["portamento"] * (1 - self.patch.controlName2Real["increment_porta"]))
-				
-			if msg.control == controlName2Num["incexp"]: 
-				self.send("cmd_incexp"         , self.patch.controlName2Val["incexp"])  
-				
-			if msg.control == controlName2Num["envexp"]: 
-				self.send("cmd_envexp"         , self.patch.controlName2Val["envexp"])
-				
-			if msg.control == controlName2Num["fmsrc"]: 
-				self.fmsrc = self.patch.controlName2Real["fmsrc"]
-				
-			if msg.control == controlName2Num["amsrc"]:
-				self.amsrc  = self.patch.controlName2Real["amsrc"]
-				
-			if msg.control == controlName2Num["static"]:
-				self.static = self.patch.controlName2Real["static"]
-				
-			if msg.control == controlName2Num["sounding"]:
-				self.sounding = self.patch.controlName2Real["sounding"]
+				if msg.control == paramName2Num["env"]: 
+					self.send("cmd_env"            , self.voice.note.velocityReal * (2**16) * self.paramName2Real["env"])
+						
+				if msg.control == paramName2Num["env_porta"]: 
+					self.send("cmd_env_porta"      , 2**12 * (1 - self.paramName2Real["env_porta"]) * (1 - self.patch.paramName2Real["portamento"]) )
+		# static oscillators do not have velocity-dependant env
+					
+				if msg.control == paramName2Num["increment"]: 
+					self.send("cmd_increment"      , 2**16 * self.paramName2Real["increment"]) # * self.paramName2Real["increment"]
+					
+				if msg.control == paramName2Num["increment_porta"]: 
+					self.send("cmd_increment_porta", 2**12 * (1 - self.patch.paramName2Real["portamento"]) * (1 - self.paramName2Real["increment_porta"]))
+					
+				if msg.control == paramName2Num["incexp"]: 
+					self.send("cmd_incexp"         , self.patch.paramName2Val["incexp"])  
+					
+				if msg.control == paramName2Num["envexp"]: 
+					self.send("cmd_envexp"         , self.patch.paramName2Val["envexp"])
+					
+				if msg.control == paramName2Num["fmsrc"]: 
+					self.fmsrc = self.paramName2Val["fmsrc"]
+					
+				if msg.control == paramName2Num["amsrc"]:
+					self.amsrc  = self.paramName2Val["amsrc"]
+					
+				if msg.control == paramName2Num["static"]:
+					self.static = self.paramName2Val["static"]
+					
+				if msg.control == paramName2Num["sounding"]:
+					self.sounding = self.paramName2Val["sounding"]
+					
+							
 				
 	def send(self, param, value):
-		if self.stateInFPGA.get(param) != value:
+		#if self.stateInFPGA.get(param) != value:
+		if True: # better for debugging
 			self.fpga_interface_inst.send(param, self.index, self.voice.index, value)
 		self.stateInFPGA[param] = value
 

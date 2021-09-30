@@ -1,0 +1,823 @@
+{"debug": 2021-09-30 05:05:21,409 {/home/pi/dt01_gui/dt01.py:226} patch init }
+{"debug": 2021-09-30 05:05:21,409 {/home/pi/dt01_gui/dt01.py:109} initialized <class 'dt01.Patch'> #0}
+{"debug": 2021-09-30 05:05:21,411 {/home/pi/dt01_gui/dt01.py:109} initialized <class 'dt01.Voice'> #0}
+{"debug": 2021-09-30 05:05:21,411 {/home/pi/dt01_gui/dt01.py:109} initialized <class 'dt01.Operator'> #0 of Voice <class 'dt01.Voice'> #0}
+{"debug": 2021-09-30 05:05:21,412 {/home/pi/dt01_gui/dt01.py:109} initialized <class 'dt01.Operator'> #1 of Voice <class 'dt01.Voice'> #0}
+{"debug": 2021-09-30 05:05:21,412 {/home/pi/dt01_gui/dt01.py:109} initialized <class 'dt01.Operator'> #2 of Voice <class 'dt01.Voice'> #0}
+{"debug": 2021-09-30 05:05:21,413 {/home/pi/dt01_gui/dt01.py:109} initialized <class 'dt01.Operator'> #3 of Voice <class 'dt01.Voice'> #0}
+{"debug": 2021-09-30 05:05:21,413 {/home/pi/dt01_gui/dt01.py:109} initialized <class 'dt01.Operator'> #4 of Voice <class 'dt01.Voice'> #0}
+{"debug": 2021-09-30 05:05:21,414 {/home/pi/dt01_gui/dt01.py:109} initialized <class 'dt01.Operator'> #5 of Voice <class 'dt01.Voice'> #0}
+{"debug": 2021-09-30 05:05:21,414 {/home/pi/dt01_gui/dt01.py:109} initialized <class 'dt01.Operator'> #6 of Voice <class 'dt01.Voice'> #0}
+{"debug": 2021-09-30 05:05:21,415 {/home/pi/dt01_gui/dt01.py:109} initialized <class 'dt01.Operator'> #7 of Voice <class 'dt01.Voice'> #0}
+{"debug": 2021-09-30 05:05:21,415 {/home/pi/dt01_gui/dt01.py:109} initialized <class 'dt01.Channel'> #0}
+{"debug": 2021-09-30 05:05:21,416 {/home/pi/dt01_gui/dt01.py:109} initialized <class 'dt01.Channel'> #1}
+{"debug": 2021-09-30 05:05:21,416 {/home/pi/dt01_gui/dt01.py:109} initialized <class 'dt01.Voice'> #1}
+{"debug": 2021-09-30 05:05:21,417 {/home/pi/dt01_gui/dt01.py:109} initialized <class 'dt01.Operator'> #0 of Voice <class 'dt01.Voice'> #1}
+{"debug": 2021-09-30 05:05:21,417 {/home/pi/dt01_gui/dt01.py:109} initialized <class 'dt01.Operator'> #1 of Voice <class 'dt01.Voice'> #1}
+{"debug": 2021-09-30 05:05:21,418 {/home/pi/dt01_gui/dt01.py:109} initialized <class 'dt01.Operator'> #2 of Voice <class 'dt01.Voice'> #1}
+{"debug": 2021-09-30 05:05:21,418 {/home/pi/dt01_gui/dt01.py:109} initialized <class 'dt01.Operator'> #3 of Voice <class 'dt01.Voice'> #1}
+{"debug": 2021-09-30 05:05:21,419 {/home/pi/dt01_gui/dt01.py:109} initialized <class 'dt01.Operator'> #4 of Voice <class 'dt01.Voice'> #1}
+{"debug": 2021-09-30 05:05:21,419 {/home/pi/dt01_gui/dt01.py:109} initialized <class 'dt01.Operator'> #5 of Voice <class 'dt01.Voice'> #1}
+{"debug": 2021-09-30 05:05:21,420 {/home/pi/dt01_gui/dt01.py:109} initialized <class 'dt01.Operator'> #6 of Voice <class 'dt01.Voice'> #1}
+{"debug": 2021-09-30 05:05:21,420 {/home/pi/dt01_gui/dt01.py:109} initialized <class 'dt01.Operator'> #7 of Voice <class 'dt01.Voice'> #1}
+{"debug": 2021-09-30 05:05:21,421 {/home/pi/dt01_gui/dt01.py:109} initialized <class 'dt01.Channel'> #0}
+{"debug": 2021-09-30 05:05:21,421 {/home/pi/dt01_gui/dt01.py:109} initialized <class 'dt01.Channel'> #1}
+{"debug": 2021-09-30 05:05:21,421 {/home/pi/dt01_gui/dt01.py:254} claimed: 0}
+{"debug": 2021-09-30 05:05:21,422 {/home/pi/dt01_gui/dt01.py:254} claimed: 1}
+{"debug": 2021-09-30 05:05:21,422 {/home/pi/dt01_gui/dt01.py:443} control : 0 (vibrato_env): 0}
+{"debug": 2021-09-30 05:05:21,422 {/home/pi/dt01_gui/dt01.py:443} control : 1 (tremolo_env): 0}
+{"debug": 2021-09-30 05:05:21,422 {/home/pi/dt01_gui/dt01.py:443} control : 4 (fbgain): 0}
+{"debug": 2021-09-30 05:05:21,423 {/home/pi/dt01_gui/dt01.py:762} sending cmd_fbgain(73) operator:0 voice:0 payload:0.0}
+{"debug": 2021-09-30 05:05:21,423 {/home/pi/dt01_gui/dt01.py:762} sending cmd_fbgain(73) operator:0 voice:1 payload:0.0}
+{"debug": 2021-09-30 05:05:21,424 {/home/pi/dt01_gui/dt01.py:443} control : 5 (fbsrc): 0}
+{"debug": 2021-09-30 05:05:21,424 {/home/pi/dt01_gui/dt01.py:762} sending cmd_fbsrc(74) operator:0 voice:0 payload:0}
+{"debug": 2021-09-30 05:05:21,424 {/home/pi/dt01_gui/dt01.py:762} sending cmd_fbsrc(74) operator:0 voice:1 payload:0}
+{"debug": 2021-09-30 05:05:21,425 {/home/pi/dt01_gui/dt01.py:443} control : 7 (voicegain): 127}
+{"debug": 2021-09-30 05:05:21,425 {/home/pi/dt01_gui/dt01.py:443} control : 9 (baseincrement): 127}
+{"debug": 2021-09-30 05:05:21,425 {/home/pi/dt01_gui/dt01.py:549} 1.0 1 1 22.32538157231775}
+{"debug": 2021-09-30 05:05:21,425 {/home/pi/dt01_gui/dt01.py:762} sending cmd_baseincrement(68) operator:0 voice:0 payload:22.32538157231775}
+{"debug": 2021-09-30 05:05:21,426 {/home/pi/dt01_gui/dt01.py:443} control : 10 (pan): 64}
+{"debug": 2021-09-30 05:05:21,426 {/home/pi/dt01_gui/dt01.py:443} control : 11 (expression): 0}
+{"debug": 2021-09-30 05:05:21,426 {/home/pi/dt01_gui/dt01.py:441} 
+
+------------------
+selecting opno 0}
+{"debug": 2021-09-30 05:05:21,426 {/home/pi/dt01_gui/dt01.py:443} control : 13 (opno): 0}
+{"debug": 2021-09-30 05:05:21,426 {/home/pi/dt01_gui/dt01.py:443} control : 14 (env): 127}
+{"debug": 2021-09-30 05:05:21,427 {/home/pi/dt01_gui/dt01.py:443} control : 15 (env_porta): 64}
+{"debug": 2021-09-30 05:05:21,427 {/home/pi/dt01_gui/dt01.py:443} control : 16 (envexp): 1}
+{"debug": 2021-09-30 05:05:21,427 {/home/pi/dt01_gui/dt01.py:443} control : 17 (increment): 127}
+{"debug": 2021-09-30 05:05:21,427 {/home/pi/dt01_gui/dt01.py:443} control : 18 (increment_porta): 0}
+{"debug": 2021-09-30 05:05:21,427 {/home/pi/dt01_gui/dt01.py:443} control : 19 (incexp): 1}
+{"debug": 2021-09-30 05:05:21,427 {/home/pi/dt01_gui/dt01.py:443} control : 20 (fmsrc): 7}
+{"debug": 2021-09-30 05:05:21,428 {/home/pi/dt01_gui/dt01.py:560} 0b111}
+{"debug": 2021-09-30 05:05:21,428 {/home/pi/dt01_gui/dt01.py:560} 0b111111}
+{"debug": 2021-09-30 05:05:21,428 {/home/pi/dt01_gui/dt01.py:560} 0b111111111}
+{"debug": 2021-09-30 05:05:21,428 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111}
+{"debug": 2021-09-30 05:05:21,428 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111}
+{"debug": 2021-09-30 05:05:21,428 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111111}
+{"debug": 2021-09-30 05:05:21,428 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111111111}
+{"debug": 2021-09-30 05:05:21,428 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111111111111}
+{"debug": 2021-09-30 05:05:21,429 {/home/pi/dt01_gui/dt01.py:762} sending cmd_fm_algo(70) operator:0 voice:0 payload:16777215}
+{"debug": 2021-09-30 05:05:21,429 {/home/pi/dt01_gui/dt01.py:560} 0b111}
+{"debug": 2021-09-30 05:05:21,429 {/home/pi/dt01_gui/dt01.py:560} 0b111111}
+{"debug": 2021-09-30 05:05:21,429 {/home/pi/dt01_gui/dt01.py:560} 0b111111111}
+{"debug": 2021-09-30 05:05:21,429 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111}
+{"debug": 2021-09-30 05:05:21,429 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111}
+{"debug": 2021-09-30 05:05:21,429 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111111}
+{"debug": 2021-09-30 05:05:21,429 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111111111}
+{"debug": 2021-09-30 05:05:21,430 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111111111111}
+{"debug": 2021-09-30 05:05:21,430 {/home/pi/dt01_gui/dt01.py:762} sending cmd_fm_algo(70) operator:0 voice:1 payload:16777215}
+{"debug": 2021-09-30 05:05:21,430 {/home/pi/dt01_gui/dt01.py:443} control : 21 (amsrc): 0}
+{"debug": 2021-09-30 05:05:21,430 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,430 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,430 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,431 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,431 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,431 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,431 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,431 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,431 {/home/pi/dt01_gui/dt01.py:762} sending cmd_am_algo(71) operator:0 voice:0 payload:0}
+{"debug": 2021-09-30 05:05:21,432 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,432 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,432 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,432 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,432 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,432 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,432 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,432 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,433 {/home/pi/dt01_gui/dt01.py:762} sending cmd_am_algo(71) operator:0 voice:1 payload:0}
+{"debug": 2021-09-30 05:05:21,433 {/home/pi/dt01_gui/dt01.py:443} control : 22 (static): 0}
+{"debug": 2021-09-30 05:05:21,433 {/home/pi/dt01_gui/dt01.py:762} sending cmd_static(67) operator:0 voice:0 payload:0}
+{"debug": 2021-09-30 05:05:21,434 {/home/pi/dt01_gui/dt01.py:762} sending cmd_static(67) operator:0 voice:1 payload:0}
+{"debug": 2021-09-30 05:05:21,434 {/home/pi/dt01_gui/dt01.py:443} control : 23 (sounding): 1}
+{"debug": 2021-09-30 05:05:21,434 {/home/pi/dt01_gui/dt01.py:762} sending cmd_sounding(69) operator:0 voice:0 payload:0}
+{"debug": 2021-09-30 05:05:21,435 {/home/pi/dt01_gui/dt01.py:762} sending cmd_sounding(69) operator:0 voice:1 payload:0}
+{"debug": 2021-09-30 05:05:21,435 {/home/pi/dt01_gui/dt01.py:441} 
+
+------------------
+selecting opno 1}
+{"debug": 2021-09-30 05:05:21,435 {/home/pi/dt01_gui/dt01.py:443} control : 13 (opno): 1}
+{"debug": 2021-09-30 05:05:21,435 {/home/pi/dt01_gui/dt01.py:443} control : 14 (env): 0}
+{"debug": 2021-09-30 05:05:21,436 {/home/pi/dt01_gui/dt01.py:443} control : 15 (env_porta): 0}
+{"debug": 2021-09-30 05:05:21,436 {/home/pi/dt01_gui/dt01.py:443} control : 16 (envexp): 1}
+{"debug": 2021-09-30 05:05:21,436 {/home/pi/dt01_gui/dt01.py:443} control : 17 (increment): 0}
+{"debug": 2021-09-30 05:05:21,436 {/home/pi/dt01_gui/dt01.py:443} control : 18 (increment_porta): 0}
+{"debug": 2021-09-30 05:05:21,436 {/home/pi/dt01_gui/dt01.py:443} control : 19 (incexp): 1}
+{"debug": 2021-09-30 05:05:21,436 {/home/pi/dt01_gui/dt01.py:443} control : 20 (fmsrc): 7}
+{"debug": 2021-09-30 05:05:21,437 {/home/pi/dt01_gui/dt01.py:560} 0b111}
+{"debug": 2021-09-30 05:05:21,437 {/home/pi/dt01_gui/dt01.py:560} 0b111111}
+{"debug": 2021-09-30 05:05:21,437 {/home/pi/dt01_gui/dt01.py:560} 0b111111111}
+{"debug": 2021-09-30 05:05:21,437 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111}
+{"debug": 2021-09-30 05:05:21,437 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111}
+{"debug": 2021-09-30 05:05:21,437 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111111}
+{"debug": 2021-09-30 05:05:21,437 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111111111}
+{"debug": 2021-09-30 05:05:21,437 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111111111111}
+{"debug": 2021-09-30 05:05:21,438 {/home/pi/dt01_gui/dt01.py:762} sending cmd_fm_algo(70) operator:0 voice:0 payload:16777215}
+{"debug": 2021-09-30 05:05:21,438 {/home/pi/dt01_gui/dt01.py:560} 0b111}
+{"debug": 2021-09-30 05:05:21,438 {/home/pi/dt01_gui/dt01.py:560} 0b111111}
+{"debug": 2021-09-30 05:05:21,438 {/home/pi/dt01_gui/dt01.py:560} 0b111111111}
+{"debug": 2021-09-30 05:05:21,438 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111}
+{"debug": 2021-09-30 05:05:21,438 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111}
+{"debug": 2021-09-30 05:05:21,438 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111111}
+{"debug": 2021-09-30 05:05:21,439 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111111111}
+{"debug": 2021-09-30 05:05:21,439 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111111111111}
+{"debug": 2021-09-30 05:05:21,439 {/home/pi/dt01_gui/dt01.py:762} sending cmd_fm_algo(70) operator:0 voice:1 payload:16777215}
+{"debug": 2021-09-30 05:05:21,439 {/home/pi/dt01_gui/dt01.py:443} control : 21 (amsrc): 0}
+{"debug": 2021-09-30 05:05:21,439 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,439 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,440 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,440 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,440 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,440 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,440 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,440 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,440 {/home/pi/dt01_gui/dt01.py:762} sending cmd_am_algo(71) operator:0 voice:0 payload:0}
+{"debug": 2021-09-30 05:05:21,441 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,441 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,441 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,441 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,441 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,441 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,441 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,441 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,442 {/home/pi/dt01_gui/dt01.py:762} sending cmd_am_algo(71) operator:0 voice:1 payload:0}
+{"debug": 2021-09-30 05:05:21,442 {/home/pi/dt01_gui/dt01.py:443} control : 22 (static): 0}
+{"debug": 2021-09-30 05:05:21,443 {/home/pi/dt01_gui/dt01.py:762} sending cmd_static(67) operator:0 voice:0 payload:0}
+{"debug": 2021-09-30 05:05:21,443 {/home/pi/dt01_gui/dt01.py:762} sending cmd_static(67) operator:0 voice:1 payload:0}
+{"debug": 2021-09-30 05:05:21,443 {/home/pi/dt01_gui/dt01.py:443} control : 23 (sounding): 0}
+{"debug": 2021-09-30 05:05:21,444 {/home/pi/dt01_gui/dt01.py:762} sending cmd_sounding(69) operator:0 voice:0 payload:0}
+{"debug": 2021-09-30 05:05:21,444 {/home/pi/dt01_gui/dt01.py:762} sending cmd_sounding(69) operator:0 voice:1 payload:0}
+{"debug": 2021-09-30 05:05:21,444 {/home/pi/dt01_gui/dt01.py:441} 
+
+------------------
+selecting opno 2}
+{"debug": 2021-09-30 05:05:21,444 {/home/pi/dt01_gui/dt01.py:443} control : 13 (opno): 2}
+{"debug": 2021-09-30 05:05:21,445 {/home/pi/dt01_gui/dt01.py:443} control : 14 (env): 0}
+{"debug": 2021-09-30 05:05:21,445 {/home/pi/dt01_gui/dt01.py:443} control : 15 (env_porta): 0}
+{"debug": 2021-09-30 05:05:21,445 {/home/pi/dt01_gui/dt01.py:443} control : 16 (envexp): 1}
+{"debug": 2021-09-30 05:05:21,445 {/home/pi/dt01_gui/dt01.py:443} control : 17 (increment): 0}
+{"debug": 2021-09-30 05:05:21,445 {/home/pi/dt01_gui/dt01.py:443} control : 18 (increment_porta): 0}
+{"debug": 2021-09-30 05:05:21,446 {/home/pi/dt01_gui/dt01.py:443} control : 19 (incexp): 1}
+{"debug": 2021-09-30 05:05:21,446 {/home/pi/dt01_gui/dt01.py:443} control : 20 (fmsrc): 7}
+{"debug": 2021-09-30 05:05:21,446 {/home/pi/dt01_gui/dt01.py:560} 0b111}
+{"debug": 2021-09-30 05:05:21,446 {/home/pi/dt01_gui/dt01.py:560} 0b111111}
+{"debug": 2021-09-30 05:05:21,446 {/home/pi/dt01_gui/dt01.py:560} 0b111111111}
+{"debug": 2021-09-30 05:05:21,446 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111}
+{"debug": 2021-09-30 05:05:21,446 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111}
+{"debug": 2021-09-30 05:05:21,446 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111111}
+{"debug": 2021-09-30 05:05:21,446 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111111111}
+{"debug": 2021-09-30 05:05:21,447 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111111111111}
+{"debug": 2021-09-30 05:05:21,447 {/home/pi/dt01_gui/dt01.py:762} sending cmd_fm_algo(70) operator:0 voice:0 payload:16777215}
+{"debug": 2021-09-30 05:05:21,447 {/home/pi/dt01_gui/dt01.py:560} 0b111}
+{"debug": 2021-09-30 05:05:21,447 {/home/pi/dt01_gui/dt01.py:560} 0b111111}
+{"debug": 2021-09-30 05:05:21,447 {/home/pi/dt01_gui/dt01.py:560} 0b111111111}
+{"debug": 2021-09-30 05:05:21,447 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111}
+{"debug": 2021-09-30 05:05:21,448 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111}
+{"debug": 2021-09-30 05:05:21,448 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111111}
+{"debug": 2021-09-30 05:05:21,448 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111111111}
+{"debug": 2021-09-30 05:05:21,448 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111111111111}
+{"debug": 2021-09-30 05:05:21,448 {/home/pi/dt01_gui/dt01.py:762} sending cmd_fm_algo(70) operator:0 voice:1 payload:16777215}
+{"debug": 2021-09-30 05:05:21,448 {/home/pi/dt01_gui/dt01.py:443} control : 21 (amsrc): 0}
+{"debug": 2021-09-30 05:05:21,449 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,449 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,449 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,449 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,449 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,449 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,449 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,449 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,450 {/home/pi/dt01_gui/dt01.py:762} sending cmd_am_algo(71) operator:0 voice:0 payload:0}
+{"debug": 2021-09-30 05:05:21,450 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,450 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,450 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,450 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,450 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,450 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,451 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,451 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,451 {/home/pi/dt01_gui/dt01.py:762} sending cmd_am_algo(71) operator:0 voice:1 payload:0}
+{"debug": 2021-09-30 05:05:21,451 {/home/pi/dt01_gui/dt01.py:443} control : 22 (static): 0}
+{"debug": 2021-09-30 05:05:21,452 {/home/pi/dt01_gui/dt01.py:762} sending cmd_static(67) operator:0 voice:0 payload:0}
+{"debug": 2021-09-30 05:05:21,452 {/home/pi/dt01_gui/dt01.py:762} sending cmd_static(67) operator:0 voice:1 payload:0}
+{"debug": 2021-09-30 05:05:21,452 {/home/pi/dt01_gui/dt01.py:443} control : 23 (sounding): 0}
+{"debug": 2021-09-30 05:05:21,453 {/home/pi/dt01_gui/dt01.py:762} sending cmd_sounding(69) operator:0 voice:0 payload:0}
+{"debug": 2021-09-30 05:05:21,453 {/home/pi/dt01_gui/dt01.py:762} sending cmd_sounding(69) operator:0 voice:1 payload:0}
+{"debug": 2021-09-30 05:05:21,453 {/home/pi/dt01_gui/dt01.py:441} 
+
+------------------
+selecting opno 3}
+{"debug": 2021-09-30 05:05:21,454 {/home/pi/dt01_gui/dt01.py:443} control : 13 (opno): 3}
+{"debug": 2021-09-30 05:05:21,454 {/home/pi/dt01_gui/dt01.py:443} control : 14 (env): 0}
+{"debug": 2021-09-30 05:05:21,454 {/home/pi/dt01_gui/dt01.py:443} control : 15 (env_porta): 0}
+{"debug": 2021-09-30 05:05:21,454 {/home/pi/dt01_gui/dt01.py:443} control : 16 (envexp): 1}
+{"debug": 2021-09-30 05:05:21,454 {/home/pi/dt01_gui/dt01.py:443} control : 17 (increment): 0}
+{"debug": 2021-09-30 05:05:21,454 {/home/pi/dt01_gui/dt01.py:443} control : 18 (increment_porta): 0}
+{"debug": 2021-09-30 05:05:21,455 {/home/pi/dt01_gui/dt01.py:443} control : 19 (incexp): 1}
+{"debug": 2021-09-30 05:05:21,455 {/home/pi/dt01_gui/dt01.py:443} control : 20 (fmsrc): 7}
+{"debug": 2021-09-30 05:05:21,455 {/home/pi/dt01_gui/dt01.py:560} 0b111}
+{"debug": 2021-09-30 05:05:21,455 {/home/pi/dt01_gui/dt01.py:560} 0b111111}
+{"debug": 2021-09-30 05:05:21,455 {/home/pi/dt01_gui/dt01.py:560} 0b111111111}
+{"debug": 2021-09-30 05:05:21,455 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111}
+{"debug": 2021-09-30 05:05:21,455 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111}
+{"debug": 2021-09-30 05:05:21,455 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111111}
+{"debug": 2021-09-30 05:05:21,455 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111111111}
+{"debug": 2021-09-30 05:05:21,456 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111111111111}
+{"debug": 2021-09-30 05:05:21,456 {/home/pi/dt01_gui/dt01.py:762} sending cmd_fm_algo(70) operator:0 voice:0 payload:16777215}
+{"debug": 2021-09-30 05:05:21,456 {/home/pi/dt01_gui/dt01.py:560} 0b111}
+{"debug": 2021-09-30 05:05:21,456 {/home/pi/dt01_gui/dt01.py:560} 0b111111}
+{"debug": 2021-09-30 05:05:21,456 {/home/pi/dt01_gui/dt01.py:560} 0b111111111}
+{"debug": 2021-09-30 05:05:21,456 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111}
+{"debug": 2021-09-30 05:05:21,457 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111}
+{"debug": 2021-09-30 05:05:21,457 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111111}
+{"debug": 2021-09-30 05:05:21,457 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111111111}
+{"debug": 2021-09-30 05:05:21,457 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111111111111}
+{"debug": 2021-09-30 05:05:21,457 {/home/pi/dt01_gui/dt01.py:762} sending cmd_fm_algo(70) operator:0 voice:1 payload:16777215}
+{"debug": 2021-09-30 05:05:21,457 {/home/pi/dt01_gui/dt01.py:443} control : 21 (amsrc): 0}
+{"debug": 2021-09-30 05:05:21,458 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,458 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,458 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,458 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,458 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,458 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,458 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,458 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,459 {/home/pi/dt01_gui/dt01.py:762} sending cmd_am_algo(71) operator:0 voice:0 payload:0}
+{"debug": 2021-09-30 05:05:21,459 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,459 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,459 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,459 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,459 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,459 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,459 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,460 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,460 {/home/pi/dt01_gui/dt01.py:762} sending cmd_am_algo(71) operator:0 voice:1 payload:0}
+{"debug": 2021-09-30 05:05:21,460 {/home/pi/dt01_gui/dt01.py:443} control : 22 (static): 0}
+{"debug": 2021-09-30 05:05:21,460 {/home/pi/dt01_gui/dt01.py:762} sending cmd_static(67) operator:0 voice:0 payload:0}
+{"debug": 2021-09-30 05:05:21,461 {/home/pi/dt01_gui/dt01.py:762} sending cmd_static(67) operator:0 voice:1 payload:0}
+{"debug": 2021-09-30 05:05:21,461 {/home/pi/dt01_gui/dt01.py:443} control : 23 (sounding): 0}
+{"debug": 2021-09-30 05:05:21,462 {/home/pi/dt01_gui/dt01.py:762} sending cmd_sounding(69) operator:0 voice:0 payload:0}
+{"debug": 2021-09-30 05:05:21,462 {/home/pi/dt01_gui/dt01.py:762} sending cmd_sounding(69) operator:0 voice:1 payload:0}
+{"debug": 2021-09-30 05:05:21,463 {/home/pi/dt01_gui/dt01.py:441} 
+
+------------------
+selecting opno 4}
+{"debug": 2021-09-30 05:05:21,463 {/home/pi/dt01_gui/dt01.py:443} control : 13 (opno): 4}
+{"debug": 2021-09-30 05:05:21,463 {/home/pi/dt01_gui/dt01.py:443} control : 14 (env): 0}
+{"debug": 2021-09-30 05:05:21,463 {/home/pi/dt01_gui/dt01.py:443} control : 15 (env_porta): 0}
+{"debug": 2021-09-30 05:05:21,463 {/home/pi/dt01_gui/dt01.py:443} control : 16 (envexp): 1}
+{"debug": 2021-09-30 05:05:21,463 {/home/pi/dt01_gui/dt01.py:443} control : 17 (increment): 0}
+{"debug": 2021-09-30 05:05:21,464 {/home/pi/dt01_gui/dt01.py:443} control : 18 (increment_porta): 0}
+{"debug": 2021-09-30 05:05:21,464 {/home/pi/dt01_gui/dt01.py:443} control : 19 (incexp): 1}
+{"debug": 2021-09-30 05:05:21,464 {/home/pi/dt01_gui/dt01.py:443} control : 20 (fmsrc): 7}
+{"debug": 2021-09-30 05:05:21,464 {/home/pi/dt01_gui/dt01.py:560} 0b111}
+{"debug": 2021-09-30 05:05:21,464 {/home/pi/dt01_gui/dt01.py:560} 0b111111}
+{"debug": 2021-09-30 05:05:21,464 {/home/pi/dt01_gui/dt01.py:560} 0b111111111}
+{"debug": 2021-09-30 05:05:21,464 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111}
+{"debug": 2021-09-30 05:05:21,464 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111}
+{"debug": 2021-09-30 05:05:21,465 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111111}
+{"debug": 2021-09-30 05:05:21,465 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111111111}
+{"debug": 2021-09-30 05:05:21,465 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111111111111}
+{"debug": 2021-09-30 05:05:21,465 {/home/pi/dt01_gui/dt01.py:762} sending cmd_fm_algo(70) operator:0 voice:0 payload:16777215}
+{"debug": 2021-09-30 05:05:21,465 {/home/pi/dt01_gui/dt01.py:560} 0b111}
+{"debug": 2021-09-30 05:05:21,465 {/home/pi/dt01_gui/dt01.py:560} 0b111111}
+{"debug": 2021-09-30 05:05:21,466 {/home/pi/dt01_gui/dt01.py:560} 0b111111111}
+{"debug": 2021-09-30 05:05:21,466 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111}
+{"debug": 2021-09-30 05:05:21,466 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111}
+{"debug": 2021-09-30 05:05:21,466 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111111}
+{"debug": 2021-09-30 05:05:21,466 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111111111}
+{"debug": 2021-09-30 05:05:21,466 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111111111111}
+{"debug": 2021-09-30 05:05:21,466 {/home/pi/dt01_gui/dt01.py:762} sending cmd_fm_algo(70) operator:0 voice:1 payload:16777215}
+{"debug": 2021-09-30 05:05:21,467 {/home/pi/dt01_gui/dt01.py:443} control : 21 (amsrc): 0}
+{"debug": 2021-09-30 05:05:21,467 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,467 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,467 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,467 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,467 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,467 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,467 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,468 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,468 {/home/pi/dt01_gui/dt01.py:762} sending cmd_am_algo(71) operator:0 voice:0 payload:0}
+{"debug": 2021-09-30 05:05:21,468 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,468 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,468 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,468 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,469 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,469 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,469 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,469 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,469 {/home/pi/dt01_gui/dt01.py:762} sending cmd_am_algo(71) operator:0 voice:1 payload:0}
+{"debug": 2021-09-30 05:05:21,469 {/home/pi/dt01_gui/dt01.py:443} control : 22 (static): 0}
+{"debug": 2021-09-30 05:05:21,470 {/home/pi/dt01_gui/dt01.py:762} sending cmd_static(67) operator:0 voice:0 payload:0}
+{"debug": 2021-09-30 05:05:21,470 {/home/pi/dt01_gui/dt01.py:762} sending cmd_static(67) operator:0 voice:1 payload:0}
+{"debug": 2021-09-30 05:05:21,470 {/home/pi/dt01_gui/dt01.py:443} control : 23 (sounding): 0}
+{"debug": 2021-09-30 05:05:21,471 {/home/pi/dt01_gui/dt01.py:762} sending cmd_sounding(69) operator:0 voice:0 payload:0}
+{"debug": 2021-09-30 05:05:21,471 {/home/pi/dt01_gui/dt01.py:762} sending cmd_sounding(69) operator:0 voice:1 payload:0}
+{"debug": 2021-09-30 05:05:21,472 {/home/pi/dt01_gui/dt01.py:441} 
+
+------------------
+selecting opno 5}
+{"debug": 2021-09-30 05:05:21,472 {/home/pi/dt01_gui/dt01.py:443} control : 13 (opno): 5}
+{"debug": 2021-09-30 05:05:21,472 {/home/pi/dt01_gui/dt01.py:443} control : 14 (env): 0}
+{"debug": 2021-09-30 05:05:21,472 {/home/pi/dt01_gui/dt01.py:443} control : 15 (env_porta): 0}
+{"debug": 2021-09-30 05:05:21,472 {/home/pi/dt01_gui/dt01.py:443} control : 16 (envexp): 1}
+{"debug": 2021-09-30 05:05:21,472 {/home/pi/dt01_gui/dt01.py:443} control : 17 (increment): 0}
+{"debug": 2021-09-30 05:05:21,473 {/home/pi/dt01_gui/dt01.py:443} control : 18 (increment_porta): 0}
+{"debug": 2021-09-30 05:05:21,473 {/home/pi/dt01_gui/dt01.py:443} control : 19 (incexp): 1}
+{"debug": 2021-09-30 05:05:21,473 {/home/pi/dt01_gui/dt01.py:443} control : 20 (fmsrc): 7}
+{"debug": 2021-09-30 05:05:21,473 {/home/pi/dt01_gui/dt01.py:560} 0b111}
+{"debug": 2021-09-30 05:05:21,473 {/home/pi/dt01_gui/dt01.py:560} 0b111111}
+{"debug": 2021-09-30 05:05:21,473 {/home/pi/dt01_gui/dt01.py:560} 0b111111111}
+{"debug": 2021-09-30 05:05:21,473 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111}
+{"debug": 2021-09-30 05:05:21,474 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111}
+{"debug": 2021-09-30 05:05:21,474 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111111}
+{"debug": 2021-09-30 05:05:21,474 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111111111}
+{"debug": 2021-09-30 05:05:21,474 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111111111111}
+{"debug": 2021-09-30 05:05:21,474 {/home/pi/dt01_gui/dt01.py:762} sending cmd_fm_algo(70) operator:0 voice:0 payload:16777215}
+{"debug": 2021-09-30 05:05:21,474 {/home/pi/dt01_gui/dt01.py:560} 0b111}
+{"debug": 2021-09-30 05:05:21,475 {/home/pi/dt01_gui/dt01.py:560} 0b111111}
+{"debug": 2021-09-30 05:05:21,475 {/home/pi/dt01_gui/dt01.py:560} 0b111111111}
+{"debug": 2021-09-30 05:05:21,475 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111}
+{"debug": 2021-09-30 05:05:21,475 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111}
+{"debug": 2021-09-30 05:05:21,475 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111111}
+{"debug": 2021-09-30 05:05:21,475 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111111111}
+{"debug": 2021-09-30 05:05:21,475 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111111111111}
+{"debug": 2021-09-30 05:05:21,475 {/home/pi/dt01_gui/dt01.py:762} sending cmd_fm_algo(70) operator:0 voice:1 payload:16777215}
+{"debug": 2021-09-30 05:05:21,476 {/home/pi/dt01_gui/dt01.py:443} control : 21 (amsrc): 0}
+{"debug": 2021-09-30 05:05:21,476 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,476 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,476 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,476 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,476 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,476 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,476 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,477 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,477 {/home/pi/dt01_gui/dt01.py:762} sending cmd_am_algo(71) operator:0 voice:0 payload:0}
+{"debug": 2021-09-30 05:05:21,477 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,477 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,477 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,477 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,478 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,478 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,478 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,478 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,478 {/home/pi/dt01_gui/dt01.py:762} sending cmd_am_algo(71) operator:0 voice:1 payload:0}
+{"debug": 2021-09-30 05:05:21,478 {/home/pi/dt01_gui/dt01.py:443} control : 22 (static): 0}
+{"debug": 2021-09-30 05:05:21,479 {/home/pi/dt01_gui/dt01.py:762} sending cmd_static(67) operator:0 voice:0 payload:0}
+{"debug": 2021-09-30 05:05:21,479 {/home/pi/dt01_gui/dt01.py:762} sending cmd_static(67) operator:0 voice:1 payload:0}
+{"debug": 2021-09-30 05:05:21,479 {/home/pi/dt01_gui/dt01.py:443} control : 23 (sounding): 0}
+{"debug": 2021-09-30 05:05:21,480 {/home/pi/dt01_gui/dt01.py:762} sending cmd_sounding(69) operator:0 voice:0 payload:0}
+{"debug": 2021-09-30 05:05:21,480 {/home/pi/dt01_gui/dt01.py:762} sending cmd_sounding(69) operator:0 voice:1 payload:0}
+{"debug": 2021-09-30 05:05:21,481 {/home/pi/dt01_gui/dt01.py:441} 
+
+------------------
+selecting opno 6}
+{"debug": 2021-09-30 05:05:21,481 {/home/pi/dt01_gui/dt01.py:443} control : 13 (opno): 6}
+{"debug": 2021-09-30 05:05:21,481 {/home/pi/dt01_gui/dt01.py:443} control : 14 (env): 0}
+{"debug": 2021-09-30 05:05:21,481 {/home/pi/dt01_gui/dt01.py:443} control : 15 (env_porta): 0}
+{"debug": 2021-09-30 05:05:21,481 {/home/pi/dt01_gui/dt01.py:443} control : 16 (envexp): 1}
+{"debug": 2021-09-30 05:05:21,481 {/home/pi/dt01_gui/dt01.py:443} control : 17 (increment): 0}
+{"debug": 2021-09-30 05:05:21,482 {/home/pi/dt01_gui/dt01.py:443} control : 18 (increment_porta): 0}
+{"debug": 2021-09-30 05:05:21,482 {/home/pi/dt01_gui/dt01.py:443} control : 19 (incexp): 1}
+{"debug": 2021-09-30 05:05:21,482 {/home/pi/dt01_gui/dt01.py:443} control : 20 (fmsrc): 7}
+{"debug": 2021-09-30 05:05:21,482 {/home/pi/dt01_gui/dt01.py:560} 0b111}
+{"debug": 2021-09-30 05:05:21,482 {/home/pi/dt01_gui/dt01.py:560} 0b111111}
+{"debug": 2021-09-30 05:05:21,482 {/home/pi/dt01_gui/dt01.py:560} 0b111111111}
+{"debug": 2021-09-30 05:05:21,482 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111}
+{"debug": 2021-09-30 05:05:21,482 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111}
+{"debug": 2021-09-30 05:05:21,483 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111111}
+{"debug": 2021-09-30 05:05:21,483 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111111111}
+{"debug": 2021-09-30 05:05:21,483 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111111111111}
+{"debug": 2021-09-30 05:05:21,483 {/home/pi/dt01_gui/dt01.py:762} sending cmd_fm_algo(70) operator:0 voice:0 payload:16777215}
+{"debug": 2021-09-30 05:05:21,483 {/home/pi/dt01_gui/dt01.py:560} 0b111}
+{"debug": 2021-09-30 05:05:21,483 {/home/pi/dt01_gui/dt01.py:560} 0b111111}
+{"debug": 2021-09-30 05:05:21,484 {/home/pi/dt01_gui/dt01.py:560} 0b111111111}
+{"debug": 2021-09-30 05:05:21,484 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111}
+{"debug": 2021-09-30 05:05:21,484 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111}
+{"debug": 2021-09-30 05:05:21,484 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111111}
+{"debug": 2021-09-30 05:05:21,484 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111111111}
+{"debug": 2021-09-30 05:05:21,484 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111111111111}
+{"debug": 2021-09-30 05:05:21,484 {/home/pi/dt01_gui/dt01.py:762} sending cmd_fm_algo(70) operator:0 voice:1 payload:16777215}
+{"debug": 2021-09-30 05:05:21,485 {/home/pi/dt01_gui/dt01.py:443} control : 21 (amsrc): 0}
+{"debug": 2021-09-30 05:05:21,485 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,485 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,485 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,485 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,485 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,485 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,485 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,486 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,486 {/home/pi/dt01_gui/dt01.py:762} sending cmd_am_algo(71) operator:0 voice:0 payload:0}
+{"debug": 2021-09-30 05:05:21,486 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,486 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,486 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,486 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,487 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,487 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,487 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,487 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,487 {/home/pi/dt01_gui/dt01.py:762} sending cmd_am_algo(71) operator:0 voice:1 payload:0}
+{"debug": 2021-09-30 05:05:21,487 {/home/pi/dt01_gui/dt01.py:443} control : 22 (static): 0}
+{"debug": 2021-09-30 05:05:21,488 {/home/pi/dt01_gui/dt01.py:762} sending cmd_static(67) operator:0 voice:0 payload:0}
+{"debug": 2021-09-30 05:05:21,488 {/home/pi/dt01_gui/dt01.py:762} sending cmd_static(67) operator:0 voice:1 payload:0}
+{"debug": 2021-09-30 05:05:21,489 {/home/pi/dt01_gui/dt01.py:443} control : 23 (sounding): 0}
+{"debug": 2021-09-30 05:05:21,489 {/home/pi/dt01_gui/dt01.py:762} sending cmd_sounding(69) operator:0 voice:0 payload:0}
+{"debug": 2021-09-30 05:05:21,489 {/home/pi/dt01_gui/dt01.py:762} sending cmd_sounding(69) operator:0 voice:1 payload:0}
+{"debug": 2021-09-30 05:05:21,490 {/home/pi/dt01_gui/dt01.py:441} 
+
+------------------
+selecting opno 7}
+{"debug": 2021-09-30 05:05:21,490 {/home/pi/dt01_gui/dt01.py:443} control : 13 (opno): 7}
+{"debug": 2021-09-30 05:05:21,490 {/home/pi/dt01_gui/dt01.py:443} control : 14 (env): 0}
+{"debug": 2021-09-30 05:05:21,490 {/home/pi/dt01_gui/dt01.py:443} control : 15 (env_porta): 0}
+{"debug": 2021-09-30 05:05:21,490 {/home/pi/dt01_gui/dt01.py:443} control : 16 (envexp): 1}
+{"debug": 2021-09-30 05:05:21,490 {/home/pi/dt01_gui/dt01.py:443} control : 17 (increment): 0}
+{"debug": 2021-09-30 05:05:21,491 {/home/pi/dt01_gui/dt01.py:443} control : 18 (increment_porta): 0}
+{"debug": 2021-09-30 05:05:21,491 {/home/pi/dt01_gui/dt01.py:443} control : 19 (incexp): 1}
+{"debug": 2021-09-30 05:05:21,491 {/home/pi/dt01_gui/dt01.py:443} control : 20 (fmsrc): 7}
+{"debug": 2021-09-30 05:05:21,491 {/home/pi/dt01_gui/dt01.py:560} 0b111}
+{"debug": 2021-09-30 05:05:21,491 {/home/pi/dt01_gui/dt01.py:560} 0b111111}
+{"debug": 2021-09-30 05:05:21,491 {/home/pi/dt01_gui/dt01.py:560} 0b111111111}
+{"debug": 2021-09-30 05:05:21,491 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111}
+{"debug": 2021-09-30 05:05:21,491 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111}
+{"debug": 2021-09-30 05:05:21,492 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111111}
+{"debug": 2021-09-30 05:05:21,492 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111111111}
+{"debug": 2021-09-30 05:05:21,492 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111111111111}
+{"debug": 2021-09-30 05:05:21,492 {/home/pi/dt01_gui/dt01.py:762} sending cmd_fm_algo(70) operator:0 voice:0 payload:16777215}
+{"debug": 2021-09-30 05:05:21,493 {/home/pi/dt01_gui/dt01.py:560} 0b111}
+{"debug": 2021-09-30 05:05:21,493 {/home/pi/dt01_gui/dt01.py:560} 0b111111}
+{"debug": 2021-09-30 05:05:21,493 {/home/pi/dt01_gui/dt01.py:560} 0b111111111}
+{"debug": 2021-09-30 05:05:21,493 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111}
+{"debug": 2021-09-30 05:05:21,493 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111}
+{"debug": 2021-09-30 05:05:21,493 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111111}
+{"debug": 2021-09-30 05:05:21,493 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111111111}
+{"debug": 2021-09-30 05:05:21,493 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111111111111}
+{"debug": 2021-09-30 05:05:21,494 {/home/pi/dt01_gui/dt01.py:762} sending cmd_fm_algo(70) operator:0 voice:1 payload:16777215}
+{"debug": 2021-09-30 05:05:21,494 {/home/pi/dt01_gui/dt01.py:443} control : 21 (amsrc): 0}
+{"debug": 2021-09-30 05:05:21,494 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,494 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,494 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,494 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,494 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,495 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,495 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,495 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,495 {/home/pi/dt01_gui/dt01.py:762} sending cmd_am_algo(71) operator:0 voice:0 payload:0}
+{"debug": 2021-09-30 05:05:21,495 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,495 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,496 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,496 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,496 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,496 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,496 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,496 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,496 {/home/pi/dt01_gui/dt01.py:762} sending cmd_am_algo(71) operator:0 voice:1 payload:0}
+{"debug": 2021-09-30 05:05:21,497 {/home/pi/dt01_gui/dt01.py:443} control : 22 (static): 0}
+{"debug": 2021-09-30 05:05:21,497 {/home/pi/dt01_gui/dt01.py:762} sending cmd_static(67) operator:0 voice:0 payload:0}
+{"debug": 2021-09-30 05:05:21,497 {/home/pi/dt01_gui/dt01.py:762} sending cmd_static(67) operator:0 voice:1 payload:0}
+{"debug": 2021-09-30 05:05:21,498 {/home/pi/dt01_gui/dt01.py:443} control : 23 (sounding): 0}
+{"debug": 2021-09-30 05:05:21,498 {/home/pi/dt01_gui/dt01.py:762} sending cmd_sounding(69) operator:0 voice:0 payload:0}
+{"debug": 2021-09-30 05:05:21,499 {/home/pi/dt01_gui/dt01.py:762} sending cmd_sounding(69) operator:0 voice:1 payload:0}
+{"debug": 2021-09-30 05:05:21,499 {/home/pi/dt01_gui/dt01.py:443} control : 64 (sustain): 0}
+{"debug": 2021-09-30 05:05:21,499 {/home/pi/dt01_gui/dt01.py:443} control : 65 (portamento): 0}
+{"debug": 2021-09-30 05:05:21,499 {/home/pi/dt01_gui/dt01.py:443} control : 71 (filter_resonance): 0}
+{"debug": 2021-09-30 05:05:21,499 {/home/pi/dt01_gui/dt01.py:443} control : 74 (filter_cutoff): 0}
+{"debug": 2021-09-30 05:05:21,500 {/home/pi/dt01_gui/dt01.py:443} control : 110 (env_clkdiv): 8}
+{"debug": 2021-09-30 05:05:21,500 {/home/pi/dt01_gui/dt01.py:762} sending cmd_env_clkdiv(99) operator:0 voice:0 payload:8}
+{"debug": 2021-09-30 05:05:21,500 {/home/pi/dt01_gui/dt01.py:443} control : 111 (flushspi): 0}
+{"debug": 2021-09-30 05:05:21,500 {/home/pi/dt01_gui/dt01.py:762} sending cmd_flushspi(120) operator:0 voice:0 payload:0}
+{"debug": 2021-09-30 05:05:21,501 {/home/pi/dt01_gui/dt01.py:443} control : 112 (passthrough): 0}
+{"debug": 2021-09-30 05:05:21,501 {/home/pi/dt01_gui/dt01.py:762} sending cmd_passthrough(121) operator:0 voice:0 payload:0}
+{"debug": 2021-09-30 05:05:21,501 {/home/pi/dt01_gui/dt01.py:443} control : 113 (shift): 2}
+{"debug": 2021-09-30 05:05:21,502 {/home/pi/dt01_gui/dt01.py:762} sending cmd_shift(122) operator:0 voice:0 payload:2}
+{"debug": 2021-09-30 05:05:21,502 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,502 {/home/pi/dt01_gui/dt01.py:443} control : 0 (vibrato_env): 0}
+{"debug": 2021-09-30 05:05:21,502 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,502 {/home/pi/dt01_gui/dt01.py:443} control : 1 (tremolo_env): 0}
+{"debug": 2021-09-30 05:05:21,503 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,503 {/home/pi/dt01_gui/dt01.py:443} control : 2 (): 0}
+{"debug": 2021-09-30 05:05:21,503 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,503 {/home/pi/dt01_gui/dt01.py:443} control : 3 (): 0}
+{"debug": 2021-09-30 05:05:21,503 {/home/pi/dt01_gui/dt01.py:443} control : 7 (voicegain): 0}
+{"debug": 2021-09-30 05:05:21,503 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,503 {/home/pi/dt01_gui/dt01.py:443} control : 4 (fbgain): 0}
+{"debug": 2021-09-30 05:05:21,504 {/home/pi/dt01_gui/dt01.py:762} sending cmd_fbgain(73) operator:0 voice:0 payload:0.0}
+{"debug": 2021-09-30 05:05:21,504 {/home/pi/dt01_gui/dt01.py:762} sending cmd_fbgain(73) operator:0 voice:1 payload:0.0}
+{"debug": 2021-09-30 05:05:21,504 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,505 {/home/pi/dt01_gui/dt01.py:443} control : 5 (fbsrc): 0}
+{"debug": 2021-09-30 05:05:21,505 {/home/pi/dt01_gui/dt01.py:762} sending cmd_fbsrc(74) operator:0 voice:0 payload:0}
+{"debug": 2021-09-30 05:05:21,505 {/home/pi/dt01_gui/dt01.py:762} sending cmd_fbsrc(74) operator:0 voice:1 payload:0}
+{"debug": 2021-09-30 05:05:21,506 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,506 {/home/pi/dt01_gui/dt01.py:443} control : 6 (): 0}
+{"debug": 2021-09-30 05:05:21,506 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,506 {/home/pi/dt01_gui/dt01.py:443} control : 7 (voicegain): 0}
+{"debug": 2021-09-30 05:05:21,506 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,506 {/home/pi/dt01_gui/dt01.py:443} control : 8 (): 0}
+{"debug": 2021-09-30 05:05:21,506 {/home/pi/dt01_gui/dt01.py:388} 127}
+{"debug": 2021-09-30 05:05:21,507 {/home/pi/dt01_gui/dt01.py:443} control : 9 (baseincrement): 127}
+{"debug": 2021-09-30 05:05:21,507 {/home/pi/dt01_gui/dt01.py:388} 64}
+{"debug": 2021-09-30 05:05:21,507 {/home/pi/dt01_gui/dt01.py:443} control : 10 (pan): 64}
+{"debug": 2021-09-30 05:05:21,507 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,507 {/home/pi/dt01_gui/dt01.py:443} control : 11 (expression): 0}
+{"debug": 2021-09-30 05:05:21,507 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,507 {/home/pi/dt01_gui/dt01.py:443} control : 12 (): 0}
+{"debug": 2021-09-30 05:05:21,507 {/home/pi/dt01_gui/dt01.py:388} 7}
+{"debug": 2021-09-30 05:05:21,508 {/home/pi/dt01_gui/dt01.py:441} 
+
+------------------
+selecting opno 7}
+{"debug": 2021-09-30 05:05:21,508 {/home/pi/dt01_gui/dt01.py:443} control : 13 (opno): 7}
+{"debug": 2021-09-30 05:05:21,508 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,508 {/home/pi/dt01_gui/dt01.py:443} control : 14 (env): 0}
+{"debug": 2021-09-30 05:05:21,508 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,508 {/home/pi/dt01_gui/dt01.py:443} control : 15 (env_porta): 0}
+{"debug": 2021-09-30 05:05:21,509 {/home/pi/dt01_gui/dt01.py:388} 1}
+{"debug": 2021-09-30 05:05:21,509 {/home/pi/dt01_gui/dt01.py:443} control : 16 (envexp): 1}
+{"debug": 2021-09-30 05:05:21,509 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,509 {/home/pi/dt01_gui/dt01.py:443} control : 17 (increment): 0}
+{"debug": 2021-09-30 05:05:21,509 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,509 {/home/pi/dt01_gui/dt01.py:443} control : 18 (increment_porta): 0}
+{"debug": 2021-09-30 05:05:21,509 {/home/pi/dt01_gui/dt01.py:388} 1}
+{"debug": 2021-09-30 05:05:21,509 {/home/pi/dt01_gui/dt01.py:443} control : 19 (incexp): 1}
+{"debug": 2021-09-30 05:05:21,510 {/home/pi/dt01_gui/dt01.py:388} 7}
+{"debug": 2021-09-30 05:05:21,510 {/home/pi/dt01_gui/dt01.py:443} control : 20 (fmsrc): 7}
+{"debug": 2021-09-30 05:05:21,510 {/home/pi/dt01_gui/dt01.py:560} 0b111}
+{"debug": 2021-09-30 05:05:21,510 {/home/pi/dt01_gui/dt01.py:560} 0b111111}
+{"debug": 2021-09-30 05:05:21,510 {/home/pi/dt01_gui/dt01.py:560} 0b111111111}
+{"debug": 2021-09-30 05:05:21,510 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111}
+{"debug": 2021-09-30 05:05:21,510 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111}
+{"debug": 2021-09-30 05:05:21,510 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111111}
+{"debug": 2021-09-30 05:05:21,511 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111111111}
+{"debug": 2021-09-30 05:05:21,511 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111111111111}
+{"debug": 2021-09-30 05:05:21,511 {/home/pi/dt01_gui/dt01.py:762} sending cmd_fm_algo(70) operator:0 voice:0 payload:16777215}
+{"debug": 2021-09-30 05:05:21,511 {/home/pi/dt01_gui/dt01.py:560} 0b111}
+{"debug": 2021-09-30 05:05:21,511 {/home/pi/dt01_gui/dt01.py:560} 0b111111}
+{"debug": 2021-09-30 05:05:21,511 {/home/pi/dt01_gui/dt01.py:560} 0b111111111}
+{"debug": 2021-09-30 05:05:21,512 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111}
+{"debug": 2021-09-30 05:05:21,512 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111}
+{"debug": 2021-09-30 05:05:21,512 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111111}
+{"debug": 2021-09-30 05:05:21,512 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111111111}
+{"debug": 2021-09-30 05:05:21,512 {/home/pi/dt01_gui/dt01.py:560} 0b111111111111111111111111}
+{"debug": 2021-09-30 05:05:21,512 {/home/pi/dt01_gui/dt01.py:762} sending cmd_fm_algo(70) operator:0 voice:1 payload:16777215}
+{"debug": 2021-09-30 05:05:21,513 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,513 {/home/pi/dt01_gui/dt01.py:443} control : 21 (amsrc): 0}
+{"debug": 2021-09-30 05:05:21,513 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,513 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,513 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,513 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,513 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,513 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,514 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,514 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,514 {/home/pi/dt01_gui/dt01.py:762} sending cmd_am_algo(71) operator:0 voice:0 payload:0}
+{"debug": 2021-09-30 05:05:21,514 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,514 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,514 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,515 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,515 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,515 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,515 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,515 {/home/pi/dt01_gui/dt01.py:569} 0b0}
+{"debug": 2021-09-30 05:05:21,515 {/home/pi/dt01_gui/dt01.py:762} sending cmd_am_algo(71) operator:0 voice:1 payload:0}
+{"debug": 2021-09-30 05:05:21,516 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,516 {/home/pi/dt01_gui/dt01.py:443} control : 22 (static): 0}
+{"debug": 2021-09-30 05:05:21,516 {/home/pi/dt01_gui/dt01.py:762} sending cmd_static(67) operator:0 voice:0 payload:0}
+{"debug": 2021-09-30 05:05:21,517 {/home/pi/dt01_gui/dt01.py:762} sending cmd_static(67) operator:0 voice:1 payload:0}
+{"debug": 2021-09-30 05:05:21,517 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,517 {/home/pi/dt01_gui/dt01.py:443} control : 23 (sounding): 0}
+{"debug": 2021-09-30 05:05:21,517 {/home/pi/dt01_gui/dt01.py:762} sending cmd_sounding(69) operator:0 voice:0 payload:0}
+{"debug": 2021-09-30 05:05:21,518 {/home/pi/dt01_gui/dt01.py:762} sending cmd_sounding(69) operator:0 voice:1 payload:0}
+{"debug": 2021-09-30 05:05:21,518 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,518 {/home/pi/dt01_gui/dt01.py:443} control : 24 (): 0}
+{"debug": 2021-09-30 05:05:21,518 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,518 {/home/pi/dt01_gui/dt01.py:443} control : 25 (): 0}
+{"debug": 2021-09-30 05:05:21,518 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,519 {/home/pi/dt01_gui/dt01.py:443} control : 26 (): 0}
+{"debug": 2021-09-30 05:05:21,519 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,519 {/home/pi/dt01_gui/dt01.py:443} control : 27 (): 0}
+{"debug": 2021-09-30 05:05:21,519 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,519 {/home/pi/dt01_gui/dt01.py:443} control : 28 (): 0}
+{"debug": 2021-09-30 05:05:21,519 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,519 {/home/pi/dt01_gui/dt01.py:443} control : 29 (): 0}
+{"debug": 2021-09-30 05:05:21,520 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,520 {/home/pi/dt01_gui/dt01.py:443} control : 30 (): 0}
+{"debug": 2021-09-30 05:05:21,520 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,520 {/home/pi/dt01_gui/dt01.py:443} control : 31 (): 0}
+{"debug": 2021-09-30 05:05:21,520 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,520 {/home/pi/dt01_gui/dt01.py:443} control : 32 (): 0}
+{"debug": 2021-09-30 05:05:21,520 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,520 {/home/pi/dt01_gui/dt01.py:443} control : 33 (): 0}
+{"debug": 2021-09-30 05:05:21,521 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,521 {/home/pi/dt01_gui/dt01.py:443} control : 34 (): 0}
+{"debug": 2021-09-30 05:05:21,521 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,521 {/home/pi/dt01_gui/dt01.py:443} control : 35 (): 0}
+{"debug": 2021-09-30 05:05:21,521 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,521 {/home/pi/dt01_gui/dt01.py:443} control : 36 (): 0}
+{"debug": 2021-09-30 05:05:21,521 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,521 {/home/pi/dt01_gui/dt01.py:443} control : 37 (): 0}
+{"debug": 2021-09-30 05:05:21,522 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,522 {/home/pi/dt01_gui/dt01.py:443} control : 38 (): 0}
+{"debug": 2021-09-30 05:05:21,522 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,522 {/home/pi/dt01_gui/dt01.py:443} control : 39 (): 0}
+{"debug": 2021-09-30 05:05:21,522 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,522 {/home/pi/dt01_gui/dt01.py:443} control : 40 (): 0}
+{"debug": 2021-09-30 05:05:21,522 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,523 {/home/pi/dt01_gui/dt01.py:443} control : 41 (): 0}
+{"debug": 2021-09-30 05:05:21,523 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,523 {/home/pi/dt01_gui/dt01.py:443} control : 42 (): 0}
+{"debug": 2021-09-30 05:05:21,523 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,523 {/home/pi/dt01_gui/dt01.py:443} control : 43 (): 0}
+{"debug": 2021-09-30 05:05:21,523 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,523 {/home/pi/dt01_gui/dt01.py:443} control : 44 (): 0}
+{"debug": 2021-09-30 05:05:21,524 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,524 {/home/pi/dt01_gui/dt01.py:443} control : 45 (): 0}
+{"debug": 2021-09-30 05:05:21,524 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,524 {/home/pi/dt01_gui/dt01.py:443} control : 46 (): 0}
+{"debug": 2021-09-30 05:05:21,524 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,524 {/home/pi/dt01_gui/dt01.py:443} control : 47 (): 0}
+{"debug": 2021-09-30 05:05:21,524 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,524 {/home/pi/dt01_gui/dt01.py:443} control : 48 (): 0}
+{"debug": 2021-09-30 05:05:21,525 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,525 {/home/pi/dt01_gui/dt01.py:443} control : 49 (): 0}
+{"debug": 2021-09-30 05:05:21,525 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,525 {/home/pi/dt01_gui/dt01.py:443} control : 50 (): 0}
+{"debug": 2021-09-30 05:05:21,525 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,525 {/home/pi/dt01_gui/dt01.py:443} control : 51 (): 0}
+{"debug": 2021-09-30 05:05:21,525 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,525 {/home/pi/dt01_gui/dt01.py:443} control : 52 (): 0}
+{"debug": 2021-09-30 05:05:21,526 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,526 {/home/pi/dt01_gui/dt01.py:443} control : 53 (): 0}
+{"debug": 2021-09-30 05:05:21,526 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,526 {/home/pi/dt01_gui/dt01.py:443} control : 54 (): 0}
+{"debug": 2021-09-30 05:05:21,526 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,526 {/home/pi/dt01_gui/dt01.py:443} control : 55 (): 0}
+{"debug": 2021-09-30 05:05:21,526 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,526 {/home/pi/dt01_gui/dt01.py:443} control : 56 (): 0}
+{"debug": 2021-09-30 05:05:21,527 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,527 {/home/pi/dt01_gui/dt01.py:443} control : 57 (): 0}
+{"debug": 2021-09-30 05:05:21,527 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,527 {/home/pi/dt01_gui/dt01.py:443} control : 58 (): 0}
+{"debug": 2021-09-30 05:05:21,527 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,527 {/home/pi/dt01_gui/dt01.py:443} control : 59 (): 0}
+{"debug": 2021-09-30 05:05:21,527 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,527 {/home/pi/dt01_gui/dt01.py:443} control : 60 (): 0}
+{"debug": 2021-09-30 05:05:21,528 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,528 {/home/pi/dt01_gui/dt01.py:443} control : 61 (): 0}
+{"debug": 2021-09-30 05:05:21,528 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,528 {/home/pi/dt01_gui/dt01.py:443} control : 62 (): 0}
+{"debug": 2021-09-30 05:05:21,528 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,528 {/home/pi/dt01_gui/dt01.py:443} control : 63 (): 0}
+{"debug": 2021-09-30 05:05:21,528 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,529 {/home/pi/dt01_gui/dt01.py:443} control : 64 (sustain): 0}
+{"debug": 2021-09-30 05:05:21,529 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,529 {/home/pi/dt01_gui/dt01.py:443} control : 65 (portamento): 0}
+{"debug": 2021-09-30 05:05:21,529 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,529 {/home/pi/dt01_gui/dt01.py:443} control : 66 (): 0}
+{"debug": 2021-09-30 05:05:21,529 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,529 {/home/pi/dt01_gui/dt01.py:443} control : 67 (): 0}
+{"debug": 2021-09-30 05:05:21,529 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,530 {/home/pi/dt01_gui/dt01.py:443} control : 68 (): 0}
+{"debug": 2021-09-30 05:05:21,530 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,530 {/home/pi/dt01_gui/dt01.py:443} control : 69 (): 0}
+{"debug": 2021-09-30 05:05:21,530 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,530 {/home/pi/dt01_gui/dt01.py:443} control : 70 (): 0}
+{"debug": 2021-09-30 05:05:21,530 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,530 {/home/pi/dt01_gui/dt01.py:443} control : 71 (filter_resonance): 0}
+{"debug": 2021-09-30 05:05:21,530 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,531 {/home/pi/dt01_gui/dt01.py:443} control : 72 (): 0}
+{"debug": 2021-09-30 05:05:21,531 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,531 {/home/pi/dt01_gui/dt01.py:443} control : 73 (): 0}
+{"debug": 2021-09-30 05:05:21,531 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,531 {/home/pi/dt01_gui/dt01.py:443} control : 74 (filter_cutoff): 0}
+{"debug": 2021-09-30 05:05:21,531 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,531 {/home/pi/dt01_gui/dt01.py:443} control : 75 (): 0}
+{"debug": 2021-09-30 05:05:21,531 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,532 {/home/pi/dt01_gui/dt01.py:443} control : 76 (): 0}
+{"debug": 2021-09-30 05:05:21,532 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,532 {/home/pi/dt01_gui/dt01.py:443} control : 77 (): 0}
+{"debug": 2021-09-30 05:05:21,532 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,532 {/home/pi/dt01_gui/dt01.py:443} control : 78 (): 0}
+{"debug": 2021-09-30 05:05:21,532 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,532 {/home/pi/dt01_gui/dt01.py:443} control : 79 (): 0}
+{"debug": 2021-09-30 05:05:21,533 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,533 {/home/pi/dt01_gui/dt01.py:443} control : 80 (): 0}
+{"debug": 2021-09-30 05:05:21,533 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,533 {/home/pi/dt01_gui/dt01.py:443} control : 81 (): 0}
+{"debug": 2021-09-30 05:05:21,533 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,533 {/home/pi/dt01_gui/dt01.py:443} control : 82 (): 0}
+{"debug": 2021-09-30 05:05:21,533 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,533 {/home/pi/dt01_gui/dt01.py:443} control : 83 (): 0}
+{"debug": 2021-09-30 05:05:21,534 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,534 {/home/pi/dt01_gui/dt01.py:443} control : 84 (): 0}
+{"debug": 2021-09-30 05:05:21,534 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,534 {/home/pi/dt01_gui/dt01.py:443} control : 85 (): 0}
+{"debug": 2021-09-30 05:05:21,534 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,534 {/home/pi/dt01_gui/dt01.py:443} control : 86 (): 0}
+{"debug": 2021-09-30 05:05:21,534 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,534 {/home/pi/dt01_gui/dt01.py:443} control : 87 (): 0}
+{"debug": 2021-09-30 05:05:21,535 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,535 {/home/pi/dt01_gui/dt01.py:443} control : 88 (): 0}
+{"debug": 2021-09-30 05:05:21,535 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,535 {/home/pi/dt01_gui/dt01.py:443} control : 89 (): 0}
+{"debug": 2021-09-30 05:05:21,535 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,535 {/home/pi/dt01_gui/dt01.py:443} control : 90 (): 0}
+{"debug": 2021-09-30 05:05:21,535 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,536 {/home/pi/dt01_gui/dt01.py:443} control : 91 (): 0}
+{"debug": 2021-09-30 05:05:21,536 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,536 {/home/pi/dt01_gui/dt01.py:443} control : 92 (): 0}
+{"debug": 2021-09-30 05:05:21,536 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,536 {/home/pi/dt01_gui/dt01.py:443} control : 93 (): 0}
+{"debug": 2021-09-30 05:05:21,536 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,536 {/home/pi/dt01_gui/dt01.py:443} control : 94 (): 0}
+{"debug": 2021-09-30 05:05:21,536 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,537 {/home/pi/dt01_gui/dt01.py:443} control : 95 (): 0}
+{"debug": 2021-09-30 05:05:21,537 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,537 {/home/pi/dt01_gui/dt01.py:443} control : 96 (): 0}
+{"debug": 2021-09-30 05:05:21,537 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,537 {/home/pi/dt01_gui/dt01.py:443} control : 97 (): 0}
+{"debug": 2021-09-30 05:05:21,537 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,537 {/home/pi/dt01_gui/dt01.py:443} control : 98 (): 0}
+{"debug": 2021-09-30 05:05:21,537 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,538 {/home/pi/dt01_gui/dt01.py:443} control : 99 (): 0}
+{"debug": 2021-09-30 05:05:21,538 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,538 {/home/pi/dt01_gui/dt01.py:443} control : 100 (): 0}
+{"debug": 2021-09-30 05:05:21,538 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,538 {/home/pi/dt01_gui/dt01.py:443} control : 101 (): 0}
+{"debug": 2021-09-30 05:05:21,538 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,538 {/home/pi/dt01_gui/dt01.py:443} control : 102 (): 0}
+{"debug": 2021-09-30 05:05:21,538 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,539 {/home/pi/dt01_gui/dt01.py:443} control : 103 (): 0}
+{"debug": 2021-09-30 05:05:21,539 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,539 {/home/pi/dt01_gui/dt01.py:443} control : 104 (): 0}
+{"debug": 2021-09-30 05:05:21,539 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,539 {/home/pi/dt01_gui/dt01.py:443} control : 105 (): 0}
+{"debug": 2021-09-30 05:05:21,539 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,539 {/home/pi/dt01_gui/dt01.py:443} control : 106 (): 0}
+{"debug": 2021-09-30 05:05:21,539 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,540 {/home/pi/dt01_gui/dt01.py:443} control : 107 (): 0}
+{"debug": 2021-09-30 05:05:21,540 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,540 {/home/pi/dt01_gui/dt01.py:443} control : 108 (): 0}
+{"debug": 2021-09-30 05:05:21,540 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,540 {/home/pi/dt01_gui/dt01.py:443} control : 109 (): 0}
+{"debug": 2021-09-30 05:05:21,540 {/home/pi/dt01_gui/dt01.py:388} 8}
+{"debug": 2021-09-30 05:05:21,540 {/home/pi/dt01_gui/dt01.py:443} control : 110 (env_clkdiv): 8}
+{"debug": 2021-09-30 05:05:21,541 {/home/pi/dt01_gui/dt01.py:762} sending cmd_env_clkdiv(99) operator:0 voice:0 payload:8}
+{"debug": 2021-09-30 05:05:21,541 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,541 {/home/pi/dt01_gui/dt01.py:443} control : 111 (flushspi): 0}
+{"debug": 2021-09-30 05:05:21,541 {/home/pi/dt01_gui/dt01.py:762} sending cmd_flushspi(120) operator:0 voice:0 payload:0}
+{"debug": 2021-09-30 05:05:21,542 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,542 {/home/pi/dt01_gui/dt01.py:443} control : 112 (passthrough): 0}
+{"debug": 2021-09-30 05:05:21,542 {/home/pi/dt01_gui/dt01.py:762} sending cmd_passthrough(121) operator:0 voice:0 payload:0}
+{"debug": 2021-09-30 05:05:21,543 {/home/pi/dt01_gui/dt01.py:388} 2}
+{"debug": 2021-09-30 05:05:21,543 {/home/pi/dt01_gui/dt01.py:443} control : 113 (shift): 2}
+{"debug": 2021-09-30 05:05:21,543 {/home/pi/dt01_gui/dt01.py:762} sending cmd_shift(122) operator:0 voice:0 payload:2}
+{"debug": 2021-09-30 05:05:21,543 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,544 {/home/pi/dt01_gui/dt01.py:443} control : 114 (): 0}
+{"debug": 2021-09-30 05:05:21,544 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,544 {/home/pi/dt01_gui/dt01.py:443} control : 115 (): 0}
+{"debug": 2021-09-30 05:05:21,544 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,544 {/home/pi/dt01_gui/dt01.py:443} control : 116 (): 0}
+{"debug": 2021-09-30 05:05:21,544 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,544 {/home/pi/dt01_gui/dt01.py:443} control : 117 (): 0}
+{"debug": 2021-09-30 05:05:21,544 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,545 {/home/pi/dt01_gui/dt01.py:443} control : 118 (): 0}
+{"debug": 2021-09-30 05:05:21,545 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,545 {/home/pi/dt01_gui/dt01.py:443} control : 119 (): 0}
+{"debug": 2021-09-30 05:05:21,545 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,545 {/home/pi/dt01_gui/dt01.py:443} control : 120 (): 0}
+{"debug": 2021-09-30 05:05:21,545 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,545 {/home/pi/dt01_gui/dt01.py:443} control : 121 (): 0}
+{"debug": 2021-09-30 05:05:21,546 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,546 {/home/pi/dt01_gui/dt01.py:443} control : 122 (): 0}
+{"debug": 2021-09-30 05:05:21,546 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,546 {/home/pi/dt01_gui/dt01.py:443} control : 123 (): 0}
+{"debug": 2021-09-30 05:05:21,546 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,546 {/home/pi/dt01_gui/dt01.py:443} control : 124 (): 0}
+{"debug": 2021-09-30 05:05:21,546 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,546 {/home/pi/dt01_gui/dt01.py:443} control : 125 (): 0}
+{"debug": 2021-09-30 05:05:21,547 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,547 {/home/pi/dt01_gui/dt01.py:443} control : 126 (): 0}
+{"debug": 2021-09-30 05:05:21,547 {/home/pi/dt01_gui/dt01.py:388} 0}
+{"debug": 2021-09-30 05:05:21,547 {/home/pi/dt01_gui/dt01.py:443} control : 127 (): 0}
+{"debug": 2021-09-30 05:05:21,547 {/home/pi/dt01_gui/dt01.py:433} PW: 64}
+{"debug": 2021-09-30 05:05:21,547 {/home/pi/dt01_gui/dt01.py:437} PWREAL 1.0054299011128027}
+{"debug": 2021-09-30 05:05:21,547 {/home/pi/dt01_gui/dt01.py:549} 1.0 1.0054299011128027 1 22.32538157231775}
+{"debug": 2021-09-30 05:05:21,548 {/home/pi/dt01_gui/dt01.py:762} sending cmd_baseincrement(68) operator:0 voice:0 payload:22.446606186561024}
+{"debug": 2021-09-30 05:05:21,548 {/home/pi/dt01_gui/dt01.py:549} 1.0 1.0054299011128027 1 22.32538157231775}
+{"debug": 2021-09-30 05:05:21,548 {/home/pi/dt01_gui/dt01.py:762} sending cmd_baseincrement(68) operator:0 voice:1 payload:22.446606186561024}
+{"debug": 2021-09-30 05:05:21,549 {/home/pi/dt01_gui/dt01.py:549} 1.0 1.0054299011128027 1.0 22.32538157231775}
+{"debug": 2021-09-30 05:05:21,549 {/home/pi/dt01_gui/dt01.py:762} sending cmd_baseincrement(68) operator:0 voice:0 payload:22.446606186561024}
+{"debug": 2021-09-30 05:05:21,549 {/home/pi/dt01_gui/dt01.py:549} 1.0 1.0054299011128027 1.0 22.32538157231775}
+{"debug": 2021-09-30 05:05:21,550 {/home/pi/dt01_gui/dt01.py:762} sending cmd_baseincrement(68) operator:0 voice:1 payload:22.446606186561024}
+{"debug": 2021-09-30 05:05:21,554 {startup.py:99} ['Midi Through:Midi Through Port-0 14:0', 'Keystation 49:Keystation 49 MIDI 1 24:0', 'Keystation 49:Keystation 49 MIDI 2 24:1']}
+{"debug": 2021-09-30 05:05:21,557 {startup.py:108} Attaching MIDI input callback handler.}
+{"debug": 2021-09-30 05:05:21,558 {startup.py:36} __init__}
+{"debug": 2021-09-30 05:05:21,559 {startup.py:111} Handler: <rtmidi._rtmidi.MidiIn object at 0xb6380420>}
+{"debug": 2021-09-30 05:05:21,562 {startup.py:108} Attaching MIDI input callback handler.}
+{"debug": 2021-09-30 05:05:21,563 {startup.py:36} __init__}
+{"debug": 2021-09-30 05:05:21,563 {startup.py:111} Handler: <rtmidi._rtmidi.MidiIn object at 0xb489b750>}
+{"debug": 2021-09-30 05:05:21,563 {startup.py:115} Entering main loop. Press Control-C to exit.}
+{"debug": 2021-09-30 05:05:22,961 {startup.py:132} }
+{"debug": 2021-09-30 05:05:22,962 {startup.py:134} Exit.}
+Keystation 49:Keystation 49 MIDI 1 24:0
+Keystation 49:Keystation 49 MIDI 2 24:1
