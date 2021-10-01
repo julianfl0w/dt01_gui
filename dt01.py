@@ -108,6 +108,7 @@ class FPGA_component:
 		self.event2action  = collections.defaultdict(list)
 		logger.debug("initialized " + str(self))
 		
+		
 	def computeDicts(self, recursive = True):
 		pass
 		#logger.debug("computing dicts " + str(self))
@@ -201,10 +202,6 @@ class FPGA_component:
 class Patch(FPGA_component):
 
 
-	def fn_env_clkdiv (self) : return self.control[100]
-	def fn_flushspi   (self) : return self.control[101]
-	def fn_passthrough(self) : return self.control[102]
-	def fn_shift      (self) : return self.control[103]
 	
 	def getVoices(self, controlPatch, voicesToGet = 32):
 		toreturn = []
@@ -214,9 +211,12 @@ class Patch(FPGA_component):
 				self.voices[self.voiceno].controlPatch = controlPatch
 				self.voiceno += 1
 		return toreturn
-		
+				
 	def send(self, param, value):
-		self.fpga_interface_inst.send(param, 0, 0, value)
+		#if self.stateInFPGA.get(param) != value:
+		if True: # better for debugging
+			self.fpga_interface_inst.send(param, 0, 0, value)
+		self.stateInFPGA[param] = value
 	
 	def processControl(self, paramName, value):
 		self.processEvent(mido.Message('control_change', control = paramName2Num [paramName], value = value)) #
@@ -226,7 +226,7 @@ class Patch(FPGA_component):
 		logger.debug("patch init ")
 		self.fpga_interface_inst  = fpga_interface_inst
 		super().__init__(0, self.fpga_interface_inst, self)
-		self.polyphony  = 1
+		self.polyphony = 32
 				
 		self.voicesPerNote = 1
 		self.voices = []
@@ -272,19 +272,20 @@ class Patch(FPGA_component):
 		self.processControl( "fbgain"       , value = 0)
 		self.processControl( "fbsrc"        , value = 0)
 		self.processControl( "baseincrement", value = 127)     # 
-		self.processControl( "pan"          , value = 64) # common midi control
 		self.processControl( "expression"   , value = 0) # common midi control
 		
 		self.processControl("opno"            , value = 0) #
 		self.processControl( "voicegain"    , value = 127) # common midi control
+		self.processControl( "pan"          , value = 64) # common midi control
 		self.processControl("opno"            , value = 1) #
 		self.processControl( "voicegain"    , value = 127) # common midi control
+		self.processControl( "pan"          , value = 64) # common midi control
 		
 		self.processControl("opno"            , value = 0) #
 		self.processControl("env"             , value = 127) #
 		self.processControl("env_porta"       , value = 64  ) #
 		self.processControl("envexp"          , value = 1  ) #
-		self.processControl("increment"       , value = 127) #
+		self.processControl("increment"       , value = 64) #
 		self.processControl("increment_porta" , value = 0  ) #
 		self.processControl("incexp"          , value = 1  ) #
 		self.processControl("fmsrc"           , value = 7  ) #fm off
@@ -382,7 +383,7 @@ class Patch(FPGA_component):
 		self.processControl("filter_resonance", value = 0)# common midi control
 		self.processControl("filter_cutoff"   , value = 0)# common midi control
 
-		self.processControl("env_clkdiv"      , value = 8) #   
+		self.processControl("env_clkdiv"      , value = 16) #   
 		self.processControl("flushspi"        , value = 0) #   
 		self.processControl("passthrough"     , value = 0) #   
 		self.processControl("shift"           , value = 2) #   
@@ -392,7 +393,7 @@ class Patch(FPGA_component):
 		for note in self.allNotes:
 			self.processEvent(mido.Message('polytouch', note = note.index, value = 0))
 			
-		self.processEvent(mido.Message('control_change', control = 114, value = 0)) #
+		#self.processEvent(mido.Message('control_change', control = 114, value = 0)) #
 	
 	def getCtrlString(self, ctrlName):
 		return "control[" + str(int(paramName2Num[ctrlName])) + "]"
@@ -429,7 +430,6 @@ class Patch(FPGA_component):
 				self.currVoice.note = note
 				note.voices += [self.currVoice]
 			voicesToUpdate = note.voices
-			self.processEvent(mido.Message('control_change', control = 114, value = 0)) #
 				
 		elif msg.type == 'pitchwheel':
 			logger.debug("PW: " + str(msg.pitch))
@@ -474,6 +474,7 @@ class Patch(FPGA_component):
 				self.send("cmd_shift" , self.paramName2Val["shift"])
 				
 			if msg.control == 114:
+				logger.debug(str(self) + " STATE :")
 				logger.debug(self.stateInFPGA)
 						
 			
@@ -485,11 +486,22 @@ class Patch(FPGA_component):
 		elif msg.type == 'aftertouch':
 			self.aftertouch = msg.value
 			self.aftertouchReal = msg.value/127.0
-						
 		
-		for voice in voicesToUpdate:
-			#logger.debug("\n\n------------------\nselecting voice " + str(voice.index))
-			voice.processEvent(msg)
+		# commands effecting all voices should send them all at once
+		if msg.type == 'aftertouch' or msg.type == 'pitchwheel': 
+			self.fpga_interface_inst.gather()
+			
+			for voice in voicesToUpdate:
+				#logger.debug("\n\n------------------\nselecting voice " + str(voice.index))
+				voice.processEvent(msg)
+				
+			self.fpga_interface_inst.release()
+			
+			
+		else:
+			for voice in voicesToUpdate:
+				#logger.debug("\n\n------------------\nselecting voice " + str(voice.index))
+				voice.processEvent(msg)
 
 		if msg.type == "note_off" or (msg.type == "note_on" and msg.velocity == 0):
 			# implement rising mono porta
@@ -497,7 +509,9 @@ class Patch(FPGA_component):
 				if heldnote.held and self.polyphony == self.voicesPerNote :
 					self.processEvent(heldnote.msg)
 					break
-			self.processEvent(mido.Message('control_change', control = 114, value = 0)) #
+		
+		#if msg.type == "note_on":
+		#	self.processEvent(mido.Message('control_change', control = 114, value = 0)) #
 					
 		
 
@@ -628,10 +642,10 @@ class Channel(FPGA_component):
 				if msg.control == paramName2Num["voicegain"] or msg.control == paramName2Num["pan"] : 
 					baseVolume = 2**16*self.patch.paramName2Real["voicegain"]
 					if self.index == 0:
-						self.send("cmd_voicegain", baseVolume*self.patch.paramName2Real["pan"]) # assume 2 channels
+						self.send("cmd_channelgain", baseVolume*self.patch.paramName2Real["pan"]) # assume 2 channels
 					else:
 						#logger.debug(self.patch.controlReal[10])
-						self.send("cmd_voicegain", baseVolume*(1 - self.patch.paramName2Real["pan"])) # assume 2 channels
+						self.send("cmd_channelgain", baseVolume*(1 - self.patch.paramName2Real["pan"])) # assume 2 channels
 	
 			if msg.control == 114:
 				logger.debug(str(self) + " STATE :")
@@ -696,14 +710,14 @@ class Operator(FPGA_component):
 					self.send("cmd_env"            , self.voice.note.velocityReal * (2**16) * self.paramName2Real["env"])
 						
 				if msg.control == paramName2Num["env_porta"]: 
-					self.send("cmd_env_porta"      , 2**12 * (1 - self.paramName2Real["env_porta"]) * (1 - self.patch.paramName2Real["portamento"]) )
+					self.send("cmd_env_porta"      , 2**10 * (1 - self.paramName2Real["env_porta"]) * (1 - self.patch.paramName2Real["portamento"]) )
 		# static oscillators do not have velocity-dependant env
 					
 				if msg.control == paramName2Num["increment"]: 
 					self.send("cmd_increment"      , 2**16 * self.paramName2Real["increment"]) # * self.paramName2Real["increment"]
 					
 				if msg.control == paramName2Num["increment_porta"]: 
-					self.send("cmd_increment_porta", 2**12 * (1 - self.patch.paramName2Real["portamento"]) * (1 - self.paramName2Real["increment_porta"]))
+					self.send("cmd_increment_porta", 2**10 * (1 - self.patch.paramName2Real["portamento"]) * (1 - self.paramName2Real["increment_porta"]))
 					
 				if msg.control == paramName2Num["incexp"]: 
 					self.send("cmd_incexp"         , self.patch.paramName2Val["incexp"])  
@@ -748,19 +762,20 @@ class fpga_interface():
 	cmdName2number["cmd_am_algo"  ]  = 71
 	cmdName2number["cmd_fbgain"   ]  = 73
 	cmdName2number["cmd_fbsrc"    ]  = 74
-	cmdName2number["cmd_voicegain"]      = 75
+	cmdName2number["cmd_channelgain"    ] = 75
 	cmdName2number["cmd_env"            ] = 76 
 	cmdName2number["cmd_env_porta"      ] = 77 
 	cmdName2number["cmd_envexp"         ] = 78 
 	cmdName2number["cmd_increment"      ] = 79 
 	cmdName2number["cmd_increment_porta"] = 80  
 	cmdName2number["cmd_incexp"         ] = 81
-	cmdName2number["cmd_flushspi"         ] = 120
-	cmdName2number["cmd_passthrough"      ] = 121
-	cmdName2number["cmd_shift"            ] = 122
-	cmdName2number["cmd_env_clkdiv"       ] = 99 # turn this back to 123
+	cmdName2number["cmd_flushspi"       ] = 120
+	cmdName2number["cmd_passthrough"    ] = 121
+	cmdName2number["cmd_shift"          ] = 122
+	cmdName2number["cmd_env_clkdiv"     ] = 123 # turn this back to 123
 		
 	def __init__(self):
+		self.gathering = False
 		pass
 
 	def format_command_real(self, mm_paramno, voiceno,  payload):
@@ -797,13 +812,31 @@ class fpga_interface():
 			spi.xfer2(tosend[:4] + payload_packed)
 			#logger.debug("sent")
 	
+	def gather(self, voicecount):
+		tosend = {}
+		self.voicecount = voicecount
+		self.gathering = True
+		
+	def release(self):
+		??
+	
 	def send(self, paramName, mm_opno,  voiceno,  payload):
-		tosend = self.format_command_int(self.cmdName2number[paramName], mm_opno, voiceno, payload)
-		with ILock('jlock', lock_directory=sys.path[0]):
-			logger.debug("sending " + paramName + "(" + str(self.cmdName2number[paramName]) + ")" + " operator:" + str(mm_opno) + " voice:" + str(voiceno) + " payload:" + str(payload))
-			#logger.debug(tosend)
-			spi.xfer2(tosend)
-			#logger.debug("sent")
+	
+		# gather data if gathering is on
+		if self.gathering: 
+			if paramName not in tosend.keys():
+				tosend[paramName] = {}
+			if mm_opno not in tosend[paramName].keys():
+				tosend[paramName][mm_opno] = [0] * voicecount
+			tosend[paramName][mm_opno][voiceno] = payload
+					
+		else:
+			tosend = self.format_command_int(self.cmdName2number[paramName], mm_opno, voiceno, payload)
+			with ILock('jlock', lock_directory=sys.path[0]):
+				logger.debug("sending " + paramName + "(" + str(self.cmdName2number[paramName]) + ")" + " operator:" + str(mm_opno) + " voice:" + str(voiceno) + " payload:" + str(payload))
+				#logger.debug(tosend)
+				spi.xfer2(tosend)
+				#logger.debug("sent")
 		
 if __name__ == "__main__":
 	fpga_interface_inst = fpga_interface_inst()
@@ -818,7 +851,7 @@ if __name__ == "__main__":
 	
 	opno = 0
 	voiceno = 0
-	fpga_interface_inst.send("cmd_voicegain_right", opno, voiceno, 2**16)
+	fpga_interface_inst.send("cmd_channelgain_right", opno, voiceno, 2**16)
 	fpga_interface_inst.send("cmd_gain_porta"      , opno, voiceno, 2**16)
 	fpga_interface_inst.send("cmd_gain"            , opno, voiceno, 2**16)
 	fpga_interface_inst.send("cmd_increment_porta" , opno, voiceno, 2**12)

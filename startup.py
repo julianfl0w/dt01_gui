@@ -23,7 +23,7 @@ formatter = logging.Formatter('{"debug": %(asctime)s {%(pathname)s:%(lineno)d} %
 ch = logging.StreamHandler()
 ch.setFormatter(formatter)
 logger.addHandler(ch)
-logger.setLevel(1)
+logger.setLevel(0)
 
 		
 
