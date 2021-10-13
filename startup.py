@@ -95,8 +95,11 @@ if __name__ == "__main__":
 	midiDev = []
 	midiin = rtmidi.MidiIn(get_api_from_environment(api))
 	midi_ports  = midiin.get_ports()
-	fpga_interface_inst = fpga_interface()
-	GLOBAL_DEFAULT_PATCH = Patch(fpga_interface_inst)
+	
+	dt01_inst = DT01(polyphony = 32)
+	dt01_inst.initialize()
+	GLOBAL_DEFAULT_PATCH = Patch(dt01_inst.fpga_interface_inst)
+	dt01_inst.addPatch(GLOBAL_DEFAULT_PATCH)
 	
 	logger.debug(midi_ports)
 	#for i, midi_portname in enumerate(midi_ports):
@@ -105,7 +108,6 @@ if __name__ == "__main__":
 			midiin, midi_portno = open_midiinput(midi_portname)
 		except (EOFError, KeyboardInterrupt):
 			sys.exit()
-
 
 		logger.debug("Attaching MIDI input callback handler.")
 		MidiDevice_inst = MidiDevice(i, GLOBAL_DEFAULT_PATCH, str(midi_portname))

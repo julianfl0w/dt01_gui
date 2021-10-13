@@ -203,27 +203,67 @@ class FPGA_component:
 # operator
 		
 class DT01(FPGA_component):
-	def __init__(self):
+	def __init__(self, polyphony = 512):
+		self.fpga_interface_inst = fpga_interface()
+		
+		super().__init__(0, self.fpga_interface_inst, None)
+		
 		self.patches = []
-		self.fpga_interface_inst = fpga_interface
 		self.voices = 0
-		self.polyphony = 512
-		self.voicesPerPatch = 32
-		self.patchesPerDT01 = self.polyphony / self.voicesPerPatch
-		self.voices = np.zeros(self.patchesPerDT01, self.voicesPerPatch)
+		self.polyphony = polyphony
+		self.voicesPerPatch = min(self.polyphony, 32)
+		self.patchesPerDT01 = int(round(self.polyphony / self.voicesPerPatch))
+		self.voices = []
+		self.voiceSets = []
+		self.loanTime = [0]*self.patchesPerDT01
 		
 		index = 0
 		for i in range(self.patchesPerDT01):
+			newSet = []
 			for j in range(self.voicesPerPatch):
-				self.voices = Voice(index, fpga_interface, None)
+				newVoice = Voice(index, self.fpga_interface_inst, None)
+				self.voices += [newVoice]
+				newSet      += [newVoice]
 				index += 1
-	
+			self.voiceSets += [newSet]
+
 	def getVoices(self):
-		for 
+		# return the longest since activation
+		oldestSetIndex = np.argsort(self.loanTime)[0]
+		return self.voiceSets[oldestSetIndex]
 	
 	def addPatch(self, patch):
-		patches += [patch]
+		self.patches += [patch]
 		
+	def initialize(self):
+		for voice in self.voices:
+			#paramName, mm_opno,  voiceno,  payload
+			voice.send("cmd_static"       , 0b11000000)
+			voice.send("cmd_baseincrement", 2**15)
+			voice.send("cmd_sounding"     , 0b00000001)
+			voice.send("cmd_fm_algo"      , 0o77777777)
+			voice.send("cmd_am_algo"      , 0o00000000)
+			voice.send("cmd_fbgain"       , 0)
+			voice.send("cmd_fbsrc"        , 0)
+			for channel in voice.channels:
+				channel.send("cmd_channelgain", 2**16) 
+			for operator in voice.operators:
+				operator.send("cmd_env"            , 0)
+				operator.send("cmd_env_porta"      , 2**10)
+				operator.send("cmd_envexp"         , 0x01)
+
+				if operator.index < 6:
+					operator.send("cmd_increment"      , 2**12) # * self.paramName2Real["increment"]
+				else:
+					operator.send("cmd_increment"      , 1) # * self.paramName2Real["increment"]
+
+				operator.send("cmd_increment_porta", 2**16)
+				operator.send("cmd_incexp"         , 2**16)
+
+		self.send("cmd_flushspi"     , 0)
+		self.send("cmd_passthrough"  , 0)
+		self.send("cmd_shift"        , 2)
+		self.send("cmd_env_clkdiv"   , 5)
 	
 	def send(self, param, value):
 		#if self.stateInFPGA.get(param) != value:
@@ -447,6 +487,8 @@ class Patch(FPGA_component):
 			note.velocity = 0 
 			note.velocityReal = 0 
 			voicesToUpdate = note.voices.copy()
+			for voice in note.voices:
+				voice.spawnTime = 0
 			note.voices = []
 			note.held = False
 			
@@ -459,7 +501,11 @@ class Patch(FPGA_component):
 			note.msg = msg
 			# spawn some voices!
 			for voiceno in range(self.voicesPerNote):
-				self.currVoiceIndex = (self.currVoiceIndex + 1) % self.polyphony
+				
+				#self.currVoiceIndex = (self.currVoiceIndex + 1) % self.polyphony
+				
+				oldestVoiceInPatch = sorted(self.voices, key=lambda x: x.spawntime)[0]
+				self.currVoice.spawnTime = time.time()
 				self.currVoice = self.voices[self.currVoiceIndex]
 				self.currVoice.indexInCluser = voiceno
 				self.currVoice.note = note
@@ -578,7 +624,7 @@ class Voice(FPGA_component):
 		
 	def __init__(self, index, fpga_interface_inst, patch):
 		super().__init__(index, fpga_interface_inst, patch)
-		
+		self.spawntime = 0
 		self.index = index
 		self.note = None
 		self.patch  = None
@@ -606,8 +652,8 @@ class Voice(FPGA_component):
 		if msg.type == "note_on" or msg.type == "pitchwheel" or (msg.type == "control_change" and msg.control == paramName2Num["baseincrement"] and \
 			self.patch.paramName2Val["opno"] == self.index) or msg.type == "aftertouch": 
 			# send the base increment
-			logger.debug(str(self.patch.paramName2Real["baseincrement"]) + " " + str(self.patch.pitchwheelReal) + " " + str(1 + self.patch.aftertouchReal) + " " +  str(self.note.defaultIncrement))
-			self.send("cmd_baseincrement", self.patch.paramName2Real["baseincrement"] * self.patch.pitchwheelReal * (1 + self.patch.aftertouchReal) * self.note.defaultIncrement)
+			#logger.debug(str(self.patch.paramName2Real["baseincrement"]) + " " + str(self.patch.pitchwheelReal) + " " + str(1 + self.patch.aftertouchReal) + " " +  str(self.note.defaultIncrement))
+			self.send("cmd_baseincrement", self.patch.paramName2Real["baseincrement"] * self.patch.pitchwheelReal * (1 + self.patch.aftertouchReal) * self.note.defaultIncrement * 2**6)
 		
 		# on control change
 		if (msg.type == "control_change"):
@@ -761,7 +807,7 @@ class Operator(FPGA_component):
 					
 				if msg.control == paramName2Num["increment"]: 
 					if self.index < 6:
-						self.send("cmd_increment"      , 2**16 * self.paramName2Real["increment"]) # * self.paramName2Real["increment"]
+						self.send("cmd_increment"      , 2**10 * self.paramName2Real["increment"]) # * self.paramName2Real["increment"]
 					else:
 						self.send("cmd_increment"      , 2**3 * self.paramName2Real["increment"]) # * self.paramName2Real["increment"]
 					
@@ -791,6 +837,7 @@ class Operator(FPGA_component):
 	def send(self, param, value):
 		#if self.stateInFPGA.get(param) != value:
 		if True: # better for debugging
+			logger.debug(self.fpga_interface_inst)
 			self.fpga_interface_inst.send(param, self.index, self.voice.index, value)
 		self.stateInFPGA[param] = value
 
@@ -865,7 +912,7 @@ class fpga_interface():
 		with ILock('jlock', lock_directory=sys.path[0]):
 			logger.debug("sending")
 			logger.debug([hex(s) for s in tosend])
-			spi.xfer2(tosend[:4] + tosend)
+			spi.xfer2(tosend)
 			#logger.debug("sent")
 	
 	def gather(self, voicecount):
@@ -901,7 +948,7 @@ class fpga_interface():
 				#logger.debug("sent")
 		
 if __name__ == "__main__":
-	fpga_interface_inst = fpga_interface_inst()
+	fpga_interface_inst = fpga_interface()
 	
 	#for voiceno in range(fpga_interface_inst.POLYPHONYCOUNT):
 	#	for opno in range(fpga_interface_inst.OPERATORCOUNT):
