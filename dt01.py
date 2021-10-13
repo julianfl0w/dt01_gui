@@ -1,6 +1,7 @@
 import spidev
 import struct
-maxSpiSpeed = 120000000
+#maxSpiSpeed = 120000000
+maxSpiSpeed = 100000000
 spi = spidev.SpiDev()
 spi.open(1, 0)
 spi.max_speed_hz=maxSpiSpeed
@@ -35,8 +36,10 @@ controlNum2ParamName = [""]*CONTROLCOUNT
 # common midi controls https://professionalcomposers.com/midi-cc-list/
 
 # begin voice parameters
-controlNum2ParamName[0 ] = "vibrato_env"  # modwheel. tie it to vibrato (Pitch LFO)
-controlNum2ParamName[1 ] = "tremolo_env"  # breath control
+#controlNum2ParamName[0 ] = "vibrato_env"  # modwheel. tie it to vibrato (Pitch LFO)
+#controlNum2ParamName[1 ] = "tremolo_env"  # breath control
+controlNum2ParamName[1 ] = "vibrato_env"  # modwheel. tie it to vibrato (Pitch LFO)
+controlNum2ParamName[0 ] = "tremolo_env"  # breath control
 controlNum2ParamName[4 ] = "fbgain"         
 controlNum2ParamName[5 ] = "fbsrc"          
 
@@ -194,13 +197,43 @@ class FPGA_component:
 		logger.debug(json.dumps(self.stateInFPGA, indent = 4))
 
 # heirarchy:
+# DT01 controls
 # patch controls
 # voice controls
 # operator
 		
+class DT01(FPGA_component):
+	def __init__(self):
+		self.patches = []
+		self.fpga_interface_inst = fpga_interface
+		self.voices = 0
+		self.polyphony = 512
+		self.voicesPerPatch = 32
+		self.patchesPerDT01 = self.polyphony / self.voicesPerPatch
+		self.voices = np.zeros(self.patchesPerDT01, self.voicesPerPatch)
+		
+		index = 0
+		for i in range(self.patchesPerDT01):
+			for j in range(self.voicesPerPatch):
+				self.voices = Voice(index, fpga_interface, None)
+				index += 1
+	
+	def getVoices(self):
+		for 
+	
+	def addPatch(self, patch):
+		patches += [patch]
+		
+	
+	def send(self, param, value):
+		#if self.stateInFPGA.get(param) != value:
+		if True: # better for debugging
+			self.fpga_interface_inst.send(param, 0, 0, value)
+		self.stateInFPGA[param] = value
+	
+	
 # patch holds all state, including note and control state
 class Patch(FPGA_component):
-
 
 	
 	def getVoices(self, controlPatch, voicesToGet = 32):
@@ -227,7 +260,7 @@ class Patch(FPGA_component):
 		self.fpga_interface_inst  = fpga_interface_inst
 		super().__init__(0, self.fpga_interface_inst, self)
 		self.polyphony = 32
-				
+		self.active = True
 		self.voicesPerNote = 1
 		self.voices = []
 		self.currVoiceIndex = 0
@@ -353,28 +386,30 @@ class Patch(FPGA_component):
 		self.processControl("static"          , value = 0  ) #
 		self.processControl("sounding"        , value = 0  ) #
 		
-		self.processControl("opno"            , value = 6) #
+		# TREMOLO
+		self.processControl("opno"            , value = 6) # 
 		self.processControl("env"             , value = 0) #
-		self.processControl("env_porta"       , value = 0  ) #
+		self.processControl("env_porta"       , value = 0 ) #
 		self.processControl("envexp"          , value = 1  ) #
-		self.processControl("increment"       , value = 0) #
+		self.processControl("increment"       , value = 40) #
 		self.processControl("increment_porta" , value = 0  ) #
 		self.processControl("incexp"          , value = 1  ) #
 		self.processControl("fmsrc"           , value = 7  ) #fm off
 		self.processControl("amsrc"           , value = 0  ) #am off
-		self.processControl("static"          , value = 0  ) #
+		self.processControl("static"          , value = 1  ) #
 		self.processControl("sounding"        , value = 0  ) #
 		
+		# VIBRATO
 		self.processControl("opno"            , value = 7) #
 		self.processControl("env"             , value = 0) #
-		self.processControl("env_porta"       , value = 0  ) #
+		self.processControl("env_porta"       , value = 0 ) #
 		self.processControl("envexp"          , value = 1  ) #
-		self.processControl("increment"       , value = 0) #
+		self.processControl("increment"       , value = 40) #
 		self.processControl("increment_porta" , value = 0  ) #
 		self.processControl("incexp"          , value = 1  ) #
 		self.processControl("fmsrc"           , value = 7  ) #fm off
 		self.processControl("amsrc"           , value = 0  ) #am off
-		self.processControl("static"          , value = 0  ) #
+		self.processControl("static"          , value = 1  ) #
 		self.processControl("sounding"        , value = 0  ) #
 		
 		# common midi controls
@@ -386,7 +421,7 @@ class Patch(FPGA_component):
 		self.processControl("env_clkdiv"      , value = 16) #   
 		self.processControl("flushspi"        , value = 0) #   
 		self.processControl("passthrough"     , value = 0) #   
-		self.processControl("shift"           , value = 2) #   
+		self.processControl("shift"           , value = 3) #   
 					
 		self.processEvent(mido.Message('pitchwheel', pitch = 64))
 		self.processEvent(mido.Message('aftertouch', value = 0))
@@ -476,6 +511,15 @@ class Patch(FPGA_component):
 			if msg.control == 114:
 				logger.debug(str(self) + " STATE :")
 				logger.debug(self.stateInFPGA)
+				
+			if msg.control == paramName2Num["tremolo_env"]:
+				self.processControl("opno"            , value = 6) #
+				self.processControl("env"             , msg.value) #
+				
+			if msg.control == paramName2Num["vibrato_env"]:
+				self.processControl("opno"            , value = 7) #
+				self.processControl("env"             , msg.value) #
+				
 						
 			
 		elif msg.type == 'polytouch':
@@ -489,7 +533,7 @@ class Patch(FPGA_component):
 		
 		# commands effecting all voices should send them all at once
 		if msg.type == 'aftertouch' or msg.type == 'pitchwheel': 
-			self.fpga_interface_inst.gather()
+			self.fpga_interface_inst.gather(self.polyphony)
 			
 			for voice in voicesToUpdate:
 				#logger.debug("\n\n------------------\nselecting voice " + str(voice.index))
@@ -535,7 +579,6 @@ class Voice(FPGA_component):
 	def __init__(self, index, fpga_interface_inst, patch):
 		super().__init__(index, fpga_interface_inst, patch)
 		
-	
 		self.index = index
 		self.note = None
 		self.patch  = None
@@ -707,14 +750,20 @@ class Operator(FPGA_component):
 				self.paramName2Real[controlNum2ParamName[msg.control]] = msg.value/127.0
 					
 				if msg.control == paramName2Num["env"]: 
-					self.send("cmd_env"            , self.voice.note.velocityReal * (2**16) * self.paramName2Real["env"])
+					if self.index < 6:
+						self.send("cmd_env"            , self.voice.note.velocityReal * (2**16) * self.paramName2Real["env"])
+					else:
+						self.send("cmd_env"            , (2**16) * self.paramName2Real["env"])
 						
 				if msg.control == paramName2Num["env_porta"]: 
 					self.send("cmd_env_porta"      , 2**10 * (1 - self.paramName2Real["env_porta"]) * (1 - self.patch.paramName2Real["portamento"]) )
 		# static oscillators do not have velocity-dependant env
 					
 				if msg.control == paramName2Num["increment"]: 
-					self.send("cmd_increment"      , 2**16 * self.paramName2Real["increment"]) # * self.paramName2Real["increment"]
+					if self.index < 6:
+						self.send("cmd_increment"      , 2**16 * self.paramName2Real["increment"]) # * self.paramName2Real["increment"]
+					else:
+						self.send("cmd_increment"      , 2**3 * self.paramName2Real["increment"]) # * self.paramName2Real["increment"]
 					
 				if msg.control == paramName2Num["increment_porta"]: 
 					self.send("cmd_increment_porta", 2**10 * (1 - self.patch.paramName2Real["portamento"]) * (1 - self.paramName2Real["increment_porta"]))
@@ -790,6 +839,15 @@ class fpga_interface():
 		#logger.debug([hex(p) for p in payload_array])
 		return payload_array
 		
+	def format_command_multiple(self, mm_paramno, mm_opno,  voiceno, payload, voicemode = 1):
+		payload = np.array(payload, dtype=np.int)
+		logger.debug("PL")
+		logger.debug(payload)
+		payload = payload.byteswap().tobytes()
+		payload_array = [mm_paramno, 1 << mm_opno, (voicemode << 7) | (voiceno >> 8), voiceno] + [int(i) for i in payload] 
+		#logger.debug([hex(p) for p in payload_array])
+		return payload_array
+		
 	def format_command_int(self, mm_paramno, mm_opno,  voiceno,  payload, voicemode = 0):
 		payload_packed = struct.pack(">I", int(payload))
 		payload_array = [mm_paramno, 1 << mm_opno, (voicemode << 7) | (voiceno >> 8), voiceno] + [int(i) for i in payload_packed] 
@@ -803,33 +861,37 @@ class fpga_interface():
 		return payload
 		
 	def sendMultiple(self, paramName, opno, voiceno, payload, voicemode = 0):
-		packstring = ">" + str(int(len(payload)/4)) + "I"
-		payload = np.array(payload, dtype=np.int)
-		payload_packed = struct.pack(packstring, *payload)
-		tosend = self.format_command_int(self.cmdName2number[paramName], opno, voiceno, 0)
+		tosend = self.format_command_multiple(self.cmdName2number[paramName], opno, voiceno, payload)
 		with ILock('jlock', lock_directory=sys.path[0]):
-			logger.debug("tslen: " + str(len(tosend[:4])))
-			spi.xfer2(tosend[:4] + payload_packed)
+			logger.debug("sending")
+			logger.debug([hex(s) for s in tosend])
+			spi.xfer2(tosend[:4] + tosend)
 			#logger.debug("sent")
 	
 	def gather(self, voicecount):
-		tosend = {}
+		self.sendDict = {}
 		self.voicecount = voicecount
 		self.gathering = True
+		self.lowestVoiceIndex = 10000
 		
 	def release(self):
-		??
+		logger.debug("SENDDICT")
+		logger.debug(self.sendDict)
+		for param, opdict in self.sendDict.items():
+			for opno, payloads in opdict.items():
+				self.sendMultiple(param, opno, self.lowestVoiceIndex, payloads)
+		self.gathering = False
 	
 	def send(self, paramName, mm_opno,  voiceno,  payload):
 	
 		# gather data if gathering is on
 		if self.gathering: 
-			if paramName not in tosend.keys():
-				tosend[paramName] = {}
-			if mm_opno not in tosend[paramName].keys():
-				tosend[paramName][mm_opno] = [0] * voicecount
-			tosend[paramName][mm_opno][voiceno] = payload
-					
+			if paramName not in self.sendDict.keys():
+				self.sendDict[paramName] = {}
+			if mm_opno not in self.sendDict[paramName].keys():
+				self.sendDict[paramName][mm_opno] = [0] * self.voicecount
+			self.sendDict[paramName][mm_opno][voiceno] = payload
+			self.lowestVoiceIndex = min(self.lowestVoiceIndex , voiceno)
 		else:
 			tosend = self.format_command_int(self.cmdName2number[paramName], mm_opno, voiceno, payload)
 			with ILock('jlock', lock_directory=sys.path[0]):

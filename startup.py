@@ -23,7 +23,6 @@ formatter = logging.Formatter('{"debug": %(asctime)s {%(pathname)s:%(lineno)d} %
 ch = logging.StreamHandler()
 ch.setFormatter(formatter)
 logger.addHandler(ch)
-logger.setLevel(0)
 
 		
 
@@ -88,6 +87,9 @@ class MidiDevice(object):
 
 if __name__ == "__main__":
 	
+	logger.setLevel(0)
+	if len(sys.argv) > 1:
+		logger.setLevel(1)
 		
 	api=rtmidi.API_UNSPECIFIED
 	midiDev = []
