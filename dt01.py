@@ -22,6 +22,7 @@ import hjson as json
 import socket
 import os
 import traceback
+import pickle
 
 import logging
 import collections
@@ -36,10 +37,10 @@ controlNum2ParamName = [""]*CONTROLCOUNT
 # common midi controls https://professionalcomposers.com/midi-cc-list/
 
 # begin voice parameters
-#controlNum2ParamName[0 ] = "vibrato_env"  # modwheel. tie it to vibrato (Pitch LFO)
-#controlNum2ParamName[1 ] = "tremolo_env"  # breath control
-controlNum2ParamName[1 ] = "vibrato_env"  # modwheel. tie it to vibrato (Pitch LFO)
-controlNum2ParamName[0 ] = "tremolo_env"  # breath control
+controlNum2ParamName[0 ] = "vibrato_env"  # modwheel. tie it to vibrato (Pitch LFO)
+controlNum2ParamName[1 ] = "tremolo_env"  # breath control
+#controlNum2ParamName[1 ] = "vibrato_env"  # modwheel. tie it to vibrato (Pitch LFO)
+#controlNum2ParamName[0 ] = "tremolo_env"  # breath control
 controlNum2ParamName[4 ] = "fbgain"         
 controlNum2ParamName[5 ] = "fbsrc"          
 
@@ -109,7 +110,7 @@ class FPGA_component:
 		
 		# initialize lists
 		self.event2action  = collections.defaultdict(list)
-		logger.debug("initialized " + str(self))
+		#logger.debug("initialized " + str(self))
 		
 		
 	def computeDicts(self, recursive = True):
@@ -195,14 +196,32 @@ class FPGA_component:
 	def dumpState(self):
 		logger.debug(self)
 		logger.debug(json.dumps(self.stateInFPGA, indent = 4))
+		logger.debug(type(self))
+		if type(self) == Voice:
+			for child in self.allChildren:
+				child.dumpState()
+		elif len(self.allChildren) > 1:
+			self.allChildren[1].dumpState()
+		#for child in self.allChildren:
+		#	child.dumpState()
 
 # heirarchy:
 # DT01 controls
 # patch controls
 # voice controls
 # operator
-		
+
+def DT01_fromFile(filename):
+	with open(filename, 'rb') as f:
+		return pickle.load(f)
+
 class DT01(FPGA_component):
+	def toFile(self, filename):
+		with open(filename, 'wb+') as f:
+			pickle.dump(self, f)
+
+		
+	
 	def __init__(self, polyphony = 512):
 		self.fpga_interface_inst = fpga_interface()
 		
@@ -236,6 +255,8 @@ class DT01(FPGA_component):
 		self.patches += [patch]
 		
 	def initialize(self):
+		self.fpga_interface_inst.gather(self.polyphony)
+		self.allChildren = self.voices
 		for voice in self.voices:
 			#paramName, mm_opno,  voiceno,  payload
 			voice.send("cmd_static"       , 0b11000000)
@@ -260,6 +281,7 @@ class DT01(FPGA_component):
 				operator.send("cmd_increment_porta", 2**16)
 				operator.send("cmd_incexp"         , 2**16)
 
+		self.fpga_interface_inst.release()
 		self.send("cmd_flushspi"     , 0)
 		self.send("cmd_passthrough"  , 0)
 		self.send("cmd_shift"        , 2)
@@ -294,7 +316,13 @@ class Patch(FPGA_component):
 	def processControl(self, paramName, value):
 		self.processEvent(mido.Message('control_change', control = paramName2Num [paramName], value = value)) #
 		
-	
+	def setControl(self, control, value):
+		logger.debug("control : " + str(control) + " (" + controlNum2ParamName[control] +  "): " + str(value))
+		self.control[control]     = value
+		self.controlReal[control] = value/127.0
+		self.paramName2Val [controlNum2ParamName[control]] = value
+		self.paramName2Real[controlNum2ParamName[control]] = value/127.0
+
 	def __init__(self, fpga_interface_inst):
 		logger.debug("patch init ")
 		self.fpga_interface_inst  = fpga_interface_inst
@@ -340,19 +368,20 @@ class Patch(FPGA_component):
 			self.paramName2Val [paramName] = 0
 			self.paramName2Real[paramName] = 0
 		
-		self.processControl("vibrato_env", value = 0) #
-		self.processControl("tremolo_env", value = 0) #
-		self.processControl( "fbgain"       , value = 0)
-		self.processControl( "fbsrc"        , value = 0)
-		self.processControl( "baseincrement", value = 127)     # 
-		self.processControl( "expression"   , value = 0) # common midi control
+		self.fpga_interface_inst.gather(self.polyphony)
+		self.processControl("vibrato_env"     , value = 0) #
+		self.processControl("tremolo_env"     , value = 0) #
+		self.processControl( "fbgain"         , value = 0)
+		self.processControl( "fbsrc"          , value = 0)
+		self.processControl( "baseincrement"  , value = 127)     # 
+		self.processControl( "expression"     , value = 0) # common midi control
 		
 		self.processControl("opno"            , value = 0) #
-		self.processControl( "voicegain"    , value = 127) # common midi control
-		self.processControl( "pan"          , value = 64) # common midi control
+		self.processControl( "voicegain"      , value = 127) # common midi control
+		self.processControl( "pan"            , value = 64) # common midi control
 		self.processControl("opno"            , value = 1) #
-		self.processControl( "voicegain"    , value = 127) # common midi control
-		self.processControl( "pan"          , value = 64) # common midi control
+		self.processControl( "voicegain"      , value = 127) # common midi control
+		self.processControl( "pan"            , value = 64) # common midi control
 		
 		self.processControl("opno"            , value = 0) #
 		self.processControl("env"             , value = 127) #
@@ -439,7 +468,7 @@ class Patch(FPGA_component):
 		self.processControl("static"          , value = 1  ) #
 		self.processControl("sounding"        , value = 0  ) #
 		
-		# VIBRATO
+		# VIBRATO   
 		self.processControl("opno"            , value = 7) #
 		self.processControl("env"             , value = 0) #
 		self.processControl("env_porta"       , value = 0 ) #
@@ -451,24 +480,25 @@ class Patch(FPGA_component):
 		self.processControl("amsrc"           , value = 0  ) #am off
 		self.processControl("static"          , value = 1  ) #
 		self.processControl("sounding"        , value = 0  ) #
-		
-		# common midi controls
-		self.processControl("sustain"         , value = 0)# common midi control
-		self.processControl("portamento"      , value = 0)# common midi control
-		self.processControl("filter_resonance", value = 0)# common midi control
-		self.processControl("filter_cutoff"   , value = 0)# common midi control
-
-		self.processControl("env_clkdiv"      , value = 16) #   
-		self.processControl("flushspi"        , value = 0) #   
-		self.processControl("passthrough"     , value = 0) #   
-		self.processControl("shift"           , value = 3) #   
-					
-		self.processEvent(mido.Message('pitchwheel', pitch = 64))
-		self.processEvent(mido.Message('aftertouch', value = 0))
-		for note in self.allNotes:
-			self.processEvent(mido.Message('polytouch', note = note.index, value = 0))
-			
-		#self.processEvent(mido.Message('control_change', control = 114, value = 0)) #
+		#
+		self.fpga_interface_inst.release()
+		## common midi controls
+		#self.processControl("sustain"         , value = 0)# common midi control
+		#self.processControl("portamento"      , value = 0)# common midi control
+		#self.processControl("filter_resonance", value = 0)# common midi control
+		#self.processControl("filter_cutoff"   , value = 0)# common midi control
+#
+		#self.processControl("env_clkdiv"      , value = 16) #   
+		#self.processControl("flushspi"        , value = 0) #   
+		#self.processControl("passthrough"     , value = 0) #   
+		#self.processControl("shift"           , value = 3) #   
+		#			
+		#self.processEvent(mido.Message('pitchwheel', pitch = 64))
+		#self.processEvent(mido.Message('aftertouch', value = 0))
+		#for note in self.allNotes:
+		#	self.processEvent(mido.Message('polytouch', note = note.index, value = 0))
+		#	
+		##self.processEvent(mido.Message('control_change', control = 114, value = 0)) #
 	
 	def getCtrlString(self, ctrlName):
 		return "control[" + str(int(paramName2Num[ctrlName])) + "]"
@@ -488,7 +518,7 @@ class Patch(FPGA_component):
 			note.velocityReal = 0 
 			voicesToUpdate = note.voices.copy()
 			for voice in note.voices:
-				voice.spawnTime = 0
+				voice.spawntime = 0
 			note.voices = []
 			note.held = False
 			
@@ -503,14 +533,14 @@ class Patch(FPGA_component):
 			for voiceno in range(self.voicesPerNote):
 				
 				#self.currVoiceIndex = (self.currVoiceIndex + 1) % self.polyphony
-				
+				logger.debug([s.spawntime for s in self.voices])
 				oldestVoiceInPatch = sorted(self.voices, key=lambda x: x.spawntime)[0]
-				self.currVoice.spawnTime = time.time()
-				self.currVoice = self.voices[self.currVoiceIndex]
-				self.currVoice.indexInCluser = voiceno
-				self.currVoice.note = note
-				note.voices += [self.currVoice]
+				oldestVoiceInPatch.spawntime = time.time()
+				oldestVoiceInPatch.indexInCluser = voiceno
+				oldestVoiceInPatch.note = note
+				note.voices += [oldestVoiceInPatch]
 			voicesToUpdate = note.voices
+			
 				
 		elif msg.type == 'pitchwheel':
 			logger.debug("PW: " + str(msg.pitch))
@@ -520,12 +550,7 @@ class Patch(FPGA_component):
 			logger.debug("PWREAL " + str(self.pitchwheelReal))
 				
 		elif msg.type == 'control_change':
-		
-			logger.debug("control : " + str(msg.control) + " (" + controlNum2ParamName[msg.control] +  "): " + str(msg.value))
-			self.control[msg.control]     = msg.value
-			self.controlReal[msg.control] = msg.value/127.0
-			self.paramName2Val [controlNum2ParamName[msg.control]] = msg.value
-			self.paramName2Real[controlNum2ParamName[msg.control]] = msg.value/127.0
+			self.setControl(msg.control, msg.value)
 			event = "control[" + str(msg.control) + "]"
 			
 			# forward some controls
@@ -578,13 +603,20 @@ class Patch(FPGA_component):
 			self.aftertouchReal = msg.value/127.0
 		
 		# commands effecting all voices should send them all at once
-		if msg.type == 'aftertouch' or msg.type == 'pitchwheel': 
+		if msg.type == 'aftertouch' or msg.type == 'pitchwheel' or msg.type == 'control_change': 
 			self.fpga_interface_inst.gather(self.polyphony)
 			
 			for voice in voicesToUpdate:
 				#logger.debug("\n\n------------------\nselecting voice " + str(voice.index))
 				voice.processEvent(msg)
 				
+			self.fpga_interface_inst.release()
+			
+		elif msg.type == 'note_on' or msg.type == "note_off":
+			self.fpga_interface_inst.gather(self.voicesPerNote, voicemode=False)
+			for voice in voicesToUpdate:
+				#logger.debug("\n\n------------------\nselecting voice " + str(voice.index))
+				voice.processEvent(msg)
 			self.fpga_interface_inst.release()
 			
 			
@@ -837,7 +869,6 @@ class Operator(FPGA_component):
 	def send(self, param, value):
 		#if self.stateInFPGA.get(param) != value:
 		if True: # better for debugging
-			logger.debug(self.fpga_interface_inst)
 			self.fpga_interface_inst.send(param, self.index, self.voice.index, value)
 		self.stateInFPGA[param] = value
 
@@ -888,8 +919,6 @@ class fpga_interface():
 		
 	def format_command_multiple(self, mm_paramno, mm_opno,  voiceno, payload, voicemode = 1):
 		payload = np.array(payload, dtype=np.int)
-		logger.debug("PL")
-		logger.debug(payload)
 		payload = payload.byteswap().tobytes()
 		payload_array = [mm_paramno, 1 << mm_opno, (voicemode << 7) | (voiceno >> 8), voiceno] + [int(i) for i in payload] 
 		#logger.debug([hex(p) for p in payload_array])
@@ -908,44 +937,63 @@ class fpga_interface():
 		return payload
 		
 	def sendMultiple(self, paramName, opno, voiceno, payload, voicemode = 0):
-		tosend = self.format_command_multiple(self.cmdName2number[paramName], opno, voiceno, payload)
-		with ILock('jlock', lock_directory=sys.path[0]):
-			logger.debug("sending")
-			logger.debug([hex(s) for s in tosend])
-			spi.xfer2(tosend)
-			#logger.debug("sent")
+		logger.debug(voicemode)
+		tosend = self.format_command_multiple(self.cmdName2number[paramName], opno, voiceno, payload, voicemode = voicemode)
+		#with ILock('jlock', lock_directory=sys.path[0]):
+		logger.debug("sending " + paramName + " voice: " + str(voiceno) + " opno: " + str(opno) + " PL " + str(payload))
+		#logger.debug(payload)
+		logger.debug([hex(s) for s in tosend])
+		spi.xfer2(tosend)
+		#logger.debug("sent")
 	
-	def gather(self, voicecount):
-		self.sendDict = {}
+	def gather(self, voicecount, voicemode = True):
+		self.sendDictAcrossVoices = {}
+		self.sendDictAcrossOperators = {}
 		self.voicecount = voicecount
+		self.voicemode = voicemode
 		self.gathering = True
 		self.lowestVoiceIndex = 10000
 		
 	def release(self):
-		logger.debug("SENDDICT")
-		logger.debug(self.sendDict)
-		for param, opdict in self.sendDict.items():
-			for opno, payloads in opdict.items():
-				self.sendMultiple(param, opno, self.lowestVoiceIndex, payloads)
+		#logger.debug("sendDictAcrossVoices")
+		#logger.debug(self.sendDictAcrossVoices)
+		if self.voicemode:
+			for param, opdict in self.sendDictAcrossVoices.items():
+				for opno, payloads in opdict.items():
+					self.sendMultiple(param, opno, self.lowestVoiceIndex, payloads, voicemode = self.voicemode)
+		
+		else:
+			logger.debug(self.sendDictAcrossOperators)
+			for param, voicedict in self.sendDictAcrossOperators.items():
+				for voiceno, payloads in voicedict.items():
+					self.sendMultiple(param, 0, voiceno, payloads, voicemode = self.voicemode)
+			
 		self.gathering = False
 	
 	def send(self, paramName, mm_opno,  voiceno,  payload):
 	
 		# gather data if gathering is on
 		if self.gathering: 
-			if paramName not in self.sendDict.keys():
-				self.sendDict[paramName] = {}
-			if mm_opno not in self.sendDict[paramName].keys():
-				self.sendDict[paramName][mm_opno] = [0] * self.voicecount
-			self.sendDict[paramName][mm_opno][voiceno] = payload
+			# across voices 
+			if self.voicemode:
+				if paramName not in self.sendDictAcrossVoices.keys():          self.sendDictAcrossVoices[paramName] = {}
+				if mm_opno not in self.sendDictAcrossVoices[paramName].keys(): self.sendDictAcrossVoices[paramName][mm_opno] = []
+				self.sendDictAcrossVoices[paramName][mm_opno] += [payload]
+			
+			else:
+				# within voice
+				if paramName not in self.sendDictAcrossOperators.keys():          self.sendDictAcrossOperators[paramName] = {}
+				if voiceno not in self.sendDictAcrossOperators[paramName].keys(): self.sendDictAcrossOperators[paramName][voiceno] = []
+				self.sendDictAcrossOperators[paramName][voiceno] += [payload]
+				
 			self.lowestVoiceIndex = min(self.lowestVoiceIndex , voiceno)
 		else:
 			tosend = self.format_command_int(self.cmdName2number[paramName], mm_opno, voiceno, payload)
-			with ILock('jlock', lock_directory=sys.path[0]):
-				logger.debug("sending " + paramName + "(" + str(self.cmdName2number[paramName]) + ")" + " operator:" + str(mm_opno) + " voice:" + str(voiceno) + " payload:" + str(payload))
-				#logger.debug(tosend)
-				spi.xfer2(tosend)
-				#logger.debug("sent")
+			#with ILock('jlock', lock_directory=sys.path[0]):
+			logger.debug("sending " + paramName + "(" + str(self.cmdName2number[paramName]) + ")" + " operator:" + str(mm_opno) + " voice:" + str(voiceno) + " payload:" + str(payload))
+			#logger.debug(tosend)
+			spi.xfer2(tosend)
+			#logger.debug("sent")
 		
 if __name__ == "__main__":
 	fpga_interface_inst = fpga_interface()

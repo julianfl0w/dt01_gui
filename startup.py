@@ -19,7 +19,8 @@ import re
 faulthandler.enable()
  
 logger = logging.getLogger('DT01')
-formatter = logging.Formatter('{"debug": %(asctime)s {%(pathname)s:%(lineno)d} %(message)s}')
+#formatter = logging.Formatter('{"debug": %(asctime)s {%(pathname)s:%(lineno)d} %(message)s}')
+formatter = logging.Formatter('{{%(pathname)s:%(lineno)d %(message)s}')
 ch = logging.StreamHandler()
 ch.setFormatter(formatter)
 logger.addHandler(ch)
@@ -96,8 +97,24 @@ if __name__ == "__main__":
 	midiin = rtmidi.MidiIn(get_api_from_environment(api))
 	midi_ports  = midiin.get_ports()
 	
-	dt01_inst = DT01(polyphony = 32)
+	
+	logger.debug("Instantiating DT01")
+	polyphony = 512
+	filename = "dt01_" + str(int(polyphony)) + ".pkl"
+
+	if os.path.exists(filename):
+		logger.debug("reading from file")
+		dt01_inst = DT01_fromFile(filename)
+		logger.debug("finished reading")
+	else:
+		logger.debug("initializing from scratch")
+		dt01_inst = DT01(polyphony = polyphony)
+		logger.debug("saving to file")
+		dt01_inst.toFile(filename)
+		
+	logger.debug("Initializing")
 	dt01_inst.initialize()
+	
 	GLOBAL_DEFAULT_PATCH = Patch(dt01_inst.fpga_interface_inst)
 	dt01_inst.addPatch(GLOBAL_DEFAULT_PATCH)
 	
@@ -121,6 +138,9 @@ if __name__ == "__main__":
 		# Just wait for keyboard interrupt,
 		# everything else is handled via the input callback.
 		while True:
+			c = sys.stdin.read(1)
+			if c == 'd':
+				dt01_inst.dumpState()
 			#for dev in midiDev:
 			#	try:
 			#		data = dev.s.recv(50)
