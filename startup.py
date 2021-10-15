@@ -1,7 +1,8 @@
 import struct
 import sys
 import numpy as np 
-from dt01 import *
+import dt01
+from patch import *
 import time
 import rtmidi
 from rtmidi.midiutil import *
@@ -18,15 +19,6 @@ import re
 
 faulthandler.enable()
  
-logger = logging.getLogger('DT01')
-#formatter = logging.Formatter('{"debug": %(asctime)s {%(pathname)s:%(lineno)d} %(message)s}')
-formatter = logging.Formatter('{{%(pathname)s:%(lineno)d %(message)s}')
-ch = logging.StreamHandler()
-ch.setFormatter(formatter)
-logger.addHandler(ch)
-
-		
-
 class MidiDevice(object):
 		
 	def __init__(self, i, patch, midi_portname):
@@ -88,6 +80,13 @@ class MidiDevice(object):
 
 if __name__ == "__main__":
 	
+	logger = logging.getLogger('DT01')
+	#formatter = logging.Formatter('{"debug": %(asctime)s {%(pathname)s:%(lineno)d} %(message)s}')
+	formatter = logging.Formatter('{{%(pathname)s:%(lineno)d %(message)s}')
+	ch = logging.StreamHandler()
+	ch.setFormatter(formatter)
+	logger.addHandler(ch)
+
 	logger.setLevel(0)
 	if len(sys.argv) > 1:
 		logger.setLevel(1)
@@ -102,20 +101,20 @@ if __name__ == "__main__":
 	polyphony = 512
 	filename = "dt01_" + str(int(polyphony)) + ".pkl"
 
-	if os.path.exists(filename):
-		logger.debug("reading from file")
-		dt01_inst = DT01_fromFile(filename)
-		logger.debug("finished reading")
-	else:
-		logger.debug("initializing from scratch")
-		dt01_inst = DT01(polyphony = polyphony)
-		logger.debug("saving to file")
-		dt01_inst.toFile(filename)
-		
+	#if os.path.exists(filename):
+	#	logger.debug("reading from file")
+	#	dt01_inst = dt01.DT01_fromFile(filename)
+	#	logger.debug("finished reading")
+	#else:
+	logger.debug("initializing from scratch")
+	dt01_inst = dt01.DT01(polyphony = polyphony)
+	logger.debug("saving to file")
+	dt01_inst.toFile(filename)
+	
 	logger.debug("Initializing")
 	dt01_inst.initialize()
 	
-	GLOBAL_DEFAULT_PATCH = Patch(dt01_inst.fpga_interface_inst)
+	GLOBAL_DEFAULT_PATCH = Patch(dt01_inst)
 	dt01_inst.addPatch(GLOBAL_DEFAULT_PATCH)
 	
 	logger.debug(midi_ports)
