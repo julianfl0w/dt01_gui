@@ -45,7 +45,9 @@ class Note:
 		self.held  = False
 		self.polytouch = 0
 		self.msg  = None
-		self.defaultIncrement = 2**18 * (noteToFreq(index) / 96000.0)
+		self.tone = index % 12
+		self.defaultIncrement = 2**18 * (noteToFreq(self.tone) / 96000.0)
+		self.octave = int(index / 12)
 		
 # patch holds all state, including note and control state
 class Patch():
@@ -141,26 +143,12 @@ class Patch():
 		#for note in self.allNotes:
 		#	self.processEvent(mido.Message('polytouch', note = note.index, value = 0))
 		#	
-		##self.processEvent(mido.Message('control_change', control = 114, value = 0)) #
-	
-	def processEvent(self, msg):
-	
-		#logger.debug("processing " + msg.type)
-		voices = self.voices
-			
-		msgtype = msg.type
-		voicesToUpdate = self.voices
-		event = msg.type
+		self.processEvent(mido.Message('control_change', control = dt01.paramName2Num["opno" ], value = 0)) #
+		self.processEvent(mido.Message('control_change', control = dt01.paramName2Num["env"  ], value = 127)) #
 		
-		if msg.type == "note_off" or (msg.type == "note_on" and msg.velocity == 0):
-			note = self.allNotes[msg.note] 
-			note.velocity = 0 
-			note.velocityReal = 0 
-			voicesToUpdate = note.voices.copy()
-			for voice in note.voices:
-				voice.spawntime = 0
-			note.voices = []
-			note.held = False
+		self.processEvent(mido.Message('control_change', control = dt01.paramName2Num["opno" ], value = 6)) #
+		self.processEvent(mido.Message('control_change', control = dt01.paramName2Num["increment"  ], value = 3)) #
+	
 			
 	def getCurrOpParam2Real(self, index, paramName):
 		return self.paramName2Real["operator"][paramName][index]
@@ -168,12 +156,29 @@ class Patch():
 	def processEvent(self, msg):
 	
 		logger.debug("Processing " + str(msg))
-	
-		if msg.type == "note_on" or msg.type == "note_off":
-			note = self.allNotes[msg.note]
 			
+		if msg.type == "note_off" or (msg.type == "note_on" and msg.velocity == 0):
+			note = self.allNotes[msg.note] 
+			note.velocity = 0 
+			note.velocityReal = 0 
+			voicesToUpdate = note.voices.copy()
+			for voice in note.voices:
+				voice.spawntime = 0
+				self.fpga_interface_inst.gather(False)
+				for operator in voice.operators:
+					if operator.static:
+						operator.send("cmd_env"            , (2**16) * self.getCurrOpParam2Real(operator.index, "env")               )
+					else:
+						operator.send("cmd_env"            , note.velocityReal * (2**16) * self.getCurrOpParam2Real(operator.index, "env"))
+				
+				self.fpga_interface_inst.release()
+			note.voices = []
+			note.held = False
+		
+		# if note on, spawn voices
 		if msg.type == "note_on":
-			note.velocity = msg.velocity
+			note = self.allNotes[msg.note]
+			note.velocity     = msg.velocity
 			note.velocityReal = msg.velocity/127.0
 			note.held = True
 			note.msg = msg
@@ -189,7 +194,6 @@ class Patch():
 				note.voices += [oldestVoiceInPatch]
 				oldestVoiceInPatch.send("cmd_baseincrement", self.paramName2Real["baseincrement"] * self.pitchwheelReal * (1 + self.aftertouchReal) * note.defaultIncrement * 2**6)
 		
-		if msg.type == "note_on" or msg.type == "note_off":
 			for voice in note.voices:
 				self.fpga_interface_inst.gather(False)
 				for operator in voice.operators:
@@ -206,9 +210,10 @@ class Patch():
 			amountchange = msg.pitch / 8192.0
 			self.pitchwheelReal = pow(2, amountchange)
 			logger.debug("PWREAL " + str(self.pitchwheelReal))
-			for voice in self.allVoices:
+			self.fpga_interface_inst.gather()
+			for voice in self.voices:
 				voice.send("cmd_baseincrement", self.paramName2Real["baseincrement"] * self.pitchwheelReal * (1 + self.aftertouchReal) * voice.note.defaultIncrement * 2**6)
-		
+			self.fpga_interface_inst.release()
 				
 		elif msg.type == 'control_change':
 			
@@ -259,17 +264,20 @@ class Patch():
 				self.opno = msg.value
 				
 			if msg.control == dt01.paramName2Num["tremolo_env"]:
-				voice.operators[6].send("env"             , msg.value) #
+				self.processEvent(mido.Message('control_change', control = dt01.paramName2Num ["opno"], value = 6)) #
+				self.processEvent(mido.Message('control_change', control = dt01.paramName2Num ["env"], value = msg.value)) #
 				
 			if msg.control == dt01.paramName2Num["vibrato_env"]:
-				voice.operators[7].send("env"             , msg.value) #
+				self.processEvent(mido.Message('control_change', control = dt01.paramName2Num ["opno"], value = 7)) #
+				self.processEvent(mido.Message('control_change', control = dt01.paramName2Num ["env"], value = msg.value)) #
 			
 			self.fpga_interface_inst.gather()
 			for voice in self.voices:
 			
 				# OPERATOR CONCERNS
 				# get active operator
-				channel  = voice.channels[self.opno]
+				if self.opno < 2:
+					channel  = voice.channels[self.opno]
 				operator = voice.operators[self.opno]
 				
 				if msg.control == dt01.paramName2Num["voicegain"] or msg.control == dt01.paramName2Num["pan"] : 
@@ -336,7 +344,7 @@ class Patch():
 					if operator.index < 6:
 						operator.send("cmd_increment"      , 2**10 * self.getCurrOpParam2Real(operator.index, "increment")) # * self.getCurrOpParam2Real(operator.index, "increment")
 					else:
-						operator.send("cmd_increment"      , 2**3 * self.getCurrOpParam2Real(operator.index, "increment")) # * self.getCurrOpParam2Real(operator.index, "increment")
+						operator.send("cmd_increment"      , 2**7 * self.getCurrOpParam2Real(operator.index, "increment")) # * self.getCurrOpParam2Real(operator.index, "increment")
 					
 				if msg.control == dt01.paramName2Num["increment_porta"]: 
 					operator.send("cmd_increment_porta", 2**10 * (1 - self.paramName2Real["portamento"]) * (1 - self.getCurrOpParam2Real(operator.index, "increment_porta")))
@@ -371,9 +379,11 @@ class Patch():
 		elif msg.type == 'aftertouch':
 			self.aftertouch = msg.value
 			self.aftertouchReal = msg.value/127.0
-			for voice in self.allVoices:
+			self.fpga_interface_inst.gather()
+			for voice in self.voices:
 				voice.send("cmd_baseincrement", self.paramName2Real["baseincrement"] * self.pitchwheelReal * (1 + self.aftertouchReal) * voice.note.defaultIncrement * 2**6)
-		
+			self.fpga_interface_inst.release()
+			
 		# commands effecting all voices should send them all at once
 		if msg.type == 'aftertouch' or msg.type == 'pitchwheel' or msg.type == 'control_change': 
 			self.fpga_interface_inst.gather()
@@ -406,11 +416,13 @@ if __name__ == "__main__":
 	
 	testPatch = Patch(dt01_inst)
 	testPatch.processEvent(mido.Message('control_change', control = dt01.paramName2Num ["opno"], value = 0)) #
+	
 	testPatch.processEvent(mido.Message('control_change', control = dt01.paramName2Num ["sounding"], value = 1)) #
 	testPatch.processEvent(mido.Message('control_change', control = dt01.paramName2Num ["env"], value = 127)) #
-	testPatch.processEvent(mido.Message('note_on', channel=0, note=12, velocity=23, time=0))
-	testPatch.processEvent(mido.Message('note_on', channel=0, note=16, velocity=23, time=0))
-	testPatch.processEvent(mido.Message('note_on', channel=0, note=19, velocity=23, time=0))
+	
+	testPatch.processEvent(mido.Message('note_on', channel=0, note=24, velocity=23, time=0))
+	testPatch.processEvent(mido.Message('note_on', channel=0, note=28, velocity=23, time=0))
+	testPatch.processEvent(mido.Message('note_on', channel=0, note=31, velocity=23, time=0))
 	
 	#	logger.debug(json.dumps(testPatch.paramName2Real))
 	

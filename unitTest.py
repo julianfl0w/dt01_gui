@@ -3,7 +3,7 @@ import sys
 import logging
 
 logger = logging.getLogger('DT01')
-formatter = logging.Formatter('{"debug": %(asctime)s {%(pathname)s:%(lineno)d} %(message)s}')
+formatter = logging.Formatter('{%(pathname)s:%(lineno)d %(message)s}')
 ch = logging.StreamHandler()
 ch.setFormatter(formatter)
 logger.addHandler(ch)
@@ -27,6 +27,10 @@ logger.debug("Initializing")
 dt01_inst.initialize()
 logger.debug("Applying a light touch")
 
+# TODO:
+# fix vibrato
+# implement actual envelopes
+
 if "t" in sys.argv:
 	dt01_inst.voices[0].operators[6].send("cmd_env", 2**14)
 	dt01_inst.voices[0].operators[0].send("cmd_env", 2**16)
@@ -35,10 +39,28 @@ if "v" in sys.argv:
 	dt01_inst.voices[0].operators[7].send("cmd_env", 2**14)
 	dt01_inst.voices[0].operators[0].send("cmd_env", 2**16)
 	
+if "fb" in sys.argv:
+	dt01_inst.voices[0].send("cmd_baseincrement", 2**15)
+	dt01_inst.voices[0].send("cmd_fbsrc", 0)
+	dt01_inst.voices[0].send("cmd_fbgain", 2**16)
+	dt01_inst.voices[0].operators[0].send("cmd_env", 2**16)
+
+
+if "f" in sys.argv:
+	dt01_inst.voices[0].send("cmd_baseincrement", 2**15)
+	dt01_inst.voices[0].operators[0].send("cmd_env", 2**16)
+	dt01_inst.voices[0].operators[1].send("cmd_env", 2**12)
+	dt01_inst.voices[0].operators[2].send("cmd_env", 2**12)
+	dt01_inst.voices[0].operators[3].send("cmd_env", 2**12)
+	dt01_inst.voices[0].operators[4].send("cmd_env", 2**7)
+	dt01_inst.voices[0].operators[5].send("cmd_env", 2**14)
+	dt01_inst.voices[0].operators[6].send("cmd_env", 2**16)
+	dt01_inst.voices[0].send("cmd_fm_algo", 0o77754321)
+	
 if "p" in sys.argv:
-	dt01_inst.fpga_interface_inst.gather(2)
+	dt01_inst.fpga_interface_inst.gather()
 	dt01_inst.voices[0].operators[0].send("cmd_env", 2**16)
 	dt01_inst.voices[1].operators[0].send("cmd_env", 2**16)
-	dt01_inst.voices[0].send("cmd_baseincrement", 2**12)
-	dt01_inst.voices[1].send("cmd_baseincrement", 2**12*3/2)
+	dt01_inst.voices[0].send("cmd_baseincrement", 2**13)
+	dt01_inst.voices[1].send("cmd_baseincrement", 2**13*3/2)
 	dt01_inst.fpga_interface_inst.release()

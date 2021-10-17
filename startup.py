@@ -115,7 +115,7 @@ if __name__ == "__main__":
 	dt01_inst.initialize()
 	
 	GLOBAL_DEFAULT_PATCH = Patch(dt01_inst)
-	dt01_inst.addPatch(GLOBAL_DEFAULT_PATCH)
+	#dt01_inst.addPatch(GLOBAL_DEFAULT_PATCH)
 	
 	logger.debug(midi_ports)
 	#for i, midi_portname in enumerate(midi_ports):
