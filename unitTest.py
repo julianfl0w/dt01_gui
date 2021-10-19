@@ -36,13 +36,16 @@ if "t" in sys.argv:
 	dt01_inst.voices[0].operators[0].send("cmd_env", 2**16)
 	
 if "v" in sys.argv:
-	dt01_inst.voices[0].operators[7].send("cmd_env", 2**14)
+	dt01_inst.voices[0].send("cmd_baseincrement", 2**14)
 	dt01_inst.voices[0].operators[0].send("cmd_env", 2**16)
+	dt01_inst.voices[0].operators[7].send("cmd_env", 2**7)
+	dt01_inst.voices[0].operators[7].send("cmd_increment", 2**11)
 	
 if "fb" in sys.argv:
-	dt01_inst.voices[0].send("cmd_baseincrement", 2**15)
+	dt01_inst.voices[0].send("cmd_baseincrement", 2**13)
+	dt01_inst.voices[0].send("cmd_fm_algo", 0o77777770)
 	dt01_inst.voices[0].send("cmd_fbsrc", 0)
-	dt01_inst.voices[0].send("cmd_fbgain", 2**16)
+	dt01_inst.voices[0].send("cmd_fbgain", 2**5)
 	dt01_inst.voices[0].operators[0].send("cmd_env", 2**16)
 
 

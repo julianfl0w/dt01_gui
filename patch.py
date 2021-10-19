@@ -34,7 +34,7 @@ CONTROLCOUNT   = 128
 
 def noteToFreq(note):
 	a = 440.0 #frequency of A (coomon value is 440Hz)
-	return (a / 32) * (2 ** ((note - 9) / 12))
+	return (a / 32) * (2 ** ((note - 9) / 12.0))
 
 class Note:
 	def __init__(self, index):
@@ -46,8 +46,9 @@ class Note:
 		self.polytouch = 0
 		self.msg  = None
 		self.tone = index % 12
-		self.defaultIncrement = 2**18 * (noteToFreq(self.tone) / 96000.0)
-		self.octave = int(index / 12)
+		logger.debug((noteToFreq(self.tone + 12) / 96000.0))
+		self.defaultIncrement = 2**21 * (noteToFreq(self.tone + 12) / 96000.0)
+		self.octave = int(index / 12) + 5
 		
 # patch holds all state, including note and control state
 class Patch():
@@ -147,7 +148,7 @@ class Patch():
 		self.processEvent(mido.Message('control_change', control = dt01.paramName2Num["env"  ], value = 127)) #
 		
 		self.processEvent(mido.Message('control_change', control = dt01.paramName2Num["opno" ], value = 6)) #
-		self.processEvent(mido.Message('control_change', control = dt01.paramName2Num["increment"  ], value = 3)) #
+		self.processEvent(mido.Message('control_change', control = dt01.paramName2Num["increment"  ], value = 30)) #
 	
 			
 	def getCurrOpParam2Real(self, index, paramName):
@@ -187,20 +188,21 @@ class Patch():
 				
 				#self.currVoiceIndex = (self.currVoiceIndex + 1) % self.polyphony
 				#logger.debug([s.spawntime for s in self.voices])
-				oldestVoiceInPatch = sorted(self.voices, key=lambda x: x.spawntime)[0]
-				oldestVoiceInPatch.spawntime = time.time()
-				oldestVoiceInPatch.indexInCluser = voiceno
-				oldestVoiceInPatch.note = note
-				note.voices += [oldestVoiceInPatch]
-				oldestVoiceInPatch.send("cmd_baseincrement", self.paramName2Real["baseincrement"] * self.pitchwheelReal * (1 + self.aftertouchReal) * note.defaultIncrement * 2**6)
-		
-			for voice in note.voices:
+				voice = sorted(self.voices, key=lambda x: x.spawntime)[0]
+				voice.spawntime = time.time()
+				voice.indexInCluser = voiceno
+				voice.note = note
+				note.voices += [voice]
+				voice.send("cmd_baseincrement", self.paramName2Real["baseincrement"] * self.pitchwheelReal * (1 + self.aftertouchReal) * note.defaultIncrement * 2**6)
+
 				self.fpga_interface_inst.gather(False)
 				for operator in voice.operators:
 					if operator.static:
-						operator.send("cmd_env"            , (2**16) * self.getCurrOpParam2Real(operator.index, "env")               )
+						operator.send("cmd_env"            , (2**16) * self.getCurrOpParam2Real(operator.index, "env")               )				
+		
 					else:
 						operator.send("cmd_env"            , note.velocityReal * (2**16) * self.getCurrOpParam2Real(operator.index, "env"))
+						voice.send("cmd_increment", 1<<(note.octave))
 				
 				self.fpga_interface_inst.release()
 				
@@ -340,11 +342,11 @@ class Patch():
 					operator.send("cmd_env_porta"      , 2**10 * (1 - self.getCurrOpParam2Real(operator.index, "env_porta")) * (1 - self.paramName2Real["portamento"]) )
 		# static oscillators do not have velocity-dependant env
 					
-				if msg.control == dt01.paramName2Num["increment"]: 
+				if msg.control == dt01.paramName2Num["increment"]:
 					if operator.index < 6:
-						operator.send("cmd_increment"      , 2**10 * self.getCurrOpParam2Real(operator.index, "increment")) # * self.getCurrOpParam2Real(operator.index, "increment")
+						operator.send("cmd_increment"      , 1 << self.getCurrOpParam2Val(operator.index, "increment")) # * self.getCurrOpParam2Real(operator.index, "increment")
 					else:
-						operator.send("cmd_increment"      , 2**7 * self.getCurrOpParam2Real(operator.index, "increment")) # * self.getCurrOpParam2Real(operator.index, "increment")
+						operator.send("cmd_increment"      , 2**12 * self.getCurrOpParam2Real(operator.index, "increment")) # * self.getCurrOpParam2Real(operator.index, "increment")
 					
 				if msg.control == dt01.paramName2Num["increment_porta"]: 
 					operator.send("cmd_increment_porta", 2**10 * (1 - self.paramName2Real["portamento"]) * (1 - self.getCurrOpParam2Real(operator.index, "increment_porta")))
@@ -411,18 +413,23 @@ if __name__ == "__main__":
 	polyphony = 512
 	dt01_inst = dt01.DT01(polyphony = polyphony)
 	
-	logger.debug("Initializing")
+	logger.debug("\n\nInitializing DT01")
 	dt01_inst.initialize()
 	
+	logger.debug("\n\nInitializing Patch")
 	testPatch = Patch(dt01_inst)
-	testPatch.processEvent(mido.Message('control_change', control = dt01.paramName2Num ["opno"], value = 0)) #
 	
+	logger.debug("\n\nSending post-patch init")
+	#dt01_inst.voices[0].operators[6].send("cmd_env", 2**15)
+	#dt01_inst.voices[0].operators[0].send("cmd_env", 2**16)
+	
+	testPatch.processEvent(mido.Message('control_change', control = dt01.paramName2Num ["opno"], value = 0)) #
 	testPatch.processEvent(mido.Message('control_change', control = dt01.paramName2Num ["sounding"], value = 1)) #
 	testPatch.processEvent(mido.Message('control_change', control = dt01.paramName2Num ["env"], value = 127)) #
 	
 	testPatch.processEvent(mido.Message('note_on', channel=0, note=24, velocity=23, time=0))
-	testPatch.processEvent(mido.Message('note_on', channel=0, note=28, velocity=23, time=0))
-	testPatch.processEvent(mido.Message('note_on', channel=0, note=31, velocity=23, time=0))
-	
+	dt01_inst.voices[0].operators[0].send("cmd_env", 2**16)
+	#testPatch.processEvent(mido.Message('note_on', channel=0, note=28, velocity=23, time=0))
+	#testPatch.processEvent(mido.Message('note_on', channel=0, note=31, velocity=23, time=0))
 	#	logger.debug(json.dumps(testPatch.paramName2Real))
 	

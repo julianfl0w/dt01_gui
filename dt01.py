@@ -97,7 +97,7 @@ class DT01():
 		self.fpga_interface_inst = fpga_interface()
 		self.voices = 0
 		self.polyphony = polyphony
-		self.voicesPerPatch = min(self.polyphony, 32)
+		self.voicesPerPatch = min(self.polyphony, 64)
 		self.patchesPerDT01 = int(round(self.polyphony / self.voicesPerPatch))
 		self.voices = []
 		self.voiceSets = []
