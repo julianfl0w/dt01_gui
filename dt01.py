@@ -148,7 +148,7 @@ class DT01():
 		self.fpga_interface_inst.release()
 		self.send("cmd_flushspi"     , 0)
 		self.send("cmd_passthrough"  , 0)
-		self.send("cmd_shift"        , 2)
+		self.send("cmd_shift"        , 4)
 		self.send("cmd_env_clkdiv"   , 5)
 	
 	def send(self, param, value):

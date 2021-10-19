@@ -46,7 +46,6 @@ class Note:
 		self.polytouch = 0
 		self.msg  = None
 		self.tone = index % 12
-		logger.debug((noteToFreq(self.tone + 12) / 96000.0))
 		self.defaultIncrement = 2**21 * (noteToFreq(self.tone + 12) / 96000.0)
 		self.octave = int(index / 12) + 5
 		
@@ -144,12 +143,19 @@ class Patch():
 		#for note in self.allNotes:
 		#	self.processEvent(mido.Message('polytouch', note = note.index, value = 0))
 		#	
-		self.processEvent(mido.Message('control_change', control = dt01.paramName2Num["opno" ], value = 0)) #
+		
+		# doesnt belong here
+		self.processEvent(mido.Message('control_change', control = dt01.paramName2Num ["opno"], value = 0)) #
+		self.processEvent(mido.Message('control_change', control = dt01.paramName2Num ["fbsrc"], value = 0)) #
+		self.processEvent(mido.Message('control_change', control = dt01.paramName2Num ["fbgain"], value = 64)) #
+		self.processEvent(mido.Message('control_change', control = dt01.paramName2Num ["fmsrc"], value = 1)) #
+		self.processEvent(mido.Message('control_change', control = dt01.paramName2Num ["sounding"], value = 1)) #
 		self.processEvent(mido.Message('control_change', control = dt01.paramName2Num["env"  ], value = 127)) #
+		self.processEvent(mido.Message('control_change', control = dt01.paramName2Num ["opno"], value = 1)) #
+		self.processEvent(mido.Message('control_change', control = dt01.paramName2Num ["env"], value = 127)) #
 		
 		self.processEvent(mido.Message('control_change', control = dt01.paramName2Num["opno" ], value = 6)) #
 		self.processEvent(mido.Message('control_change', control = dt01.paramName2Num["increment"  ], value = 30)) #
-	
 			
 	def getCurrOpParam2Real(self, index, paramName):
 		return self.paramName2Real["operator"][paramName][index]
@@ -167,10 +173,8 @@ class Patch():
 				voice.spawntime = 0
 				self.fpga_interface_inst.gather(False)
 				for operator in voice.operators:
-					if operator.static:
-						operator.send("cmd_env"            , (2**16) * self.getCurrOpParam2Real(operator.index, "env")               )
-					else:
-						operator.send("cmd_env"            , note.velocityReal * (2**16) * self.getCurrOpParam2Real(operator.index, "env"))
+					if operator.sounding:
+						operator.send("cmd_env"            , note.velocityReal * (2**16) * self.getCurrOpParam2Real(operator.index, "env")* (1 - operator.sounding))
 				
 				self.fpga_interface_inst.release()
 			note.voices = []
@@ -197,10 +201,7 @@ class Patch():
 
 				self.fpga_interface_inst.gather(False)
 				for operator in voice.operators:
-					if operator.static:
-						operator.send("cmd_env"            , (2**16) * self.getCurrOpParam2Real(operator.index, "env")               )				
-		
-					else:
+					if operator.sounding:
 						operator.send("cmd_env"            , note.velocityReal * (2**16) * self.getCurrOpParam2Real(operator.index, "env"))
 						voice.send("cmd_increment", 1<<(note.octave))
 				
@@ -211,6 +212,9 @@ class Patch():
 			self.pitchwheel = msg.pitch
 			amountchange = msg.pitch / 8192.0
 			self.pitchwheelReal = pow(2, amountchange)
+			ARTIPHON = 0
+			if ARTIPHON:
+				self.pitchwheelReal *= 8
 			logger.debug("PWREAL " + str(self.pitchwheelReal))
 			self.fpga_interface_inst.gather()
 			for voice in self.voices:
@@ -294,8 +298,8 @@ class Patch():
 				if msg.control == dt01.paramName2Num["fmsrc"]:
 					operator.fmsrc = msg.value
 					sendVal = 0
-					for i in reversed(range(voice.OPERATORCOUNT)):
-						sendVal = int(sendVal) << int(math.log2(voice.OPERATORCOUNT))
+					for i in reversed(range(dt01.OPERATORCOUNT)):
+						sendVal = int(sendVal) << int(math.log2(dt01.OPERATORCOUNT))
 						sendVal += int(voice.operators[i].fmsrc)
 						#logger.debug(bin(sendVal))
 					voice.send("cmd_fm_algo", sendVal)
@@ -303,8 +307,8 @@ class Patch():
 				#am algo
 				if msg.control == dt01.paramName2Num["amsrc"]:
 					sendVal = 0
-					for i in reversed(range(voice.OPERATORCOUNT)):
-						sendVal = int(sendVal) << int(math.log2(voice.OPERATORCOUNT))
+					for i in reversed(range(dt01.OPERATORCOUNT)):
+						sendVal = int(sendVal) << int(math.log2(dt01.OPERATORCOUNT))
 						sendVal += int(voice.operators[i].amsrc)
 						#logger.debug(bin(sendVal))
 					voice.send("cmd_am_algo", sendVal)
@@ -327,16 +331,17 @@ class Patch():
 				if msg.control == dt01.paramName2Num["static"]: 
 					operator.static = msg.value
 					sendVal = 0
-					for i in reversed(range(voice.OPERATORCOUNT)):
+					for i in reversed(range(dt01.OPERATORCOUNT)):
 						sendVal = int(sendVal) << 1
 						sendVal += int(voice.operators[i].static)
 					voice.send("cmd_static", sendVal)
 		
 				if msg.control == dt01.paramName2Num["env"]: 
+					# sounding operators begin on note_on
 					if operator.index < 6:
-						operator.send("cmd_env"            , voice.note.velocityReal * (2**16) * self.getCurrOpParam2Real(operator.index, "env"))
-					else:
-						operator.send("cmd_env"            , (2**16) * self.getCurrOpParam2Real(operator.index, "env"))
+						operator.send("cmd_env"            , (2**16) * self.getCurrOpParam2Real(operator.index, "env") * (1 - operator.sounding))
+					else:                                                                                              
+						operator.send("cmd_env"            , (2**16) * self.getCurrOpParam2Real(operator.index, "env") * (1 - operator.sounding))
 						
 				if msg.control == dt01.paramName2Num["env_porta"]: 
 					operator.send("cmd_env_porta"      , 2**10 * (1 - self.getCurrOpParam2Real(operator.index, "env_porta")) * (1 - self.paramName2Real["portamento"]) )
@@ -357,26 +362,20 @@ class Patch():
 				if msg.control == dt01.paramName2Num["envexp"]: 
 					operator.send("cmd_envexp"         , self.paramName2Val["operator"]["envexp"][self.opno])
 					
-				if msg.control == dt01.paramName2Num["fmsrc"]: 
-					self.fmsrc = self.paramName2Val["fmsrc"]
 					
-				if msg.control == dt01.paramName2Num["amsrc"]:
-					self.amsrc  = self.paramName2Val["amsrc"]
 					
-				if msg.control == dt01.paramName2Num["static"]:
-					self.static = self.paramName2Val["static"]
 					
-				if msg.control == dt01.paramName2Num["sounding"]:
-					self.sounding = self.paramName2Val["sounding"]
 					
 			self.fpga_interface_inst.release()
 				
 			
 		elif msg.type == 'polytouch':
-			for voice in self.voices:
-				self.allNotes[msg.note].polytouch = msg.value/127.0
-				note = self.allNotes[msg.note]
-				voicesToUpdate = note.voices
+			self.polytouch = msg.value
+			self.polytouchReal = msg.value/127.0
+			#self.fpga_interface_inst.gather()
+			#for voice in self.allNotes[msg.note].voices:
+			#	voice.send("cmd_baseincrement", self.paramName2Real["baseincrement"] * self.pitchwheelReal * (1 + self.aftertouchReal) * voice.note.defaultIncrement * 2**6)
+			#self.fpga_interface_inst.release()
 				
 		elif msg.type == 'aftertouch':
 			self.aftertouch = msg.value
@@ -386,10 +385,6 @@ class Patch():
 				voice.send("cmd_baseincrement", self.paramName2Real["baseincrement"] * self.pitchwheelReal * (1 + self.aftertouchReal) * voice.note.defaultIncrement * 2**6)
 			self.fpga_interface_inst.release()
 			
-		# commands effecting all voices should send them all at once
-		if msg.type == 'aftertouch' or msg.type == 'pitchwheel' or msg.type == 'control_change': 
-			self.fpga_interface_inst.gather()
-			self.fpga_interface_inst.release()
 			
 		if msg.type == "note_off" or (msg.type == "note_on" and msg.velocity == 0):
 			# implement rising mono porta
@@ -426,6 +421,11 @@ if __name__ == "__main__":
 	testPatch.processEvent(mido.Message('control_change', control = dt01.paramName2Num ["opno"], value = 0)) #
 	testPatch.processEvent(mido.Message('control_change', control = dt01.paramName2Num ["sounding"], value = 1)) #
 	testPatch.processEvent(mido.Message('control_change', control = dt01.paramName2Num ["env"], value = 127)) #
+	
+	testPatch.processEvent(mido.Message('control_change', control = dt01.paramName2Num ["opno"], value = 1)) #
+	testPatch.processEvent(mido.Message('control_change', control = dt01.paramName2Num ["env"], value = 127)) #
+	
+	testPatch.processEvent(mido.Message('control_change', control = dt01.paramName2Num ["fm_algo"], value = 0o77777771)) #
 	
 	testPatch.processEvent(mido.Message('note_on', channel=0, note=24, velocity=23, time=0))
 	dt01_inst.voices[0].operators[0].send("cmd_env", 2**16)
