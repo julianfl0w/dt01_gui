@@ -31,56 +31,84 @@ MIDINOTES      = 128
 CONTROLCOUNT   = 128
 OPERATORCOUNT  = 8
 
-controlNum2ParamName = [""]*CONTROLCOUNT
+controlNum2Name = [""]*CONTROLCOUNT
 
 # common midi controls https://professionalcomposers.com/midi-cc-list/
 
 # begin voice parameters
-controlNum2ParamName[0 ] = "vibrato_env"  # modwheel. tie it to vibrato (Pitch LFO)
-controlNum2ParamName[1 ] = "tremolo_env"  # breath control
-#controlNum2ParamName[1 ] = "vibrato_env"  # modwheel. tie it to vibrato (Pitch LFO)
-#controlNum2ParamName[0 ] = "tremolo_env"  # breath control
-controlNum2ParamName[4 ] = "fbgain"         
-controlNum2ParamName[5 ] = "fbsrc"          
+controlNum2Name[0 ] = "ctrl_vibrato_env"  # modwheel. tie it to vibrato (Pitch LFO)
+controlNum2Name[1 ] = "ctrl_tremolo_env"  # breath control
+controlNum2Name[4 ] = "ctrl_fbgain"         
+controlNum2Name[5 ] = "ctrl_fbsrc"          
 
-controlNum2ParamName[7 ]  = "voicegain"       # common midi control
-controlNum2ParamName[9 ]  = "baseincrement"       # 
-controlNum2ParamName[10] = "pan"             # common midi control
-controlNum2ParamName[11] = "expression"      # common midi control
+controlNum2Name[7 ] = "ctrl_voicegain"       # common midi control
+controlNum2Name[10] = "ctrl_pan"             # common midi control
+controlNum2Name[11] = "ctrl_expression"      # common midi control
 
 
 OPBASE = [0]*8
 # begin operator parameters
-controlNum2ParamName[13] = "opno"            
+controlNum2Name[13] = "ctrl_opno"            
 OPBASE[0]  = 14
-controlNum2ParamName[14] = "env"            
-controlNum2ParamName[15] = "env_porta"      
-controlNum2ParamName[16] = "envexp"         
-controlNum2ParamName[17] = "increment"      
-controlNum2ParamName[18] = "increment_porta"
-controlNum2ParamName[19] = "incexp"         
-controlNum2ParamName[20] = "fmsrc"         
-controlNum2ParamName[21] = "amsrc"         
-controlNum2ParamName[22] = "static"         
-controlNum2ParamName[23] = "sounding"         
+controlNum2Name[14] = "ctrl_env"            
+controlNum2Name[15] = "ctrl_env_porta"      
+controlNum2Name[16] = "ctrl_envexp"         
+controlNum2Name[17] = "ctrl_increment"      
+controlNum2Name[18] = "ctrl_increment_porta"
+controlNum2Name[19] = "ctrl_incexp"         
+controlNum2Name[20] = "ctrl_fmsrc"         
+controlNum2Name[21] = "ctrl_amsrc"         
+controlNum2Name[22] = "ctrl_static"         
+controlNum2Name[23] = "ctrl_sounding"         
    
 
 # common midi controls
-controlNum2ParamName[64] = "sustain"         # common midi control
-controlNum2ParamName[65] = "portamento"      # common midi control
-controlNum2ParamName[71] = "filter_resonance"# common midi control
-controlNum2ParamName[74] = "filter_cutoff"   # common midi control
+controlNum2Name[64] = "ctrl_sustain"         # common midi control
+controlNum2Name[65] = "ctrl_portamento"      # common midi control
+controlNum2Name[71] = "ctrl_filter_resonance"# common midi control
+controlNum2Name[74] = "ctrl_filter_cutoff"   # common midi control
 
 
 # begin global params
-controlNum2ParamName[110] = "env_clkdiv"     
-controlNum2ParamName[111] = "flushspi"       
-controlNum2ParamName[112] = "passthrough"    
-controlNum2ParamName[113] = "shift"          
+controlNum2Name[110] = "ctrl_env_clkdiv"     
+controlNum2Name[111] = "ctrl_flushspi"       
+controlNum2Name[112] = "ctrl_passthrough"    
+controlNum2Name[113] = "ctrl_shift"          
 
-paramName2Num = {}
-for i, name in enumerate(controlNum2ParamName):
-	paramName2Num[name] = i
+controlName2Num = {}
+for i, name in enumerate(controlNum2Name):
+	controlName2Num[name] = i
+	if name:
+		exec(name + " = " + str(i))
+
+cmdName2number = {}
+cmdName2number["cmd_static"         ] = 67
+cmdName2number["cmd_sounding"       ] = 69
+cmdName2number["cmd_fm_algo"        ] = 70
+cmdName2number["cmd_am_algo"        ] = 71
+cmdName2number["cmd_fbgain"         ] = 73
+cmdName2number["cmd_fbsrc"          ] = 74
+cmdName2number["cmd_channelgain"    ] = 75
+cmdName2number["cmd_env"            ] = 76 
+cmdName2number["cmd_env_porta"      ] = 77 
+cmdName2number["cmd_envexp"         ] = 78 
+cmdName2number["cmd_increment"      ] = 79 
+cmdName2number["cmd_increment_porta"] = 80 
+cmdName2number["cmd_incexp"         ] = 81
+cmdName2number["cmd_flushspi"       ] = 120
+cmdName2number["cmd_passthrough"    ] = 121
+cmdName2number["cmd_shift"          ] = 122
+cmdName2number["cmd_env_clkdiv"     ] = 123
+
+cmdNumber2Name = ["0"]*128
+for name, number in cmdName2number.items():
+	cmdNumber2Name[number] = name
+		
+for name, number in cmdName2number.items():
+	if name:
+		print(name + " = " + str(number))
+		exec(name + " = " + str(number))
+
 
 import inspect
 
@@ -89,6 +117,7 @@ def DT01_fromFile(filename):
 		return pickle.load(f)
 
 class DT01():
+
 	def toFile(self, filename):
 		with open(filename, 'wb+') as f:
 			pickle.dump(self, f)
@@ -97,7 +126,7 @@ class DT01():
 		self.fpga_interface_inst = fpga_interface()
 		self.voices = 0
 		self.polyphony = polyphony
-		self.voicesPerPatch = min(self.polyphony, 64)
+		self.voicesPerPatch = min(self.polyphony, 128)
 		self.patchesPerDT01 = int(round(self.polyphony / self.voicesPerPatch))
 		self.voices = []
 		self.voiceSets = []
@@ -122,40 +151,37 @@ class DT01():
 		self.fpga_interface_inst.gather()
 		self.allChildren = self.voices
 		for voice in self.voices:
-			#paramName, mm_opno,  voiceno,  payload
-			voice.send("cmd_static"       , 0b11000000)
-			voice.send("cmd_baseincrement", 2**15)
-			voice.send("cmd_sounding"     , 0b00000001)
-			voice.send("cmd_fm_algo"      , 0o77777777)
-			voice.send("cmd_am_algo"      , 0o00000000)
-			voice.send("cmd_fbgain"       , 0)
-			voice.send("cmd_fbsrc"        , 0)
+			#paramNum, mm_opno,  voiceno,  payload
+			voice.send(cmd_static       , 0b11000000)
+			voice.send(cmd_sounding     , 0b00000001)
+			voice.send(cmd_fm_algo      , 0o77777777)
+			voice.send(cmd_am_algo      , 0o00000000)
+			voice.send(cmd_fbgain       , 0)
+			voice.send(cmd_fbsrc        , 0)
 			for channel in voice.channels:
-				channel.send("cmd_channelgain", 2**16) 
+				channel.send(cmd_channelgain, 2**16) 
 			for operator in voice.operators:
-				operator.send("cmd_env"            , 0)
-				operator.send("cmd_env_porta"      , 2**10)
-				operator.send("cmd_envexp"         , 0x01)
+				operator.send(cmd_env            , 0)
+				operator.send(cmd_env_porta      , 2**10)
+				operator.send(cmd_envexp         , 0x01)
 
 				if operator.index < 6:
-					operator.send("cmd_increment"      , 2**12) # * self.paramName2Real["increment"]
+					operator.send(cmd_increment      , 2**12) # * self.paramNum2Real[increment]
 				else:
-					operator.send("cmd_increment"      , 1) # * self.paramName2Real["increment"]
+					operator.send(cmd_increment      , 1) # * self.paramNum2Real[increment]
 
-				operator.send("cmd_increment_porta", 2**13)
-				operator.send("cmd_incexp"         , 0x01)
+				operator.send(cmd_increment_porta, 2**13)
+				operator.send(cmd_incexp         , 0x01)
 
 		self.fpga_interface_inst.release()
-		self.send("cmd_flushspi"     , 0)
-		self.send("cmd_passthrough"  , 0)
-		self.send("cmd_shift"        , 4)
-		self.send("cmd_env_clkdiv"   , 5)
+		self.send(cmd_flushspi     , 0)
+		self.send(cmd_passthrough  , 0)
+		self.send(cmd_shift        , 0)
+		self.send(cmd_env_clkdiv   , 5)
 	
 	def send(self, param, value):
 		self.fpga_interface_inst.send(param, 0, 0, value)
 	
-	
-
 		
 class Voice():
 		
@@ -218,25 +244,7 @@ class Operator():
 
 class fpga_interface():
 	
-	cmdName2number = {}
-	cmdName2number["cmd_static"]  = 67
-	cmdName2number["cmd_baseincrement"]  = 68
-	cmdName2number["cmd_sounding"]  = 69
-	cmdName2number["cmd_fm_algo"]  = 70
-	cmdName2number["cmd_am_algo"  ]  = 71
-	cmdName2number["cmd_fbgain"   ]  = 73
-	cmdName2number["cmd_fbsrc"    ]  = 74
-	cmdName2number["cmd_channelgain"    ] = 75
-	cmdName2number["cmd_env"            ] = 76 
-	cmdName2number["cmd_env_porta"      ] = 77 
-	cmdName2number["cmd_envexp"         ] = 78 
-	cmdName2number["cmd_increment"      ] = 79 
-	cmdName2number["cmd_increment_porta"] = 80  
-	cmdName2number["cmd_incexp"         ] = 81
-	cmdName2number["cmd_flushspi"       ] = 120
-	cmdName2number["cmd_passthrough"    ] = 121
-	cmdName2number["cmd_shift"          ] = 122
-	cmdName2number["cmd_env_clkdiv"     ] = 123 # turn this back to 123
+	
 		
 	def __init__(self):
 		self.gathering = False
@@ -274,11 +282,11 @@ class fpga_interface():
 		#logger.debug([hex(p) for p in payload])
 		return payload
 		
-	def sendMultiple(self, paramName, opno, voiceno, payload, voicemode = 0):
+	def sendMultiple(self, paramNum, opno, voiceno, payload, voicemode = 0):
 		#logger.debug(voicemode)
-		tosend = self.format_command_multiple(self.cmdName2number[paramName], opno, voiceno, payload, voicemode = voicemode)
+		tosend = self.format_command_multiple(paramNum, opno, voiceno, payload, voicemode = voicemode)
 		#with ILock('jlock', lock_directory=sys.path[0]):
-		logger.debug("voicemode: " + str(voicemode) + ": " + paramName + " voice: " + str(voiceno) + " opno: " + str(opno) + " PL(" + str(len(payload)) + "): " + str(payload[:8]))
+		logger.debug("voicemode: " + str(voicemode) + ": " + cmdNumber2Name[paramNum] + " voice: " + str(voiceno) + " opno: " + str(opno) + " PL(" + str(len(payload)) + "): " + str(payload[:8]))
 		#logger.debug(payload)
 		#logger.debug([hex(s) for s in tosend])
 		spi.xfer2(tosend)
@@ -295,42 +303,42 @@ class fpga_interface():
 		#logger.debug("sendDictAcrossVoices")
 		#logger.debug(self.sendDictAcrossVoices)
 		if self.voicemode:
-			for param, opdict in self.sendDictAcrossVoices.items():
+			for paramNum, opdict in self.sendDictAcrossVoices.items():
 				for opno, payloads in opdict.items():
-					self.sendMultiple(param, opno, self.lowestVoiceIndex, payloads, voicemode = self.voicemode)
+					self.sendMultiple(paramNum, opno, self.lowestVoiceIndex, payloads, voicemode = self.voicemode)
 		
 		else:
 			logger.debug(self.sendDictAcrossOperators)
-			for param, voicedict in self.sendDictAcrossOperators.items():
+			for paramNum, voicedict in self.sendDictAcrossOperators.items():
 				for voiceno, payloads in voicedict.items():
-					self.sendMultiple(param, 0, voiceno, payloads, voicemode = self.voicemode)
+					self.sendMultiple(paramNum, 0, voiceno, payloads, voicemode = self.voicemode)
 			
 		self.gathering = False
 	
-	def send(self, paramName, mm_opno,  voiceno,  payload):
+	def send(self, paramNum, mm_opno,  voiceno,  payload):
 	
 		# gather data if gathering is on
 		if self.gathering: 
 			
-			#logger.debug("not sending " + paramName + " " + str(payload))
+			#logger.debug("not sending " + str(paramNum) + " " + str(mm_opno) + " " + str(voiceno) + " " + str(payload))
 			# across voices 
 			if self.voicemode:
-				if paramName not in self.sendDictAcrossVoices.keys():          self.sendDictAcrossVoices[paramName] = {}
-				if mm_opno not in self.sendDictAcrossVoices[paramName].keys(): self.sendDictAcrossVoices[paramName][mm_opno] = []
-				self.sendDictAcrossVoices[paramName][mm_opno] += [payload]
+				if paramNum not in self.sendDictAcrossVoices.keys():          self.sendDictAcrossVoices[paramNum] = {}
+				if mm_opno not in self.sendDictAcrossVoices[paramNum].keys(): self.sendDictAcrossVoices[paramNum][mm_opno] = []
+				self.sendDictAcrossVoices[paramNum][mm_opno] += [payload]
 			
 			else:
 				# within voice
-				if paramName not in self.sendDictAcrossOperators.keys():          self.sendDictAcrossOperators[paramName] = {}
-				if voiceno not in self.sendDictAcrossOperators[paramName].keys(): self.sendDictAcrossOperators[paramName][voiceno] = []
-				self.sendDictAcrossOperators[paramName][voiceno] += [payload]
+				if paramNum not in self.sendDictAcrossOperators.keys():          self.sendDictAcrossOperators[paramNum] = {}
+				if voiceno not in self.sendDictAcrossOperators[paramNum].keys(): self.sendDictAcrossOperators[paramNum][voiceno] = []
+				self.sendDictAcrossOperators[paramNum][voiceno] += [payload]
 				
 			self.lowestVoiceIndex = min(self.lowestVoiceIndex , voiceno)
 		else:
-			tosend = self.format_command_int(self.cmdName2number[paramName], mm_opno, voiceno, payload)
+			tosend = self.format_command_int(paramNum, mm_opno, voiceno, payload)
 			#with ILock('jlock', lock_directory=sys.path[0]):
-			logger.debug("sending " + paramName + "(" + str(self.cmdName2number[paramName]) + ")" + " operator:" + str(mm_opno) + " voice:" + str(voiceno) + " payload:" + str(payload))
-			#logger.debug(tosend)
+			logger.debug("sending " + cmdNumber2Name[paramNum] + "(" + str(paramNum) + ")" + " operator:" + str(mm_opno) + " voice:" + str(voiceno) + " payload:" + str(payload))
+			logger.debug(tosend)
 			spi.xfer2(tosend)
 			#logger.debug("sent")
 		

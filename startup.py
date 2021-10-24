@@ -91,10 +91,6 @@ if __name__ == "__main__":
 	if len(sys.argv) > 1:
 		logger.setLevel(1)
 		
-	api=rtmidi.API_UNSPECIFIED
-	midiDev = []
-	midiin = rtmidi.MidiIn(get_api_from_environment(api))
-	midi_ports  = midiin.get_ports()
 	
 	
 	logger.debug("Instantiating DT01")
@@ -117,29 +113,43 @@ if __name__ == "__main__":
 	GLOBAL_DEFAULT_PATCH = Patch(dt01_inst)
 	#dt01_inst.addPatch(GLOBAL_DEFAULT_PATCH)
 	
-	logger.debug(midi_ports)
-	#for i, midi_portname in enumerate(midi_ports):
-	for i, midi_portname in enumerate(midi_ports[1:]):
-		try:
-			midiin, midi_portno = open_midiinput(midi_portname)
-		except (EOFError, KeyboardInterrupt):
-			sys.exit()
-
-		logger.debug("Attaching MIDI input callback handler.")
-		MidiDevice_inst = MidiDevice(i, GLOBAL_DEFAULT_PATCH, str(midi_portname))
-		midiin.set_callback(MidiDevice_inst)
-		logger.debug("Handler: " + str(midiin))
-		#midiDev += [MidiDevice_inst]
-
+	api=rtmidi.API_UNSPECIFIED
+	midiDev = []
+	midiin = rtmidi.MidiIn(get_api_from_environment(api))
+	
+	midi_ports_last = []
 
 	logger.debug("Entering main loop. Press Control-C to exit.")
+	lastCheck = 0
 	try:
 		# Just wait for keyboard interrupt,
 		# everything else is handled via the input callback.
 		while True:
-			c = sys.stdin.read(1)
-			if c == 'd':
-				dt01_inst.dumpState()
+		
+			# if 5 seconds have gone by
+			
+			if time.time()-lastCheck > 5:
+				lastCheck = time.time()
+				midi_ports  = midiin.get_ports()
+				for i, midi_portname in enumerate(midi_ports):
+					if midi_portname not in midi_ports_last:
+						logger.debug("adding " + midi_portname)
+						try:
+							midiin, midi_portno = open_midiinput(midi_portname)
+						except (EOFError, KeyboardInterrupt):
+							sys.exit()
+			
+						logger.debug("Attaching MIDI input callback handler.")
+						MidiDevice_inst = MidiDevice(i, GLOBAL_DEFAULT_PATCH, str(midi_portname))
+						midiin.set_callback(MidiDevice_inst)
+						logger.debug("Handler: " + str(midiin))
+						midiDev += [MidiDevice_inst]
+				midi_ports_last = midi_ports
+				
+		
+			#c = sys.stdin.read(1)
+			#if c == 'd':
+			#	dt01_inst.dumpState()
 			#for dev in midiDev:
 			#	try:
 			#		data = dev.s.recv(50)

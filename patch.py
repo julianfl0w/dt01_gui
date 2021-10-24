@@ -45,9 +45,7 @@ class Note:
 		self.held  = False
 		self.polytouch = 0
 		self.msg  = None
-		self.tone = index % 12
-		self.defaultIncrement = 2**21 * (noteToFreq(self.tone + 12) / 96000.0)
-		self.octave = int(index / 12) + 5
+		self.defaultIncrement = 2**32 * (noteToFreq(index) / 96000.0)
 		
 # patch holds all state, including note and control state
 class Patch():
@@ -56,7 +54,7 @@ class Patch():
 		self.fpga_interface_inst.send(param, 0, 0, value)
 	
 	def processControl(self, paramName, value):
-		self.processEvent(mido.Message('control_change', control = dt01.paramName2Num [paramName], value = value)) #
+		self.processEvent(mido.Message('control_change', control = dt01.controlNum2Num [paramName], value = value)) #
 		
 	def __init__(self, dt01_inst):
 		logger.debug("patch init ")
@@ -72,7 +70,8 @@ class Patch():
 		self.pitchwheelReal  = 1
 		self.aftertouch = 0
 		self.aftertouchReal = 0
-				
+		self.sustain = False
+		self.toRelease = []
 		self.allNotes = []
 		for i in range(MIDINOTES):
 			self.allNotes+= [Note(i)]
@@ -87,56 +86,47 @@ class Patch():
 			voice.note  = self.allNotes[0]
 			voice.patch = self
 				
-		self.toRelease   = []
 	
 		self.control = [0]*CONTROLCOUNT
 		
 		# set default control values
-		self.control[dt01.paramName2Num["vibrato_env"     ]] = 0   #
-		self.control[dt01.paramName2Num["tremolo_env"     ]] = 0   #
-		self.control[dt01.paramName2Num[ "fbgain"         ]] = 0  
-		self.control[dt01.paramName2Num[ "fbsrc"          ]] = 0  
-		self.control[dt01.paramName2Num[ "baseincrement"  ]] = 127     # 
-		self.control[dt01.paramName2Num[ "expression"     ]] = 0   # common midi control
+		self.control[dt01.ctrl_vibrato_env     ] = 0   #
+		self.control[dt01.ctrl_tremolo_env     ] = 0   #
+		self.control[dt01.ctrl_fbgain          ] = 0  
+		self.control[dt01.ctrl_fbsrc           ] = 0  
+		self.control[dt01.ctrl_expression      ] = 0   # common midi control
 		
-		self.control[dt01.paramName2Num["env"             ]] = 0 #
-		self.control[dt01.paramName2Num["env_porta"       ]] = 64  #
-		self.control[dt01.paramName2Num["envexp"          ]] = 1   #
-		self.control[dt01.paramName2Num["increment"       ]] = 64  #
-		self.control[dt01.paramName2Num["increment_porta" ]] = 0   #
-		self.control[dt01.paramName2Num["incexp"          ]] = 1   #
-		self.control[dt01.paramName2Num["fmsrc"           ]] = 7   #fm off
-		self.control[dt01.paramName2Num["amsrc"           ]] = 0   #am off
-		self.control[dt01.paramName2Num["static"          ]] = 0   #
-		self.control[dt01.paramName2Num["sounding"        ]] = 0   #
+		self.control[dt01.ctrl_env             ] = 0 #
+		self.control[dt01.ctrl_env_porta       ] = 64  #
+		self.control[dt01.ctrl_envexp          ] = 1   #
+		self.control[dt01.ctrl_increment       ] = 64  #
+		self.control[dt01.ctrl_increment_porta ] = 0   #
+		self.control[dt01.ctrl_incexp          ] = 1   #
+		self.control[dt01.ctrl_fmsrc           ] = 7   #fm off
+		self.control[dt01.ctrl_amsrc           ] = 0   #am off
+		self.control[dt01.ctrl_static          ] = 0   #
+		self.control[dt01.ctrl_sounding        ] = 0   #
 		
-		self.control[dt01.paramName2Num["sustain"         ]] = 0  # common midi control
-		self.control[dt01.paramName2Num["portamento"      ]] = 0  # common midi control
-		self.control[dt01.paramName2Num["filter_resonance"]] = 0  # common midi control
-		self.control[dt01.paramName2Num["filter_cutoff"   ]] = 0  # common midi control
+		self.control[dt01.ctrl_sustain         ] = 0  # common midi control
+		self.control[dt01.ctrl_portamento      ] = 0  # common midi control
+		self.control[dt01.ctrl_filter_resonance] = 0  # common midi control
+		self.control[dt01.ctrl_filter_cutoff   ] = 0  # common midi control
 		
-		self.control[dt01.paramName2Num["env_clkdiv"      ]] = 16  #   
-		self.control[dt01.paramName2Num["flushspi"        ]] = 0   #   
-		self.control[dt01.paramName2Num["passthrough"     ]] = 0   #   
-		self.control[dt01.paramName2Num["shift"           ]] = 3   #   
+		self.control[dt01.ctrl_env_clkdiv      ] = 16  #   
+		self.control[dt01.ctrl_flushspi        ] = 0   #   
+		self.control[dt01.ctrl_passthrough     ] = 0   #   
+		self.control[dt01.ctrl_shift           ] = 0   #   
 		
 		
-		self.controlReal = [0]*CONTROLCOUNT
+		self.controlReal = np.zeros((CONTROLCOUNT))
 
 		# establish defaults
-		self.paramName2Val = {}
-		self.paramName2Real= {}
+		self.controlNum2Val = np.zeros((CONTROLCOUNT))
+		self.controlNum2Real= np.zeros((CONTROLCOUNT))
 		
-		self.paramName2Val ["operator"] = {}
-		self.paramName2Real["operator"] = {}
-		for paramName in dt01.controlNum2ParamName:
-			self.paramName2Val [paramName] = self.control[dt01.paramName2Num[paramName]]
-			self.paramName2Real[paramName] = self.control[dt01.paramName2Num[paramName]] / 127.0
-			
-			# and again for each operator
-			self.paramName2Val ["operator"][paramName] = [self.paramName2Val [paramName]]*dt01.OPERATORCOUNT
-			self.paramName2Real["operator"][paramName] = [self.paramName2Real[paramName]]*dt01.OPERATORCOUNT
-				
+		self.opControlNum2Val = np.zeros((dt01.OPERATORCOUNT, CONTROLCOUNT))
+		self.opControlNum2Real= np.zeros((dt01.OPERATORCOUNT, CONTROLCOUNT))
+						
 		#			
 		#self.processEvent(mido.Message('pitchwheel', pitch = 64))
 		#self.processEvent(mido.Message('aftertouch', value = 0))
@@ -145,26 +135,51 @@ class Patch():
 		#	
 		
 		# doesnt belong here
-		self.processEvent(mido.Message('control_change', control = dt01.paramName2Num ["opno"], value = 0)) #
-		self.processEvent(mido.Message('control_change', control = dt01.paramName2Num ["fbsrc"], value = 0)) #
-		self.processEvent(mido.Message('control_change', control = dt01.paramName2Num ["fbgain"], value = 64)) #
-		self.processEvent(mido.Message('control_change', control = dt01.paramName2Num ["fmsrc"], value = 1)) #
-		self.processEvent(mido.Message('control_change', control = dt01.paramName2Num ["sounding"], value = 1)) #
-		self.processEvent(mido.Message('control_change', control = dt01.paramName2Num["env"  ], value = 127)) #
-		self.processEvent(mido.Message('control_change', control = dt01.paramName2Num ["opno"], value = 1)) #
-		self.processEvent(mido.Message('control_change', control = dt01.paramName2Num ["env"], value = 127)) #
+		self.processEvent(mido.Message('control_change', control = dt01.ctrl_opno    , value = 0)) #
+		self.processEvent(mido.Message('control_change', control = dt01.ctrl_fbsrc   , value = 0)) #
+		self.processEvent(mido.Message('control_change', control = dt01.ctrl_fbgain  , value = 64)) #
+		self.processEvent(mido.Message('control_change', control = dt01.ctrl_fmsrc   , value = 1)) #
+		self.processEvent(mido.Message('control_change', control = dt01.ctrl_sounding, value = 1)) #
+		self.processEvent(mido.Message('control_change', control = dt01.ctrl_env     , value = 127)) #
+		self.processEvent(mido.Message('control_change', control = dt01.ctrl_opno    , value = 1)) #
+		self.processEvent(mido.Message('control_change', control = dt01.ctrl_env     , value = 2)) #
 		
-		self.processEvent(mido.Message('control_change', control = dt01.paramName2Num["opno" ], value = 6)) #
-		self.processEvent(mido.Message('control_change', control = dt01.paramName2Num["increment"  ], value = 30)) #
+		self.processEvent(mido.Message('control_change', control = dt01.ctrl_opno      , value = 6)) #
+		self.processEvent(mido.Message('control_change', control = dt01.ctrl_increment , value = 64)) #
 			
-	def getCurrOpParam2Real(self, index, paramName):
-		return self.paramName2Real["operator"][paramName][index]
-			
+	def getCurrOpParam2Real(self, index, paramNum):
+		return self.controlNum2Real[index,paramNum]
+		
+	def getCurrOpParam2Val(self, index, paramNum):
+		return self.controlNum2Val[index,paramNum]
+	
+	def sendEnv(self, operator):
+		if operator.index < 6:
+			logger.debug("opno" + str(operator.index) + " velo: " + str(operator.voice.note.velocityReal) + ", ocn2r: " + str( self.opControlNum2Real[:,dt01.ctrl_env]))
+			operator.send(dt01.cmd_env            , operator.voice.note.velocityReal * (2**12) * self.opControlNum2Real[operator.index,dt01.ctrl_env])
+		elif operator.index == 6:
+			operator.send(dt01.cmd_env            , (2**16) * self.opControlNum2Real[operator.index,dt01.ctrl_env])
+		elif operator.index == 7:
+			operator.send(dt01.cmd_env            , (2**7) * self.opControlNum2Real[operator.index,dt01.ctrl_env])
+		
+	
+	def sendIncrement(self, operator):
+		if operator.index < 6:
+			operator.send(dt01.cmd_increment, self.pitchwheelReal * (1 + self.aftertouchReal) * operator.voice.note.defaultIncrement)
+		elif operator.index == 6:
+			operator.send(dt01.cmd_increment      , 2**14 * self.opControlNum2Real[operator.index,dt01.ctrl_increment]) # * self.getCurrOpParam2Real(operator.index, dt01.increment)
+		elif operator.index == 7:
+			operator.send(dt01.cmd_increment      , 2**12 * self.opControlNum2Real[operator.index,dt01.ctrl_increment]) # * self.getCurrOpParam2Real(operator.index, dt01.increment)
+
 	def processEvent(self, msg):
 	
 		logger.debug("Processing " + str(msg))
 			
 		if msg.type == "note_off" or (msg.type == "note_on" and msg.velocity == 0):
+			if self.sustain:
+				self.toRelease += [msg]
+				return
+				
 			note = self.allNotes[msg.note] 
 			note.velocity = 0 
 			note.velocityReal = 0 
@@ -173,9 +188,7 @@ class Patch():
 				voice.spawntime = 0
 				self.fpga_interface_inst.gather(False)
 				for operator in voice.operators:
-					if operator.sounding:
-						operator.send("cmd_env"            , note.velocityReal * (2**16) * self.getCurrOpParam2Real(operator.index, "env")* (1 - operator.sounding))
-				
+					self.sendEnv(operator)
 				self.fpga_interface_inst.release()
 			note.voices = []
 			note.held = False
@@ -197,28 +210,29 @@ class Patch():
 				voice.indexInCluser = voiceno
 				voice.note = note
 				note.voices += [voice]
-				voice.send("cmd_baseincrement", self.paramName2Real["baseincrement"] * self.pitchwheelReal * (1 + self.aftertouchReal) * note.defaultIncrement * 2**6)
 
 				self.fpga_interface_inst.gather(False)
 				for operator in voice.operators:
-					if operator.sounding:
-						operator.send("cmd_env"            , note.velocityReal * (2**16) * self.getCurrOpParam2Real(operator.index, "env"))
-						voice.send("cmd_increment", 1<<(note.octave))
+					self.sendIncrement(operator)
+					self.sendEnv(operator)
+					
 				
 				self.fpga_interface_inst.release()
 				
 		if msg.type == 'pitchwheel':
 			logger.debug("PW: " + str(msg.pitch))
 			self.pitchwheel = msg.pitch
-			amountchange = msg.pitch / 8192.0
-			self.pitchwheelReal = pow(2, amountchange)
-			ARTIPHON = 0
+			ARTIPHON = 1
 			if ARTIPHON:
-				self.pitchwheelReal *= 8
+				self.pitchwheel *= 2
+			amountchange = self.pitchwheel / 8192.0
+			self.pitchwheelReal = pow(2, amountchange)
 			logger.debug("PWREAL " + str(self.pitchwheelReal))
 			self.fpga_interface_inst.gather()
 			for voice in self.voices:
-				voice.send("cmd_baseincrement", self.paramName2Real["baseincrement"] * self.pitchwheelReal * (1 + self.aftertouchReal) * voice.note.defaultIncrement * 2**6)
+				for operator in voice.operators:
+					self.sendIncrement(operator)
+					
 			self.fpga_interface_inst.release()
 				
 		elif msg.type == 'control_change':
@@ -226,57 +240,63 @@ class Patch():
 			self.control[msg.control]     = msg.value
 			self.controlReal[msg.control] = msg.value/127.0
 			
-			logger.debug("control : " + str(msg.control) + " (" + dt01.controlNum2ParamName[msg.control] +  "): " + str(msg.value))
+			logger.debug("control : " + str(msg.control) + " (" + dt01.controlNum2Name[msg.control] +  "): " + str(msg.value))
 
 			self.fpga_interface_inst.gather()
 			event = "control[" + str(msg.control) + "]"
 			
 			# patch stores control vals for each operator
-			self.paramName2Val [dt01.controlNum2ParamName[msg.control]] = msg.value
-			self.paramName2Real[dt01.controlNum2ParamName[msg.control]] = msg.value/127.0
-			self.paramName2Val ["operator"][dt01.controlNum2ParamName[msg.control]][self.opno] = msg.value
-			self.paramName2Real["operator"][dt01.controlNum2ParamName[msg.control]][self.opno] = msg.value/127.0
-
-
+			self.controlNum2Val [msg.control] = msg.value
+			self.controlNum2Real[msg.control] = msg.value/127.0
+			
+			# selection
+			if msg.control == dt01.ctrl_opno:
+				self.opno = min(msg.value, 7)
+				#logger.debug(self.opno)
+				
+			self.opControlNum2Val [self.opno,msg.control] = msg.value
+			self.opControlNum2Real[self.opno,msg.control] = msg.value/127.0
+			logger.debug("Setting op " + str(self.opno) + " control: " + str(msg.control) + " value: " + str(msg.value/127.0))
+			
 			# forward some controls
 			# PUT THIS BACK
 			
 			#if msg.control == 0:
-			#	self.processEvent(mido.Message('control_change', control= dt01.paramName2Num["opno"      ], value = 6 ))
-			#	self.processEvent(mido.Message('control_change', control= dt01.paramName2Num["env"      ], value = msg.value ))
+			#	self.processEvent(mido.Message('control_change', control= dt01.ctrl_opno      ], value = 6 ))
+			#	self.processEvent(mido.Message('control_change', control= dt01.ctrl_env      ], value = msg.value ))
 			#if msg.control == 1:
-			#	self.processEvent(mido.Message('control_change', control= dt01.paramName2Num["opno"      ], value = 7 ))
-			#	self.processEvent(mido.Message('control_change', control= dt01.paramName2Num["env"      ], value = msg.value ))
+			#	self.processEvent(mido.Message('control_change', control= dt01.ctrl_opno      ], value = 7 ))
+			#	self.processEvent(mido.Message('control_change', control= dt01.ctrl_env      ], value = msg.value ))
 			
 			# route control3 to control 7 because sometimes 3 is volume control
 			if msg.control == 3:
 				self.processEvent(mido.Message('control_change', control= 7, value = msg.value ))
 				
-			if msg.control == ["env_clkdiv"]:
-				self.send("cmd_env_clkdiv" , self.paramName2Val["env_clkdiv"])
+			if msg.control == dt01.ctrl_env_clkdiv:
+				self.send(dt01.cmd_env_clkdiv , self.controlNum2Val[dt01.ctrl_env_clkdiv])
 				
-			if msg.control == dt01.paramName2Num["flushspi"]:
-				self.send("cmd_flushspi", self.paramName2Val["flushspi"])
+			if msg.control == dt01.ctrl_flushspi:
+				self.send(dt01.cmd_flushspi, self.controlNum2Val[dt01.ctrl_flushspi])
 				
-			if msg.control == dt01.paramName2Num["passthrough"]:
-				self.send("cmd_passthrough", self.paramName2Val["passthrough"])
+			if msg.control == dt01.ctrl_passthrough:
+				self.send(dt01.cmd_passthrough, self.controlNum2Val[dt01.ctrl_passthrough])
 				
-			if msg.control == dt01.paramName2Num["shift"]:
-				self.send("cmd_shift" , self.paramName2Val["shift"])
+			if msg.control == dt01.ctrl_shift:
+				self.send(dt01.cmd_shift , self.controlNum2Val[dt01.ctrl_shift])
 				
 				
-			# selection
-			if msg.control == dt01.paramName2Num["opno"]:
-				self.opno = msg.value
+			if msg.control == dt01.ctrl_tremolo_env:
+				self.processEvent(mido.Message('control_change', control = dt01.ctrl_opno, value = 6)) #
+				self.processEvent(mido.Message('control_change', control = dt01.ctrl_env, value = msg.value)) #
 				
-			if msg.control == dt01.paramName2Num["tremolo_env"]:
-				self.processEvent(mido.Message('control_change', control = dt01.paramName2Num ["opno"], value = 6)) #
-				self.processEvent(mido.Message('control_change', control = dt01.paramName2Num ["env"], value = msg.value)) #
+			if msg.control == dt01.ctrl_vibrato_env:
+				self.processEvent(mido.Message('control_change', control = dt01.ctrl_opno, value = 7)) #
+				self.processEvent(mido.Message('control_change', control = dt01.ctrl_env, value = msg.value)) #
+		
+			if msg.control == dt01.ctrl_env: 
+				# sounding operators begin on note_on
+				logger.debug("\n\n-------CTRL_ENV---------\n\n")
 				
-			if msg.control == dt01.paramName2Num["vibrato_env"]:
-				self.processEvent(mido.Message('control_change', control = dt01.paramName2Num ["opno"], value = 7)) #
-				self.processEvent(mido.Message('control_change', control = dt01.paramName2Num ["env"], value = msg.value)) #
-			
 			self.fpga_interface_inst.gather()
 			for voice in self.voices:
 			
@@ -284,87 +304,86 @@ class Patch():
 				# get active operator
 				if self.opno < 2:
 					channel  = voice.channels[self.opno]
-				operator = voice.operators[self.opno]
+				activeOperator = voice.operators[self.opno]
 				
-				if msg.control == dt01.paramName2Num["voicegain"] or msg.control == dt01.paramName2Num["pan"] : 
-					baseVolume = 2**16*self.paramName2Real["voicegain"]
+				if msg.control == dt01.ctrl_voicegain or msg.control == dt01.ctrl_pan : 
+					baseVolume = 2**16*self.controlNum2Real["ctrl_voicegain"]
 					if self.opno == 0:
-						channel.send("cmd_channelgain", baseVolume*self.paramName2Real["pan"]) # assume 2 channels
+						channel.send(dt01.cmd_channelgain, baseVolume*self.controlNum2Real["ctrl_pan"]) # assume 2 channels
 					else:
 						#logger.debug(self.controlReal[10])
-						channel.send("cmd_channelgain", baseVolume*(1 - self.paramName2Real["pan"])) # assume 2 channels
+						channel.send(dt01.cmd_channelgain, baseVolume*(1 - self.controlNum2Real["ctrl_pan"])) # assume 2 channels
 	
 				# FM Algo
-				if msg.control == dt01.paramName2Num["fmsrc"]:
-					operator.fmsrc = msg.value
+				if msg.control == dt01.ctrl_fmsrc:
+					activeOperator.fmsrc = msg.value
 					sendVal = 0
 					for i in reversed(range(dt01.OPERATORCOUNT)):
 						sendVal = int(sendVal) << int(math.log2(dt01.OPERATORCOUNT))
 						sendVal += int(voice.operators[i].fmsrc)
 						#logger.debug(bin(sendVal))
-					voice.send("cmd_fm_algo", sendVal)
+					voice.send(dt01.cmd_fm_algo, sendVal)
 				
 				#am algo
-				if msg.control == dt01.paramName2Num["amsrc"]:
+				if msg.control == dt01.ctrl_amsrc:
 					sendVal = 0
 					for i in reversed(range(dt01.OPERATORCOUNT)):
 						sendVal = int(sendVal) << int(math.log2(dt01.OPERATORCOUNT))
 						sendVal += int(voice.operators[i].amsrc)
 						#logger.debug(bin(sendVal))
-					voice.send("cmd_am_algo", sendVal)
+					voice.send(dt01.cmd_am_algo, sendVal)
 					
-				if msg.control == dt01.paramName2Num["fbgain"]:
-					voice.send("cmd_fbgain"   , 2**16 * self.paramName2Real["fbgain"]  )
+				if msg.control == dt01.ctrl_fbgain:
+					voice.send(dt01.cmd_fbgain   , 2**16 * self.controlNum2Real[dt01.ctrl_fbgain]  )
 					
-				if msg.control == dt01.paramName2Num["fbsrc"]:
-					voice.send("cmd_fbsrc"    , self.paramName2Val["fbsrc"]   )
+				if msg.control == dt01.ctrl_fbsrc:
+					voice.send(dt01.cmd_fbsrc    , self.controlNum2Val[dt01.ctrl_fbsrc]   )
 		
-				if msg.control == dt01.paramName2Num["sounding"]: 
-					operator.sounding = msg.value
+				if msg.control == dt01.ctrl_sounding: 
+					activeOperator.sounding = msg.value
 					sendVal = 0
 					for i in reversed(range(dt01.OPERATORCOUNT)):
 						sendVal = int(sendVal) << 1
 						sendVal += int(voice.operators[i].sounding)
 						#logger.debug(bin(sendVal))
-					voice.send("cmd_sounding", sendVal)
+					voice.send(dt01.cmd_sounding, sendVal)
 					
-				if msg.control == dt01.paramName2Num["static"]: 
-					operator.static = msg.value
+				if msg.control == dt01.ctrl_static: 
+					activeOperator.static = msg.value
 					sendVal = 0
 					for i in reversed(range(dt01.OPERATORCOUNT)):
 						sendVal = int(sendVal) << 1
 						sendVal += int(voice.operators[i].static)
-					voice.send("cmd_static", sendVal)
+					voice.send(dt01.cmd_static, sendVal)
 		
-				if msg.control == dt01.paramName2Num["env"]: 
+				if msg.control == dt01.ctrl_env: 
 					# sounding operators begin on note_on
-					if operator.index < 6:
-						operator.send("cmd_env"            , (2**16) * self.getCurrOpParam2Real(operator.index, "env") * (1 - operator.sounding))
-					else:                                                                                              
-						operator.send("cmd_env"            , (2**16) * self.getCurrOpParam2Real(operator.index, "env") * (1 - operator.sounding))
+					self.sendEnv(activeOperator)
+				
 						
-				if msg.control == dt01.paramName2Num["env_porta"]: 
-					operator.send("cmd_env_porta"      , 2**10 * (1 - self.getCurrOpParam2Real(operator.index, "env_porta")) * (1 - self.paramName2Real["portamento"]) )
+				if msg.control == dt01.ctrl_env_porta: 
+					activeOperator.send(dt01.cmd_env_porta      , 2**10 * (1 - self.controlNum2Real[activeOperator.index,dt01.ctrl_env_porta]) * (1 - self.controlNum2Real[dt01.ctrl_portamento]) )
 		# static oscillators do not have velocity-dependant env
 					
-				if msg.control == dt01.paramName2Num["increment"]:
-					if operator.index < 6:
-						operator.send("cmd_increment"      , 1 << self.getCurrOpParam2Val(operator.index, "increment")) # * self.getCurrOpParam2Real(operator.index, "increment")
-					else:
-						operator.send("cmd_increment"      , 2**12 * self.getCurrOpParam2Real(operator.index, "increment")) # * self.getCurrOpParam2Real(operator.index, "increment")
+				if msg.control == dt01.ctrl_increment:
+					self.sendIncrement(activeOperator)
 					
-				if msg.control == dt01.paramName2Num["increment_porta"]: 
-					operator.send("cmd_increment_porta", 2**10 * (1 - self.paramName2Real["portamento"]) * (1 - self.getCurrOpParam2Real(operator.index, "increment_porta")))
+				if msg.control == dt01.ctrl_increment_porta: 
+					activeOperator.send(dt01.cmd_increment_porta, 2**10 * (1 - self.controlNum2Real[dt01.ctrl_portamento]) * (1 - self.controlNum2Real[activeOperator.index,dt01.ctrl_increment_porta]))
 					
-				if msg.control == dt01.paramName2Num["incexp"]: 
-					operator.send("cmd_incexp"         , self.paramName2Val["operator"]["incexp"][self.opno])  
+				if msg.control == dt01.ctrl_incexp: 
+					activeOperator.send(dt01.cmd_incexp         , self.opControlNum2Val[self.opno,dt01.ctrl_incexp])  
 					
-				if msg.control == dt01.paramName2Num["envexp"]: 
-					operator.send("cmd_envexp"         , self.paramName2Val["operator"]["envexp"][self.opno])
+				if msg.control == dt01.ctrl_envexp: 
+					activeOperator.send(dt01.cmd_envexp         , self.opControlNum2Val[self.opno,dt01.ctrl_envexp])
 					
 					
-					
-					
+				if msg.control == dt01.ctrl_sustain: 
+					self.sustain  = msg.value
+					if not self.sustain:
+						for message in self.toRelease:
+							self.processEvent(message)
+						self.toRelease = []
 					
 			self.fpga_interface_inst.release()
 				
@@ -372,17 +391,15 @@ class Patch():
 		elif msg.type == 'polytouch':
 			self.polytouch = msg.value
 			self.polytouchReal = msg.value/127.0
-			#self.fpga_interface_inst.gather()
-			#for voice in self.allNotes[msg.note].voices:
-			#	voice.send("cmd_baseincrement", self.paramName2Real["baseincrement"] * self.pitchwheelReal * (1 + self.aftertouchReal) * voice.note.defaultIncrement * 2**6)
-			#self.fpga_interface_inst.release()
 				
 		elif msg.type == 'aftertouch':
 			self.aftertouch = msg.value
 			self.aftertouchReal = msg.value/127.0
 			self.fpga_interface_inst.gather()
 			for voice in self.voices:
-				voice.send("cmd_baseincrement", self.paramName2Real["baseincrement"] * self.pitchwheelReal * (1 + self.aftertouchReal) * voice.note.defaultIncrement * 2**6)
+				for operator in voice.operators:
+					self.sendIncrement(operator)
+					
 			self.fpga_interface_inst.release()
 			
 			
@@ -415,21 +432,21 @@ if __name__ == "__main__":
 	testPatch = Patch(dt01_inst)
 	
 	logger.debug("\n\nSending post-patch init")
-	#dt01_inst.voices[0].operators[6].send("cmd_env", 2**15)
-	#dt01_inst.voices[0].operators[0].send("cmd_env", 2**16)
+	#dt01_inst.voices[0].operators[6].send(dt01.cmd_env, 2**15)
+	#dt01_inst.voices[0].operators[0].send(dt01.cmd_env, 2**16)
 	
-	testPatch.processEvent(mido.Message('control_change', control = dt01.paramName2Num ["opno"], value = 0)) #
-	testPatch.processEvent(mido.Message('control_change', control = dt01.paramName2Num ["sounding"], value = 1)) #
-	testPatch.processEvent(mido.Message('control_change', control = dt01.paramName2Num ["env"], value = 127)) #
+	testPatch.processEvent(mido.Message('control_change', control = dt01.ctrl_opno, value = 0)) #
+	testPatch.processEvent(mido.Message('control_change', control = dt01.ctrl_sounding, value = 1)) #
+	testPatch.processEvent(mido.Message('control_change', control = dt01.ctrl_env, value = 127)) #
 	
-	testPatch.processEvent(mido.Message('control_change', control = dt01.paramName2Num ["opno"], value = 1)) #
-	testPatch.processEvent(mido.Message('control_change', control = dt01.paramName2Num ["env"], value = 127)) #
+	testPatch.processEvent(mido.Message('control_change', control = dt01.ctrl_opno, value = 1)) #
+	testPatch.processEvent(mido.Message('control_change', control = dt01.ctrl_env, value = 127)) #
 	
-	testPatch.processEvent(mido.Message('control_change', control = dt01.paramName2Num ["fm_algo"], value = 0o77777771)) #
+	testPatch.processEvent(mido.Message('control_change', control = dt01.ctrl_fm_algo, value = 0o77777771)) #
 	
 	testPatch.processEvent(mido.Message('note_on', channel=0, note=24, velocity=23, time=0))
-	dt01_inst.voices[0].operators[0].send("cmd_env", 2**16)
+	dt01_inst.voices[0].operators[0].send(dt01.cmd_env, 2**14)
 	#testPatch.processEvent(mido.Message('note_on', channel=0, note=28, velocity=23, time=0))
 	#testPatch.processEvent(mido.Message('note_on', channel=0, note=31, velocity=23, time=0))
-	#	logger.debug(json.dumps(testPatch.paramName2Real))
+	#	logger.debug(json.dumps(testPatch.controlNum2Real))
 	
