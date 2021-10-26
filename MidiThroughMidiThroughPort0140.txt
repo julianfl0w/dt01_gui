@@ -1,3 +1,10 @@
 Stack (most recent call first):
   File "startup.py", line 27 in __init__
-  File "startup.py", line 143 in <module>
+  File "startup.py", line 144 in <module>
+  File "/usr/lib/python3.7/cProfile.py", line 100 in runctx
+  File "/usr/lib/python3.7/profile.py", line 62 in runctx
+  File "/usr/lib/python3.7/cProfile.py", line 20 in runctx
+  File "/usr/lib/python3.7/cProfile.py", line 166 in main
+  File "/usr/lib/python3.7/cProfile.py", line 173 in <module>
+  File "/usr/lib/python3.7/runpy.py", line 85 in _run_code
+  File "/usr/lib/python3.7/runpy.py", line 193 in _run_module_as_main

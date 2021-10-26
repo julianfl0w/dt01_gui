@@ -60,7 +60,7 @@ class Patch():
 		logger.debug("patch init ")
 		self.dt01_inst = dt01_inst
 		self.fpga_interface_inst  = dt01_inst.fpga_interface_inst
-		self.polyphony = 32
+		self.polyphony = 64
 		self.active = True
 		self.voicesPerNote = 1
 		self.voices = []
@@ -71,8 +71,10 @@ class Patch():
 		self.aftertouch = 0
 		self.aftertouchReal = 0
 		self.sustain = False
-		self.toRelease = []
+		self.toRelease = [False]*MIDINOTES
 		self.allNotes = []
+		
+		self.computedState = np.zeros((128, self.polyphony, dt01.OPERATORCOUNT)) # fpga cmd, voice, operator
 		for i in range(MIDINOTES):
 			self.allNotes+= [Note(i)]
 			
@@ -108,7 +110,7 @@ class Patch():
 		self.control[dt01.ctrl_sounding        ] = 0   #
 		
 		self.control[dt01.ctrl_sustain         ] = 0  # common midi control
-		self.control[dt01.ctrl_portamento      ] = 0  # common midi control
+		self.control[dt01.ctrl_portamento      ] = 127  # common midi control
 		self.control[dt01.ctrl_filter_resonance] = 0  # common midi control
 		self.control[dt01.ctrl_filter_cutoff   ] = 0  # common midi control
 		
@@ -153,23 +155,23 @@ class Patch():
 	def getCurrOpParam2Val(self, index, paramNum):
 		return self.controlNum2Val[index,paramNum]
 	
-	def sendEnv(self, operator):
+	def setEnv(self, operator):
 		if operator.index < 6:
-			logger.debug("opno" + str(operator.index) + " velo: " + str(operator.voice.note.velocityReal) + ", ocn2r: " + str( self.opControlNum2Real[:,dt01.ctrl_env]))
-			operator.send(dt01.cmd_env            , operator.voice.note.velocityReal * (2**12) * self.opControlNum2Real[operator.index,dt01.ctrl_env])
-		elif operator.index == 6:
-			operator.send(dt01.cmd_env            , (2**16) * self.opControlNum2Real[operator.index,dt01.ctrl_env])
-		elif operator.index == 7:
-			operator.send(dt01.cmd_env            , (2**7) * self.opControlNum2Real[operator.index,dt01.ctrl_env])
+			#logger.debug("opno" + str(operator.index) + " velo: " + str(operator.voice.note.velocityReal) + ", ocn2r: " + str( self.opControlNum2Real[:,dt01.ctrl_env]))
+			self.computedState[dt01.cmd_env , operator.voice.index, operator.index] = operator.voice.note.velocityReal * (2**12) * self.opControlNum2Real[operator.index,dt01.ctrl_env]
+		elif operator.index == 6:           
+			self.computedState[dt01.cmd_env , operator.voice.index, operator.index] = (2**16) * self.opControlNum2Real[operator.index,dt01.ctrl_env]
+		elif operator.index == 7:           
+			self.computedState[dt01.cmd_env , operator.voice.index, operator.index] = (2**7) * self.opControlNum2Real[operator.index,dt01.ctrl_env]
 		
 	
-	def sendIncrement(self, operator):
+	def setIncrement(self, operator):
 		if operator.index < 6:
-			operator.send(dt01.cmd_increment, self.pitchwheelReal * (1 + self.aftertouchReal) * operator.voice.note.defaultIncrement)
+			self.computedState[dt01.cmd_increment, operator.voice.index, operator.index] = self.pitchwheelReal * (1 + self.aftertouchReal) * operator.voice.note.defaultIncrement
 		elif operator.index == 6:
-			operator.send(dt01.cmd_increment      , 2**14 * self.opControlNum2Real[operator.index,dt01.ctrl_increment]) # * self.getCurrOpParam2Real(operator.index, dt01.increment)
+			self.computedState[dt01.cmd_increment, operator.voice.index, operator.index] = 2**14 * self.opControlNum2Real[operator.index,dt01.ctrl_increment] # * self.getCurrOpParam2Real(operator.index, dt01.increment)
 		elif operator.index == 7:
-			operator.send(dt01.cmd_increment      , 2**12 * self.opControlNum2Real[operator.index,dt01.ctrl_increment]) # * self.getCurrOpParam2Real(operator.index, dt01.increment)
+			self.computedState[dt01.cmd_increment, operator.voice.index, operator.index] = 2**12 * self.opControlNum2Real[operator.index,dt01.ctrl_increment] # * self.getCurrOpParam2Real(operator.index, dt01.increment)
 
 	def processEvent(self, msg):
 	
@@ -177,7 +179,7 @@ class Patch():
 			
 		if msg.type == "note_off" or (msg.type == "note_on" and msg.velocity == 0):
 			if self.sustain:
-				self.toRelease += [msg]
+				self.toRelease[msg.note] = True
 				return
 				
 			note = self.allNotes[msg.note] 
@@ -186,10 +188,11 @@ class Patch():
 			voicesToUpdate = note.voices.copy()
 			for voice in note.voices:
 				voice.spawntime = 0
-				self.fpga_interface_inst.gather(False)
 				for operator in voice.operators:
-					self.sendEnv(operator)
-				self.fpga_interface_inst.release()
+					self.setEnv(operator)
+					
+				self.fpga_interface_inst.sendMultiple(dt01.cmd_env, voice.index, 0, self.computedState[dt01.cmd_env,voice.index,:], voicemode = False)
+				
 			note.voices = []
 			note.held = False
 		
@@ -211,13 +214,12 @@ class Patch():
 				voice.note = note
 				note.voices += [voice]
 
-				self.fpga_interface_inst.gather(False)
 				for operator in voice.operators:
-					self.sendIncrement(operator)
-					self.sendEnv(operator)
+					self.setIncrement(operator)
+					self.setEnv(operator)
 					
-				
-				self.fpga_interface_inst.release()
+				self.fpga_interface_inst.sendMultiple(dt01.cmd_env,       voice.index, 0, self.computedState[dt01.cmd_env,voice.index,:]      , voicemode = False)
+				self.fpga_interface_inst.sendMultiple(dt01.cmd_increment, voice.index, 0, self.computedState[dt01.cmd_increment,voice.index,:], voicemode = False)
 				
 		if msg.type == 'pitchwheel':
 			logger.debug("PW: " + str(msg.pitch))
@@ -228,12 +230,11 @@ class Patch():
 			amountchange = self.pitchwheel / 8192.0
 			self.pitchwheelReal = pow(2, amountchange)
 			logger.debug("PWREAL " + str(self.pitchwheelReal))
-			self.fpga_interface_inst.gather()
+			
 			for voice in self.voices:
 				for operator in voice.operators:
-					self.sendIncrement(operator)
-					
-			self.fpga_interface_inst.release()
+					self.setIncrement(operator)
+			self.fpga_interface_inst.sendMultiple(dt01.cmd_increment, 0, 0, self.computedState[dt01.cmd_increment,:,:], voicemode = False)
 				
 		elif msg.type == 'control_change':
 			
@@ -358,15 +359,16 @@ class Patch():
 		
 				if msg.control == dt01.ctrl_env: 
 					# sounding operators begin on note_on
-					self.sendEnv(activeOperator)
+					self.setEnv(activeOperator)
+					self.fpga_interface_inst.send(dt01.cmd_env, activeOperator.index, activeOperator.voice.index, self.computedState[dt01.cmd_env,activeOperator.voice.index,activeOperator.index])
 				
 						
 				if msg.control == dt01.ctrl_env_porta: 
-					activeOperator.send(dt01.cmd_env_porta      , 2**10 * (1 - self.controlNum2Real[activeOperator.index,dt01.ctrl_env_porta]) * (1 - self.controlNum2Real[dt01.ctrl_portamento]) )
+					activeOperator.send(dt01.cmd_env_porta      , 2**10 * (1 - self.opControlNum2Real[activeOperator.index,dt01.ctrl_env_porta]) * (1 - self.controlNum2Real[dt01.ctrl_portamento]) )
 		# static oscillators do not have velocity-dependant env
 					
 				if msg.control == dt01.ctrl_increment:
-					self.sendIncrement(activeOperator)
+					self.setIncrement(activeOperator)
 					
 				if msg.control == dt01.ctrl_increment_porta: 
 					activeOperator.send(dt01.cmd_increment_porta, 2**10 * (1 - self.controlNum2Real[dt01.ctrl_portamento]) * (1 - self.controlNum2Real[activeOperator.index,dt01.ctrl_increment_porta]))
@@ -381,9 +383,10 @@ class Patch():
 				if msg.control == dt01.ctrl_sustain: 
 					self.sustain  = msg.value
 					if not self.sustain:
-						for message in self.toRelease:
-							self.processEvent(message)
-						self.toRelease = []
+						for note, release in enumerate(self.toRelease):
+							if release:
+								self.processEvent(mido.Message('note_off', note = note, velocity = 0))
+						self.toRelease = [False]*MIDINOTES
 					
 			self.fpga_interface_inst.release()
 				
@@ -395,13 +398,13 @@ class Patch():
 		elif msg.type == 'aftertouch':
 			self.aftertouch = msg.value
 			self.aftertouchReal = msg.value/127.0
-			self.fpga_interface_inst.gather()
+			
 			for voice in self.voices:
 				for operator in voice.operators:
-					self.sendIncrement(operator)
+					self.setIncrement(operator)
 					
-			self.fpga_interface_inst.release()
-			
+			self.fpga_interface_inst.sendMultiple(dt01.cmd_increment, 0, 0, self.computedState[dt01.cmd_increment,:,:], voicemode = False)
+				
 			
 		if msg.type == "note_off" or (msg.type == "note_on" and msg.velocity == 0):
 			# implement rising mono porta
@@ -420,9 +423,9 @@ if __name__ == "__main__":
 	ch.setFormatter(formatter)
 	logger.addHandler(ch)
 
-	logger.setLevel(1)
+	logger.setLevel(0)
 	logger.debug("initializing from scratch")
-	polyphony = 512
+	polyphony = 64
 	dt01_inst = dt01.DT01(polyphony = polyphony)
 	
 	logger.debug("\n\nInitializing DT01")
@@ -438,14 +441,18 @@ if __name__ == "__main__":
 	testPatch.processEvent(mido.Message('control_change', control = dt01.ctrl_opno, value = 0)) #
 	testPatch.processEvent(mido.Message('control_change', control = dt01.ctrl_sounding, value = 1)) #
 	testPatch.processEvent(mido.Message('control_change', control = dt01.ctrl_env, value = 127)) #
+	testPatch.processEvent(mido.Message('control_change', control = dt01.ctrl_fmsrc, value = 1)) #
 	
 	testPatch.processEvent(mido.Message('control_change', control = dt01.ctrl_opno, value = 1)) #
 	testPatch.processEvent(mido.Message('control_change', control = dt01.ctrl_env, value = 127)) #
 	
-	testPatch.processEvent(mido.Message('control_change', control = dt01.ctrl_fm_algo, value = 0o77777771)) #
 	
 	testPatch.processEvent(mido.Message('note_on', channel=0, note=24, velocity=23, time=0))
 	dt01_inst.voices[0].operators[0].send(dt01.cmd_env, 2**14)
+	
+	for i in range(1024):
+		testPatch.processEvent(mido.Message('aftertouch', value = int(i/129))) #
+		
 	#testPatch.processEvent(mido.Message('note_on', channel=0, note=28, velocity=23, time=0))
 	#testPatch.processEvent(mido.Message('note_on', channel=0, note=31, velocity=23, time=0))
 	#	logger.debug(json.dumps(testPatch.controlNum2Real))

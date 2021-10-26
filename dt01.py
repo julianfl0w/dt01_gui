@@ -126,7 +126,7 @@ class DT01():
 		self.fpga_interface_inst = fpga_interface()
 		self.voices = 0
 		self.polyphony = polyphony
-		self.voicesPerPatch = min(self.polyphony, 128)
+		self.voicesPerPatch = min(self.polyphony, 64)
 		self.patchesPerDT01 = int(round(self.polyphony / self.voicesPerPatch))
 		self.voices = []
 		self.voiceSets = []
@@ -282,11 +282,11 @@ class fpga_interface():
 		#logger.debug([hex(p) for p in payload])
 		return payload
 		
-	def sendMultiple(self, paramNum, opno, voiceno, payload, voicemode = 0):
+	def sendMultiple(self, paramNum, voiceno, opno, payload, voicemode = True):
 		#logger.debug(voicemode)
 		tosend = self.format_command_multiple(paramNum, opno, voiceno, payload, voicemode = voicemode)
 		#with ILock('jlock', lock_directory=sys.path[0]):
-		logger.debug("voicemode: " + str(voicemode) + ": " + cmdNumber2Name[paramNum] + " voice: " + str(voiceno) + " opno: " + str(opno) + " PL(" + str(len(payload)) + "): " + str(payload[:8]))
+		#logger.debug("voicemode: " + str(voicemode) + ": " + cmdNumber2Name[paramNum] + " voice: " + str(voiceno) + " opno: " + str(opno) + " PL(" + str(len(payload)) + "): " + str(payload[:8]))
 		#logger.debug(payload)
 		#logger.debug([hex(s) for s in tosend])
 		spi.xfer2(tosend)
@@ -305,13 +305,13 @@ class fpga_interface():
 		if self.voicemode:
 			for paramNum, opdict in self.sendDictAcrossVoices.items():
 				for opno, payloads in opdict.items():
-					self.sendMultiple(paramNum, opno, self.lowestVoiceIndex, payloads, voicemode = self.voicemode)
+					self.sendMultiple(paramNum, self.lowestVoiceIndex, opno, payloads, voicemode = self.voicemode)
 		
 		else:
 			logger.debug(self.sendDictAcrossOperators)
 			for paramNum, voicedict in self.sendDictAcrossOperators.items():
 				for voiceno, payloads in voicedict.items():
-					self.sendMultiple(paramNum, 0, voiceno, payloads, voicemode = self.voicemode)
+					self.sendMultiple(paramNum, voiceno, 0, payloads, voicemode = self.voicemode)
 			
 		self.gathering = False
 	
@@ -337,8 +337,8 @@ class fpga_interface():
 		else:
 			tosend = self.format_command_int(paramNum, mm_opno, voiceno, payload)
 			#with ILock('jlock', lock_directory=sys.path[0]):
-			logger.debug("sending " + cmdNumber2Name[paramNum] + "(" + str(paramNum) + ")" + " operator:" + str(mm_opno) + " voice:" + str(voiceno) + " payload:" + str(payload))
-			logger.debug(tosend)
+			#logger.debug("sending " + cmdNumber2Name[paramNum] + "(" + str(paramNum) + ")" + " operator:" + str(mm_opno) + " voice:" + str(voiceno) + " payload:" + str(payload))
+			#logger.debug(tosend)
 			spi.xfer2(tosend)
 			#logger.debug("sent")
 		
