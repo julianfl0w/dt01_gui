@@ -23,7 +23,9 @@ class MidiDevice(object):
 		
 	def __init__(self, i, patch, midi_portname):
 		print(midi_portname)
-		midi_portname_file = re.sub(r'\W+', '', midi_portname) + ".txt"
+		outfolder = "out"
+		os.makedirs(outfolder, exist_ok=True)
+		midi_portname_file = os.path.join(outfolder, re.sub(r'\W+', '', midi_portname) + ".txt")
 		faulthandler.dump_traceback(file=open(midi_portname_file, "w+"), all_threads=False)
 		logger.debug("__init__")
 		self.lock = threading.Lock()

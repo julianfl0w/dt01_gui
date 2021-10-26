@@ -1,7 +1,7 @@
 import spidev
 spi = spidev.SpiDev()
 
-spi.open(1, 0)
+spi.open(1, 1)
 
 speed = 2000000
 spi.max_speed_hz=speed
