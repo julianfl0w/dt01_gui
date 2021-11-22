@@ -2,13 +2,12 @@ import spidev
 import struct
 #maxSpiSpeed = 120000000
 maxSpiSpeed = 100000000
+maxSpiSpeed = 45000000
 spi = spidev.SpiDev()
 spi.open(1, 0)
 spi.max_speed_hz=maxSpiSpeed
 from bitarray import bitarray
 import logging
-import RPi.GPIO as GPIO
-GPIO.setmode(GPIO.BCM)
 from ilock import ILock
 import sys
 import numpy as np 
@@ -82,6 +81,9 @@ for i, name in enumerate(controlNum2Name):
 		exec(name + " = " + str(i))
 
 cmdName2number = {}
+cmdName2number["cmd_readirqueue"    ] = 64
+cmdName2number["cmd_readaudio"      ] = 65
+cmdName2number["cmd_readid"         ] = 66
 cmdName2number["cmd_static"         ] = 67
 cmdName2number["cmd_sounding"       ] = 69
 cmdName2number["cmd_fm_algo"        ] = 70
@@ -147,6 +149,7 @@ class DT01():
 		oldestSetIndex = np.argsort(self.loanTime)[0]
 		return self.voiceSets[oldestSetIndex]
 	
+	
 	def initialize(self):
 		self.fpga_interface_inst.gather()
 		self.allChildren = self.voices
@@ -177,7 +180,7 @@ class DT01():
 		self.send(cmd_flushspi     , 0)
 		self.send(cmd_passthrough  , 0)
 		self.send(cmd_shift        , 0)
-		self.send(cmd_env_clkdiv   , 5)
+		self.send(cmd_env_clkdiv   , 8)
 	
 	def send(self, param, value):
 		self.fpga_interface_inst.send(param, 0, 0, value)
@@ -244,13 +247,22 @@ class Operator():
 
 class fpga_interface():
 	
-	
 		
 	def __init__(self):
 		self.gathering = False
 		state = {}
 		pass
 
+	def getStream(self, param):
+		self.send(param, 0, 0, 0)
+		return self.send(0, 0, 0, 0)
+		
+	def getID(self):
+		return self.getStream(cmd_readid)
+		
+	def getIRQueue(self):
+		return self.getStream(cmd_readirqueue)
+		
 	def format_command_real(self, mm_paramno, voiceno,  payload):
 		payload = payload*(2**16)
 		payload = struct.pack(">I", int(payload))
@@ -316,7 +328,7 @@ class fpga_interface():
 		self.gathering = False
 	
 	def send(self, paramNum, mm_opno,  voiceno,  payload):
-	
+		retval = "NORETURN"
 		# gather data if gathering is on
 		if self.gathering: 
 			
@@ -335,13 +347,13 @@ class fpga_interface():
 				
 			self.lowestVoiceIndex = min(self.lowestVoiceIndex , voiceno)
 		else:
-			tosend = self.format_command_int(paramNum, mm_opno, voiceno, payload)
+			tosend = self.format_command_int(paramNum, mm_opno, voiceno, payload) 
 			#with ILock('jlock', lock_directory=sys.path[0]):
-			#logger.debug("sending " + cmdNumber2Name[paramNum] + "(" + str(paramNum) + ")" + " operator:" + str(mm_opno) + " voice:" + str(voiceno) + " payload:" + str(payload))
-			#logger.debug(tosend)
-			spi.xfer2(tosend)
+			logger.debug("sending " + cmdNumber2Name[paramNum] + "(" + str(paramNum) + ")" + " operator:" + str(mm_opno) + " voice:" + str(voiceno) + " payload:" + str(payload))
+			logger.debug(tosend)
+			retval = spi.xfer2(tosend)
 			#logger.debug("sent")
-		
+		return retval
 if __name__ == "__main__":
 	fpga_interface_inst = fpga_interface()
 	
@@ -351,6 +363,26 @@ if __name__ == "__main__":
 	#			fpga_interface_inst.send(command, opno, voiceno, 0)
 				
 	# run testbench
+	
+	logger = logging.getLogger('DT01')
+	#formatter = logging.Formatter('{"debug": %(asctime)s {%(pathname)s:%(lineno)d} %(message)s}')
+	formatter = logging.Formatter('{{%(pathname)s:%(lineno)d %(message)s}')
+	ch = logging.StreamHandler()
+	ch.setFormatter(formatter)
+	logger.addHandler(ch)
+	logger.setLevel(1)
+		
+	
+	def bitrev(n):
+		return n
+		return int('{:08b}'.format(n)[::-1], 2)
+	
+	for i in range(1):
+		print([hex(bitrev(a)) for a in fpga_interface_inst.getID()])
+		#print([hex(bitrev(a)) for a in fpga_interface_inst.getStream(cmd_readaudio)])
+		#print([hex(bitrev(a)) for a in fpga_interface_inst.getID()])
+		#print([hex(bitrev(a)) for a in fpga_interface_inst.getStream(cmd_readaudio)])
+	
 	fpga_interface_inst.send("cmd_env_clkdiv", 0, 0, 0)
 	
 	opno = 0

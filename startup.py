@@ -75,7 +75,7 @@ class MidiDevice(object):
 		#	#logger.setLevel(0)
 		#else:
 		#self.timeTaken += [time.time() - starttime]
-		logger.warning(time.time() - starttime)
+		#logger.warning(time.time() - starttime)
 			
 		self.iteration += 1
 		#self.lock.release()
@@ -131,7 +131,7 @@ if __name__ == "__main__":
 		
 			# if 5 seconds have gone by
 			
-			if time.time()-lastCheck > 5:
+			if time.time()-lastCheck > 1:
 				lastCheck = time.time()
 				midi_ports  = midiin.get_ports()
 				for i, midi_portname in enumerate(midi_ports):

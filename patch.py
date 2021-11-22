@@ -1,14 +1,13 @@
 import spidev
 import struct
 #maxSpiSpeed = 120000000
-maxSpiSpeed = 100000000
+maxSpiSpeed = 120000000
 spi = spidev.SpiDev()
 spi.open(1, 0)
 spi.max_speed_hz=maxSpiSpeed
 from bitarray import bitarray
 import logging
 import RPi.GPIO as GPIO
-GPIO.setmode(GPIO.BCM)
 from ilock import ILock
 import json
 import sys
@@ -27,6 +26,10 @@ import dt01
 import logging
 import collections
 import math
+from multiprocessing import Process
+#from multiprocessing import shared_memory
+import RPi.GPIO as GPIO
+import SharedArray as sa
 logger = logging.getLogger('DT01')
 	
 MIDINOTES      = 128
@@ -50,6 +53,38 @@ class Note:
 # patch holds all state, including note and control state
 class Patch():
 					
+	def envServiceProc(self):
+		GPIO.setmode(GPIO.BOARD)
+		GPIO.setup(37 , GPIO.IN)
+		envelopePhase = sa.attach("shm://test")
+		
+		while(1):
+			if(GPIO.input(37)):
+				res = self.fpga_interface_inst.getIRQueue()
+				opno = int(math.log2((res[1]<<7) + (res[2]>>1)))
+				voiceno = int(((res[2] & 0x01)<<8) + res[3])
+				currPhase = envelopePhase[voiceno, opno]
+				logger.debug(envelopePhase[0,:])
+				logger.debug("IRQUEUE! voice:" + str(voiceno) + " op:"+ str(opno) + " phase:" + str(currPhase))
+				logger.debug("self.envelopeExp "   + str(self.envelopeExp  [opno][currPhase]))
+				logger.debug("self.envelopeLevel " + str(self.envelopeLevel[opno][currPhase]))
+				logger.debug("self.envelopeRate "  + str(self.envelopeRate [opno][currPhase]))
+				
+				if np.sum(res) == 0:
+					continue
+				if currPhase >= self.phaseCount - 1:
+					logger.debug("STOP PHASE")
+					continue
+				logger.debug(res)
+				
+				logger.debug(currPhase)
+				self.fpga_interface_inst.send(dt01.cmd_env_porta, opno, voiceno, self.envelopeRate [opno][currPhase])
+				self.fpga_interface_inst.send(dt01.cmd_envexp,    opno, voiceno, self.envelopeExp  [opno][currPhase])
+				self.fpga_interface_inst.send(dt01.cmd_env,       opno, voiceno, self.envelopeLevel[opno][currPhase])
+				envelopePhase[voiceno, opno] = (envelopePhase[voiceno, opno] + 1) % self.phaseCount
+				
+				
+
 	def send(self, param, value):
 		self.fpga_interface_inst.send(param, 0, 0, value)
 	
@@ -114,7 +149,7 @@ class Patch():
 		self.control[dt01.ctrl_filter_resonance] = 0  # common midi control
 		self.control[dt01.ctrl_filter_cutoff   ] = 0  # common midi control
 		
-		self.control[dt01.ctrl_env_clkdiv      ] = 16  #   
+		self.control[dt01.ctrl_env_clkdiv      ] = 8  #   
 		self.control[dt01.ctrl_flushspi        ] = 0   #   
 		self.control[dt01.ctrl_passthrough     ] = 0   #   
 		self.control[dt01.ctrl_shift           ] = 0   #   
@@ -128,6 +163,24 @@ class Patch():
 		
 		self.opControlNum2Val = np.zeros((dt01.OPERATORCOUNT, CONTROLCOUNT))
 		self.opControlNum2Real= np.zeros((dt01.OPERATORCOUNT, CONTROLCOUNT))
+		
+		self.phaseCount = 4
+		self.envelopeLevel= np.zeros((dt01.OPERATORCOUNT, self.phaseCount))
+		self.envelopeLevel[0] = np.array([2**12, 2**11, 0, 0])
+		self.envelopeRate = np.zeros((dt01.OPERATORCOUNT, self.phaseCount))
+		a = 2**5
+		self.envelopeRate[0]  = np.array([a,a,a,a])
+		self.envelopeExp  = np.zeros((dt01.OPERATORCOUNT, self.phaseCount))
+		b = 1
+		self.envelopeExp[0]  = np.array([b,b,b,b])
+		envelopePhaseUnshared = np.zeros((len(self.voices), dt01.OPERATORCOUNT), dtype=np.int)
+		#shm = shared_memory.SharedMemory(create=True, size=self.envelopePhaseUnshared.nbytes)
+		#self.envelopePhase = np.ndarray(envelopePhaseUnshared.shape, dtype=envelopePhaseUnshared.dtype, buffer=shm.buf)
+		#self.envelopePhase[:] = envelopePhaseUnshared[:]
+		sa.delete("test")
+		self.shm = sa.create("shm://test", envelopePhaseUnshared.shape, dtype=np.int)
+		#sself.envelopePhase = np.ndarray(envelopePhaseUnshared.shape, envelopePhaseUnshared.dtype, buffer=shm.buf)
+		self.shm[:] = envelopePhaseUnshared[:]
 						
 		#			
 		#self.processEvent(mido.Message('pitchwheel', pitch = 64))
@@ -147,7 +200,13 @@ class Patch():
 		self.processEvent(mido.Message('control_change', control = dt01.ctrl_env     , value = 2)) #
 		
 		self.processEvent(mido.Message('control_change', control = dt01.ctrl_opno      , value = 6)) #
-		self.processEvent(mido.Message('control_change', control = dt01.ctrl_increment , value = 64)) #
+		self.processEvent(mido.Message('control_change', control = dt01.ctrl_increment , value = 16)) #
+		self.processEvent(mido.Message('control_change', control = dt01.ctrl_opno      , value = 7)) #
+		self.processEvent(mido.Message('control_change', control = dt01.ctrl_increment , value = 16)) #
+		
+		
+		p = Process(target=self.envServiceProc, args=())
+		p.start()
 			
 	def getCurrOpParam2Real(self, index, paramNum):
 		return self.controlNum2Real[index,paramNum]
@@ -155,10 +214,16 @@ class Patch():
 	def getCurrOpParam2Val(self, index, paramNum):
 		return self.controlNum2Val[index,paramNum]
 	
-	def setEnv(self, operator):
+	def setEnv(self, operator, release=False):
+	
+		if release:
+			baseVal = self.envelopeLevel[operator.index, -1]
+		else:
+			baseVal = self.envelopeLevel[operator.index, 1]
+			
 		if operator.index < 6:
 			#logger.debug("opno" + str(operator.index) + " velo: " + str(operator.voice.note.velocityReal) + ", ocn2r: " + str( self.opControlNum2Real[:,dt01.ctrl_env]))
-			self.computedState[dt01.cmd_env , operator.voice.index, operator.index] = operator.voice.note.velocityReal * (2**12) * self.opControlNum2Real[operator.index,dt01.ctrl_env]
+			self.computedState[dt01.cmd_env , operator.voice.index, operator.index] = (1 - operator.voice.note.index/256 ) * operator.voice.note.velocityReal * baseVal * self.opControlNum2Real[operator.index,dt01.ctrl_env]
 		elif operator.index == 6:           
 			self.computedState[dt01.cmd_env , operator.voice.index, operator.index] = (2**16) * self.opControlNum2Real[operator.index,dt01.ctrl_env]
 		elif operator.index == 7:           
@@ -189,7 +254,8 @@ class Patch():
 			for voice in note.voices:
 				voice.spawntime = 0
 				for operator in voice.operators:
-					self.setEnv(operator)
+					self.setEnv(operator, release=True)
+					self.shm[voice.index, operator.index] = 0
 					
 				self.fpga_interface_inst.sendMultiple(dt01.cmd_env, voice.index, 0, self.computedState[dt01.cmd_env,voice.index,:], voicemode = False)
 				
@@ -204,21 +270,30 @@ class Patch():
 			note.held = True
 			note.msg = msg
 			# spawn some voices!
-			for voiceno in range(self.voicesPerNote):
+			for voiceNoInCluster in range(self.voicesPerNote):
 				
 				#self.currVoiceIndex = (self.currVoiceIndex + 1) % self.polyphony
 				#logger.debug([s.spawntime for s in self.voices])
 				voice = sorted(self.voices, key=lambda x: x.spawntime)[0]
 				voice.spawntime = time.time()
-				voice.indexInCluser = voiceno
+				voice.indexInCluser = voiceNoInCluster
 				voice.note = note
 				note.voices += [voice]
 
 				for operator in voice.operators:
 					self.setIncrement(operator)
 					self.setEnv(operator)
+					logger.debug("Resetting phase, op:" + str(operator.index) + " voice:" + str(voice.index))
+					self.shm[voice.index, operator.index] = 1
+					opno =  operator.index
 					
-				self.fpga_interface_inst.sendMultiple(dt01.cmd_env,       voice.index, 0, self.computedState[dt01.cmd_env,voice.index,:]      , voicemode = False)
+					currPhase = self.shm[voice.index, opno]
+					self.fpga_interface_inst.send(dt01.cmd_env_porta, opno, voice.index, 0)
+					self.fpga_interface_inst.send(dt01.cmd_envexp,    opno, voice.index, self.envelopeExp  [opno][currPhase])
+					self.fpga_interface_inst.send(dt01.cmd_env,       opno, voice.index, self.envelopeLevel[opno][currPhase])
+					self.fpga_interface_inst.send(dt01.cmd_env_porta, opno, voice.index, self.envelopeRate [opno][currPhase])
+						
+				#self.fpga_interface_inst.sendMultiple(dt01.cmd_env,       voice.index, 0, self.computedState[dt01.cmd_env,voice.index,:]      , voicemode = False)
 				self.fpga_interface_inst.sendMultiple(dt01.cmd_increment, voice.index, 0, self.computedState[dt01.cmd_increment,voice.index,:], voicemode = False)
 				
 		if msg.type == 'pitchwheel':
@@ -358,9 +433,10 @@ class Patch():
 					voice.send(dt01.cmd_static, sendVal)
 		
 				if msg.control == dt01.ctrl_env: 
+					pass
 					# sounding operators begin on note_on
-					self.setEnv(activeOperator)
-					self.fpga_interface_inst.send(dt01.cmd_env, activeOperator.index, activeOperator.voice.index, self.computedState[dt01.cmd_env,activeOperator.voice.index,activeOperator.index])
+					#self.setEnv(activeOperator)
+					#self.fpga_interface_inst.send(dt01.cmd_env, activeOperator.index, activeOperator.voice.index, self.computedState[dt01.cmd_env,activeOperator.voice.index,activeOperator.index])
 				
 						
 				if msg.control == dt01.ctrl_env_porta: 
