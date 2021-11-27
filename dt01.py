@@ -50,10 +50,10 @@ OPBASE = [0]*8
 controlNum2Name[13] = "ctrl_opno"            
 OPBASE[0]  = 14
 controlNum2Name[14] = "ctrl_env"            
-controlNum2Name[15] = "ctrl_env_porta"      
+controlNum2Name[15] = "ctrl_env_rate"      
 controlNum2Name[16] = "ctrl_envexp"         
 controlNum2Name[17] = "ctrl_increment"      
-controlNum2Name[18] = "ctrl_increment_porta"
+controlNum2Name[18] = "ctrl_increment_rate"
 controlNum2Name[19] = "ctrl_incexp"         
 controlNum2Name[20] = "ctrl_fmsrc"         
 controlNum2Name[21] = "ctrl_amsrc"         
@@ -63,7 +63,7 @@ controlNum2Name[23] = "ctrl_sounding"
 
 # common midi controls
 controlNum2Name[64] = "ctrl_sustain"         # common midi control
-controlNum2Name[65] = "ctrl_portamento"      # common midi control
+controlNum2Name[65] = "ctrl_ratemento"      # common midi control
 controlNum2Name[71] = "ctrl_filter_resonance"# common midi control
 controlNum2Name[74] = "ctrl_filter_cutoff"   # common midi control
 
@@ -92,10 +92,10 @@ cmdName2number["cmd_fbgain"         ] = 73
 cmdName2number["cmd_fbsrc"          ] = 74
 cmdName2number["cmd_channelgain"    ] = 75
 cmdName2number["cmd_env"            ] = 76 
-cmdName2number["cmd_env_porta"      ] = 77 
+cmdName2number["cmd_env_rate"      ] = 77 
 cmdName2number["cmd_envexp"         ] = 78 
 cmdName2number["cmd_increment"      ] = 79 
-cmdName2number["cmd_increment_porta"] = 80 
+cmdName2number["cmd_increment_rate"] = 80 
 cmdName2number["cmd_incexp"         ] = 81
 cmdName2number["cmd_flushspi"       ] = 120
 cmdName2number["cmd_passthrough"    ] = 121
@@ -108,7 +108,7 @@ for name, number in cmdName2number.items():
 		
 for name, number in cmdName2number.items():
 	if name:
-		print(name + " = " + str(number))
+		#print(name + " = " + str(number))
 		exec(name + " = " + str(number))
 
 
@@ -165,7 +165,7 @@ class DT01():
 				channel.send(cmd_channelgain, 2**16) 
 			for operator in voice.operators:
 				operator.send(cmd_env            , 0)
-				operator.send(cmd_env_porta      , 2**10)
+				operator.send(cmd_env_rate       , 0)
 				operator.send(cmd_envexp         , 0x01)
 
 				if operator.index < 6:
@@ -173,14 +173,14 @@ class DT01():
 				else:
 					operator.send(cmd_increment      , 1) # * self.paramNum2Real[increment]
 
-				operator.send(cmd_increment_porta, 2**13)
+				operator.send(cmd_increment_rate, 0)
 				operator.send(cmd_incexp         , 0x01)
 
 		self.fpga_interface_inst.release()
 		self.send(cmd_flushspi     , 0)
 		self.send(cmd_passthrough  , 0)
 		self.send(cmd_shift        , 0)
-		self.send(cmd_env_clkdiv   , 8)
+		self.send(cmd_env_clkdiv   , 2**12)
 	
 	def send(self, param, value):
 		self.fpga_interface_inst.send(param, 0, 0, value)
@@ -298,7 +298,7 @@ class fpga_interface():
 		#logger.debug(voicemode)
 		tosend = self.format_command_multiple(paramNum, opno, voiceno, payload, voicemode = voicemode)
 		#with ILock('jlock', lock_directory=sys.path[0]):
-		#logger.debug("voicemode: " + str(voicemode) + ": " + cmdNumber2Name[paramNum] + " voice: " + str(voiceno) + " opno: " + str(opno) + " PL(" + str(len(payload)) + "): " + str(payload[:8]))
+		logger.debug("voicemode: " + str(voicemode) + ": " + cmdNumber2Name[paramNum] + " voice: " + str(voiceno) + " opno: " + str(opno) + " PL(" + str(len(payload)) + "): " + str(payload[:8]))
 		#logger.debug(payload)
 		#logger.debug([hex(s) for s in tosend])
 		spi.xfer2(tosend)
@@ -388,14 +388,14 @@ if __name__ == "__main__":
 	opno = 0
 	voiceno = 0
 	fpga_interface_inst.send("cmd_channelgain_right", opno, voiceno, 2**16)
-	fpga_interface_inst.send("cmd_gain_porta"      , opno, voiceno, 2**16)
+	fpga_interface_inst.send("cmd_gain_rate"      , opno, voiceno, 2**16)
 	fpga_interface_inst.send("cmd_gain"            , opno, voiceno, 2**16)
-	fpga_interface_inst.send("cmd_increment_porta" , opno, voiceno, 2**12)
+	fpga_interface_inst.send("cmd_increment_rate" , opno, voiceno, 2**12)
 	fpga_interface_inst.send("cmd_increment"       , opno, voiceno, 2**22)
 	fpga_interface_inst.send("cmd_fm_algo"       , opno, voiceno, 1)
 
 	opno = 1
-	fpga_interface_inst.send("cmd_increment_porta", opno, voiceno, 2**30)
+	fpga_interface_inst.send("cmd_increment_rate", opno, voiceno, 2**30)
 	fpga_interface_inst.send("cmd_increment"      , opno, voiceno, 2**22)
 	fpga_interface_inst.send("cmd_fm_algo"      , opno, voiceno, 2)
 	

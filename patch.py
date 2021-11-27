@@ -26,6 +26,8 @@ import dt01
 import logging
 import collections
 import math
+import irqueue
+import threading
 from multiprocessing import Process
 #from multiprocessing import shared_memory
 import RPi.GPIO as GPIO
@@ -53,38 +55,6 @@ class Note:
 # patch holds all state, including note and control state
 class Patch():
 					
-	def envServiceProc(self):
-		GPIO.setmode(GPIO.BOARD)
-		GPIO.setup(37 , GPIO.IN)
-		envelopePhase = sa.attach("shm://test")
-		
-		while(1):
-			if(GPIO.input(37)):
-				res = self.fpga_interface_inst.getIRQueue()
-				opno = int(math.log2((res[1]<<7) + (res[2]>>1)))
-				voiceno = int(((res[2] & 0x01)<<8) + res[3])
-				currPhase = envelopePhase[voiceno, opno]
-				logger.debug(envelopePhase[0,:])
-				logger.debug("IRQUEUE! voice:" + str(voiceno) + " op:"+ str(opno) + " phase:" + str(currPhase))
-				logger.debug("self.envelopeExp "   + str(self.envelopeExp  [opno][currPhase]))
-				logger.debug("self.envelopeLevel " + str(self.envelopeLevel[opno][currPhase]))
-				logger.debug("self.envelopeRate "  + str(self.envelopeRate [opno][currPhase]))
-				
-				if np.sum(res) == 0:
-					continue
-				if currPhase >= self.phaseCount - 1:
-					logger.debug("STOP PHASE")
-					continue
-				logger.debug(res)
-				
-				logger.debug(currPhase)
-				self.fpga_interface_inst.send(dt01.cmd_env_porta, opno, voiceno, self.envelopeRate [opno][currPhase])
-				self.fpga_interface_inst.send(dt01.cmd_envexp,    opno, voiceno, self.envelopeExp  [opno][currPhase])
-				self.fpga_interface_inst.send(dt01.cmd_env,       opno, voiceno, self.envelopeLevel[opno][currPhase])
-				envelopePhase[voiceno, opno] = (envelopePhase[voiceno, opno] + 1) % self.phaseCount
-				
-				
-
 	def send(self, param, value):
 		self.fpga_interface_inst.send(param, 0, 0, value)
 	
@@ -134,10 +104,10 @@ class Patch():
 		self.control[dt01.ctrl_expression      ] = 0   # common midi control
 		
 		self.control[dt01.ctrl_env             ] = 0 #
-		self.control[dt01.ctrl_env_porta       ] = 64  #
+		self.control[dt01.ctrl_env_rate       ] = 64  #
 		self.control[dt01.ctrl_envexp          ] = 1   #
 		self.control[dt01.ctrl_increment       ] = 64  #
-		self.control[dt01.ctrl_increment_porta ] = 0   #
+		self.control[dt01.ctrl_increment_rate ] = 0   #
 		self.control[dt01.ctrl_incexp          ] = 1   #
 		self.control[dt01.ctrl_fmsrc           ] = 7   #fm off
 		self.control[dt01.ctrl_amsrc           ] = 0   #am off
@@ -145,7 +115,7 @@ class Patch():
 		self.control[dt01.ctrl_sounding        ] = 0   #
 		
 		self.control[dt01.ctrl_sustain         ] = 0  # common midi control
-		self.control[dt01.ctrl_portamento      ] = 127  # common midi control
+		self.control[dt01.ctrl_ratemento      ] = 127  # common midi control
 		self.control[dt01.ctrl_filter_resonance] = 0  # common midi control
 		self.control[dt01.ctrl_filter_cutoff   ] = 0  # common midi control
 		
@@ -164,24 +134,34 @@ class Patch():
 		self.opControlNum2Val = np.zeros((dt01.OPERATORCOUNT, CONTROLCOUNT))
 		self.opControlNum2Real= np.zeros((dt01.OPERATORCOUNT, CONTROLCOUNT))
 		
+		# more defaults : should be programmable by patch
 		self.phaseCount = 4
 		self.envelopeLevel= np.zeros((dt01.OPERATORCOUNT, self.phaseCount))
 		self.envelopeLevel[0] = np.array([2**12, 2**11, 0, 0])
-		self.envelopeRate = np.zeros((dt01.OPERATORCOUNT, self.phaseCount))
-		a = 2**5
-		self.envelopeRate[0]  = np.array([a,a,a,a])
-		self.envelopeExp  = np.zeros((dt01.OPERATORCOUNT, self.phaseCount))
-		b = 1
-		self.envelopeExp[0]  = np.array([b,b,b,b])
-		envelopePhaseUnshared = np.zeros((len(self.voices), dt01.OPERATORCOUNT), dtype=np.int)
+		#self.envelopeLevel = np.array([2**12, 2**11, 0, 0]) * np.ones((4, dt01.OPERATORCOUNT))
+		#logger.debug(self.envelopeLevel)
+		self.envelopeRate = np.ones((dt01.OPERATORCOUNT, self.phaseCount)) * 2**10
+		self.envelopeExp  = np.ones((dt01.OPERATORCOUNT, self.phaseCount))
+		
 		#shm = shared_memory.SharedMemory(create=True, size=self.envelopePhaseUnshared.nbytes)
 		#self.envelopePhase = np.ndarray(envelopePhaseUnshared.shape, dtype=envelopePhaseUnshared.dtype, buffer=shm.buf)
 		#self.envelopePhase[:] = envelopePhaseUnshared[:]
-		sa.delete("test")
-		self.shm = sa.create("shm://test", envelopePhaseUnshared.shape, dtype=np.int)
-		#sself.envelopePhase = np.ndarray(envelopePhaseUnshared.shape, envelopePhaseUnshared.dtype, buffer=shm.buf)
-		self.shm[:] = envelopePhaseUnshared[:]
-						
+		
+		try:
+			sa.delete("envelopePhase")
+		except:
+			logger.debug("no extant envelopePhase found")
+			
+		self.envelopePhase = sa.create("shm://envelopePhase", (len(self.voices), dt01.OPERATORCOUNT), dtype=np.int)
+		self.envelopePhase[:] = np.zeros((len(self.voices), dt01.OPERATORCOUNT), dtype=np.int)[:]
+		
+		try:
+			sa.delete("baseEnv")
+		except:
+			logger.debug("no extant envelopePhase found")
+		self.baseEnv = sa.create("shm://baseEnv", (len(self.voices), dt01.OPERATORCOUNT), dtype=np.float)
+		self.baseEnv[:] = np.zeros((len(self.voices), dt01.OPERATORCOUNT), dtype=np.float)[:]
+		
 		#			
 		#self.processEvent(mido.Message('pitchwheel', pitch = 64))
 		#self.processEvent(mido.Message('aftertouch', value = 0))
@@ -205,8 +185,9 @@ class Patch():
 		self.processEvent(mido.Message('control_change', control = dt01.ctrl_increment , value = 16)) #
 		
 		
-		p = Process(target=self.envServiceProc, args=())
+		p = threading.Thread(target=irqueue.envServiceProc, args=())
 		p.start()
+		#os.system("python3 irqueue.py &")
 			
 	def getCurrOpParam2Real(self, index, paramNum):
 		return self.controlNum2Real[index,paramNum]
@@ -215,19 +196,13 @@ class Patch():
 		return self.controlNum2Val[index,paramNum]
 	
 	def setEnv(self, operator, release=False):
-	
-		if release:
-			baseVal = self.envelopeLevel[operator.index, -1]
-		else:
-			baseVal = self.envelopeLevel[operator.index, 1]
-			
 		if operator.index < 6:
 			#logger.debug("opno" + str(operator.index) + " velo: " + str(operator.voice.note.velocityReal) + ", ocn2r: " + str( self.opControlNum2Real[:,dt01.ctrl_env]))
-			self.computedState[dt01.cmd_env , operator.voice.index, operator.index] = (1 - operator.voice.note.index/256 ) * operator.voice.note.velocityReal * baseVal * self.opControlNum2Real[operator.index,dt01.ctrl_env]
+			self.baseEnv[operator.voice.index, operator.index] = (1 - operator.voice.note.index/256 ) * operator.voice.note.velocityReal * self.opControlNum2Real[operator.index,dt01.ctrl_env]
 		elif operator.index == 6:           
-			self.computedState[dt01.cmd_env , operator.voice.index, operator.index] = (2**16) * self.opControlNum2Real[operator.index,dt01.ctrl_env]
+			self.baseEnv[operator.voice.index, operator.index] = self.opControlNum2Real[operator.index,dt01.ctrl_env]
 		elif operator.index == 7:           
-			self.computedState[dt01.cmd_env , operator.voice.index, operator.index] = (2**7) * self.opControlNum2Real[operator.index,dt01.ctrl_env]
+			self.baseEnv[operator.voice.index, operator.index] = self.opControlNum2Real[operator.index,dt01.ctrl_env]
 		
 	
 	def setIncrement(self, operator):
@@ -238,6 +213,15 @@ class Patch():
 		elif operator.index == 7:
 			self.computedState[dt01.cmd_increment, operator.voice.index, operator.index] = 2**12 * self.opControlNum2Real[operator.index,dt01.ctrl_increment] # * self.getCurrOpParam2Real(operator.index, dt01.increment)
 
+	def setPhaseAllOps(self, voice, phase):
+		self.fpga_interface_inst.sendMultiple(dt01.cmd_env_rate, voice.index, 0, [0]* dt01.OPERATORCOUNT , voicemode=False)
+		self.fpga_interface_inst.sendMultiple(dt01.cmd_envexp,   voice.index, 0, self.envelopeExp  [:][phase], voicemode=False)
+		logger.debug(self.baseEnv[voice.index,:])
+		logger.debug(self.envelopeLevel[:,phase])
+		self.fpga_interface_inst.sendMultiple(dt01.cmd_env,      voice.index, 0, self.baseEnv[voice.index,:]*self.envelopeLevel[:,phase], voicemode=False)
+		self.fpga_interface_inst.sendMultiple(dt01.cmd_env_rate, voice.index, 0, self.envelopeRate [:][phase], voicemode=False)
+		self.envelopePhase[voice.index, :] = phase
+		
 	def processEvent(self, msg):
 	
 		logger.debug("Processing " + str(msg))
@@ -253,12 +237,9 @@ class Patch():
 			voicesToUpdate = note.voices.copy()
 			for voice in note.voices:
 				voice.spawntime = 0
-				for operator in voice.operators:
-					self.setEnv(operator, release=True)
-					self.shm[voice.index, operator.index] = 0
-					
-				self.fpga_interface_inst.sendMultiple(dt01.cmd_env, voice.index, 0, self.computedState[dt01.cmd_env,voice.index,:], voicemode = False)
-				
+				for op in voice.operators:
+					self.setEnv(op)
+				self.setPhaseAllOps(voice, 3)
 			note.voices = []
 			note.held = False
 		
@@ -283,18 +264,11 @@ class Patch():
 				for operator in voice.operators:
 					self.setIncrement(operator)
 					self.setEnv(operator)
-					logger.debug("Resetting phase, op:" + str(operator.index) + " voice:" + str(voice.index))
-					self.shm[voice.index, operator.index] = 1
-					opno =  operator.index
+				self.fpga_interface_inst.sendMultiple(dt01.cmd_increment, voice.index, 0, self.computedState[dt01.cmd_increment,voice.index,:], voicemode = False)
 					
-					currPhase = self.shm[voice.index, opno]
-					self.fpga_interface_inst.send(dt01.cmd_env_porta, opno, voice.index, 0)
-					self.fpga_interface_inst.send(dt01.cmd_envexp,    opno, voice.index, self.envelopeExp  [opno][currPhase])
-					self.fpga_interface_inst.send(dt01.cmd_env,       opno, voice.index, self.envelopeLevel[opno][currPhase])
-					self.fpga_interface_inst.send(dt01.cmd_env_porta, opno, voice.index, self.envelopeRate [opno][currPhase])
+				self.setPhaseAllOps(voice, 0)
 						
 				#self.fpga_interface_inst.sendMultiple(dt01.cmd_env,       voice.index, 0, self.computedState[dt01.cmd_env,voice.index,:]      , voicemode = False)
-				self.fpga_interface_inst.sendMultiple(dt01.cmd_increment, voice.index, 0, self.computedState[dt01.cmd_increment,voice.index,:], voicemode = False)
 				
 		if msg.type == 'pitchwheel':
 			logger.debug("PW: " + str(msg.pitch))
@@ -349,6 +323,8 @@ class Patch():
 				self.processEvent(mido.Message('control_change', control= 7, value = msg.value ))
 				
 			if msg.control == dt01.ctrl_env_clkdiv:
+				logger.debug(" setting envclkc div " + str(self.controlNum2Val[dt01.ctrl_env_clkdiv]))
+				die
 				self.send(dt01.cmd_env_clkdiv , self.controlNum2Val[dt01.ctrl_env_clkdiv])
 				
 			if msg.control == dt01.ctrl_flushspi:
@@ -439,15 +415,15 @@ class Patch():
 					#self.fpga_interface_inst.send(dt01.cmd_env, activeOperator.index, activeOperator.voice.index, self.computedState[dt01.cmd_env,activeOperator.voice.index,activeOperator.index])
 				
 						
-				if msg.control == dt01.ctrl_env_porta: 
-					activeOperator.send(dt01.cmd_env_porta      , 2**10 * (1 - self.opControlNum2Real[activeOperator.index,dt01.ctrl_env_porta]) * (1 - self.controlNum2Real[dt01.ctrl_portamento]) )
+				if msg.control == dt01.ctrl_env_rate: 
+					activeOperator.send(dt01.cmd_env_rate      , 2**10 * (1 - self.opControlNum2Real[activeOperator.index,dt01.ctrl_env_rate]) * (1 - self.controlNum2Real[dt01.ctrl_ratemento]) )
 		# static oscillators do not have velocity-dependant env
 					
 				if msg.control == dt01.ctrl_increment:
 					self.setIncrement(activeOperator)
 					
-				if msg.control == dt01.ctrl_increment_porta: 
-					activeOperator.send(dt01.cmd_increment_porta, 2**10 * (1 - self.controlNum2Real[dt01.ctrl_portamento]) * (1 - self.controlNum2Real[activeOperator.index,dt01.ctrl_increment_porta]))
+				if msg.control == dt01.ctrl_increment_rate: 
+					activeOperator.send(dt01.cmd_increment_rate, 2**10 * (1 - self.controlNum2Real[dt01.ctrl_ratemento]) * (1 - self.controlNum2Real[activeOperator.index,dt01.ctrl_increment_rate]))
 					
 				if msg.control == dt01.ctrl_incexp: 
 					activeOperator.send(dt01.cmd_incexp         , self.opControlNum2Val[self.opno,dt01.ctrl_incexp])  
@@ -483,7 +459,7 @@ class Patch():
 				
 			
 		if msg.type == "note_off" or (msg.type == "note_on" and msg.velocity == 0):
-			# implement rising mono porta
+			# implement rising mono rate
 			for heldnote in self.allNotes[::-1]:
 				if heldnote.held and self.polyphony == self.voicesPerNote :
 					self.processEvent(heldnote.msg)

@@ -131,7 +131,8 @@ if __name__ == "__main__":
 		
 			# if 5 seconds have gone by
 			
-			if time.time()-lastCheck > 1:
+			#if time.time()-lastCheck > 1:
+			if lastCheck == 0:
 				lastCheck = time.time()
 				midi_ports  = midiin.get_ports()
 				for i, midi_portname in enumerate(midi_ports):
@@ -143,7 +144,8 @@ if __name__ == "__main__":
 							sys.exit()
 			
 						logger.debug("Attaching MIDI input callback handler.")
-						MidiDevice_inst = MidiDevice(i, GLOBAL_DEFAULT_PATCH, str(midi_portname))
+						#MidiDevice_inst = MidiDevice(i, GLOBAL_DEFAULT_PATCH, str(midi_portname))
+						MidiDevice_inst = MidiDevice(i, Patch(dt01_inst), str(midi_portname))
 						midiin.set_callback(MidiDevice_inst)
 						logger.debug("Handler: " + str(midiin))
 						midiDev += [MidiDevice_inst]
