@@ -1,11 +1,5 @@
-import spidev
+
 import struct
-#maxSpiSpeed = 120000000
-maxSpiSpeed = 100000000
-maxSpiSpeed = 45000000
-spi = spidev.SpiDev()
-spi.open(1, 0)
-spi.max_speed_hz=maxSpiSpeed
 from bitarray import bitarray
 import logging
 from ilock import ILock
@@ -102,9 +96,9 @@ cmdName2number["cmd_passthrough"    ] = 121
 cmdName2number["cmd_shift"          ] = 122
 cmdName2number["cmd_env_clkdiv"     ] = 123
 
-cmdNumber2Name = ["0"]*128
+cmdNum2Name = ["0"]*128
 for name, number in cmdName2number.items():
-	cmdNumber2Name[number] = name
+	cmdNum2Name[number] = name
 		
 for name, number in cmdName2number.items():
 	if name:
@@ -125,7 +119,6 @@ class DT01():
 			pickle.dump(self, f)
 	
 	def __init__(self, polyphony = 512):
-		self.fpga_interface_inst = fpga_interface()
 		self.voices = 0
 		self.polyphony = polyphony
 		self.voicesPerPatch = min(self.polyphony, 64)
@@ -138,7 +131,7 @@ class DT01():
 		for i in range(self.patchesPerDT01):
 			newSet = []
 			for j in range(self.voicesPerPatch):
-				newVoice = Voice(index, self.fpga_interface_inst)
+				newVoice = Voice(index)
 				self.voices += [newVoice]
 				newSet      += [newVoice]
 				index += 1
@@ -150,47 +143,46 @@ class DT01():
 		return self.voiceSets[oldestSetIndex]
 	
 	
-	def initialize(self):
-		self.fpga_interface_inst.gather()
-		self.allChildren = self.voices
-		for voice in self.voices:
-			#paramNum, mm_opno,  voiceno,  payload
-			voice.send(cmd_static       , 0b11000000)
-			voice.send(cmd_sounding     , 0b00000001)
-			voice.send(cmd_fm_algo      , 0o77777777)
-			voice.send(cmd_am_algo      , 0o00000000)
-			voice.send(cmd_fbgain       , 0)
-			voice.send(cmd_fbsrc        , 0)
-			for channel in voice.channels:
-				channel.send(cmd_channelgain, 2**16) 
-			for operator in voice.operators:
-				operator.send(cmd_env            , 0)
-				operator.send(cmd_env_rate       , 0)
-				operator.send(cmd_envexp         , 0x01)
+	def getInitCommands(self):
+		lowestVoiceIndex = min([v.index for v in self.voices])
+		
+		commands = []
+		commands += [formatCommand(cmd_static       , lowestVoiceIndex, 0, [0b11000000]*len(self.voices))]
+		commands += [formatCommand(cmd_sounding     , lowestVoiceIndex, 0, [0b00000001]*len(self.voices))]
+		commands += [formatCommand(cmd_fm_algo      , lowestVoiceIndex, 0, [0o77777777]*len(self.voices))]
+		commands += [formatCommand(cmd_am_algo      , lowestVoiceIndex, 0, [0o00000000]*len(self.voices))]
+		commands += [formatCommand(cmd_fbgain       , lowestVoiceIndex, 0, [0         ]*len(self.voices))]
+		commands += [formatCommand(cmd_fbsrc        , lowestVoiceIndex, 0, [0         ]*len(self.voices))]
+			
+		for channel in range(2):
+			commands += [formatCommand(cmd_channelgain, lowestVoiceIndex, 0, [2**16]*len(self.voices))]
+			
+		#paramNum, mm_opno,  voiceno,  payload
+		for opno in range(OPERATORCOUNT):
+			commands += [formatCommand(cmd_env            , lowestVoiceIndex, opno, [0   ]*len(self.voices))]
+			commands += [formatCommand(cmd_env_rate       , lowestVoiceIndex, opno, [0   ]*len(self.voices))]
+			commands += [formatCommand(cmd_envexp         , lowestVoiceIndex, opno, [0x01]*len(self.voices))]
 
-				if operator.index < 6:
-					operator.send(cmd_increment      , 2**12) # * self.paramNum2Real[increment]
-				else:
-					operator.send(cmd_increment      , 1) # * self.paramNum2Real[increment]
+		commands += [formatCommand(cmd_increment      , lowestVoiceIndex, 6, [2**12]*len(self.voices))] # * self.paramNum2Real[increment]
+		commands += [formatCommand(cmd_increment      , lowestVoiceIndex, 7, [2**12]*len(self.voices))] # * self.paramNum2Real[increment]
 
-				operator.send(cmd_increment_rate, 0)
-				operator.send(cmd_incexp         , 0x01)
+		commands += [formatCommand(cmd_increment_rate , lowestVoiceIndex, 0, [0   ]*len(self.voices))]
+		commands += [formatCommand(cmd_incexp         , lowestVoiceIndex, 0, [0x01]*len(self.voices))]
 
-		self.fpga_interface_inst.release()
-		self.send(cmd_flushspi     , 0)
-		self.send(cmd_passthrough  , 0)
-		self.send(cmd_shift        , 0)
-		self.send(cmd_env_clkdiv   , 2**12)
-	
-	def send(self, param, value):
-		self.fpga_interface_inst.send(param, 0, 0, value)
+		commands += [formatCommand(cmd_flushspi     , 0, 0, 0)    ]
+		commands += [formatCommand(cmd_passthrough  , 0, 0, 0)    ]
+		commands += [formatCommand(cmd_shift        , 0, 0, 0)    ]
+		commands += [formatCommand(cmd_env_clkdiv   , 0, 0, 5)]
+		return commands
+		
+	def formatCommand(self, param, value):
+		return formatCommand(param, 0, 0, value)
 	
 		
 class Voice():
 		
-	def __init__(self, index, fpga_interface_inst):
+	def __init__(self, index):
 		self.index = index
-		self.fpga_interface_inst = fpga_interface_inst
 		self.spawntime = 0
 		self.index = index
 		self.note = None
@@ -199,44 +191,42 @@ class Voice():
 		self.indexInCluster = 0
 		self.operators = []
 		for opindex in range(OPERATORCOUNT):
-			self.operators += [Operator(self, opindex, fpga_interface_inst)]
+			self.operators += [Operator(self, opindex)]
 		
 		self.channels = []
-		self.channels += [Channel(self, 0, fpga_interface_inst)]
-		self.channels += [Channel(self, 1, fpga_interface_inst)]
+		self.channels += [Channel(self, 0)]
+		self.channels += [Channel(self, 1)]
 		
 		self.allChildren = self.channels + self.operators 
 			
-	def send(self, param, value):
-		self.fpga_interface_inst.send(param, 0, self.index, value)
+	def formatCommand(self, param, value):
+		return formatCommand(param, self.index, 0, value)
 
 
 class Channel():
-	def __init__(self, voice, index, fpga_interface_inst):
+	def __init__(self, voice, index):
 		self.index = index
 		self.voice = voice
-		self.fpga_interface_inst = fpga_interface_inst
 		self.selected = False
 		
-	def send(self, param, value):
-		self.fpga_interface_inst.send(param, self.index, self.voice.index, value)
+	def formatCommand(self, param, value):
+		return formatCommand(param, self.voice.index, self.index, value)
 		
 
 # OPERATOR DESCRIPTIONS
 class Operator():
-	def __init__(self, voice, index, fpga_interface_inst):
+	def __init__(self, voice, index):
 		self.index = index
 		self.voice = voice
 		self.base  = OPBASE[self.index]
-		self.fpga_interface_inst = fpga_interface_inst
 		self.sounding = 0
 		self.fmsrc    = 7
 		self.amsrc    = 0
 		self.static   = 0 
 		self.selected = False
 		
-	def send(self, param, value):
-		self.fpga_interface_inst.send(param, self.index, self.voice.index, value)
+	def formatCommand(self, param, value):
+		return formatCommand(param, self.voice.index, self.index, value)
 
 	def __unicode__(self):
 		if self.index != None:
@@ -245,122 +235,31 @@ class Operator():
 			return str(type(self)) + " #" + "ALL"
 
 
-class fpga_interface():
+def getID():
+	return getStream(cmd_readid)
 	
-		
-	def __init__(self):
-		self.gathering = False
-		state = {}
-		pass
-
-	def getStream(self, param):
-		self.send(param, 0, 0, 0)
-		return self.send(0, 0, 0, 0)
-		
-	def getID(self):
-		return self.getStream(cmd_readid)
-		
-	def getIRQueue(self):
-		return self.getStream(cmd_readirqueue)
-		
-	def format_command_real(self, mm_paramno, voiceno,  payload):
-		payload = payload*(2**16)
-		payload = struct.pack(">I", int(payload))
-		payload = [mm_paramno, 0, 0, voiceno] + [int(i) for i in payload]
-		#logger.debug([hex(p) for p in payload])
-		return payload
-		
-	def format_command_word(self, mm_paramno, mm_opno,  voiceno, voicemode = 0):
-		payload_array = [mm_paramno, 1 << mm_opno, (voicemode << 7) | (voiceno >> 8), voiceno]
-		#logger.debug([hex(p) for p in payload_array])
-		return payload_array
-		
-	def format_command_multiple(self, mm_paramno, mm_opno,  voiceno, payload, voicemode = 1):
+def getIRQueue():
+	return getStream(cmd_readirqueue)
+	
+def formatCommand(paramNum, voiceno, opno, payload, voicemode = 1):
+	if type(payload) == list or type(payload) == np.ndarray :
+		logger.debug("preparing (" + str(voiceno) + ":" + str(opno) + ") " + cmdNum2Name[paramNum] + " len " + str(len(payload)) + " : "  + str(payload[0:8]))
 		payload = np.array(payload, dtype=np.int)
 		payload = payload.byteswap().tobytes()
-		payload_array = [mm_paramno, 1 << mm_opno, (voicemode << 7) | (voiceno >> 8), voiceno] + [int(i) for i in payload] 
-		#logger.debug([hex(p) for p in payload_array])
-		return payload_array
-		
-	def format_command_int(self, mm_paramno, mm_opno,  voiceno,  payload, voicemode = 0):
-		payload_packed = struct.pack(">I", int(payload))
-		payload_array = [mm_paramno, 1 << mm_opno, (voicemode << 7) | (voiceno >> 8), voiceno] + [int(i) for i in payload_packed] 
-		#logger.debug([hex(p) for p in payload_array])
-		return payload_array
-		
-	def format_command_3bezier_targets(self, mm_paramno, voiceno,  bt0, bt1, bt2):
-		payload = struct.pack(">I", (int(bt0*(2**28)) & 0x3FF00000) + (int(bt1*(2**18)) & 0x000FFC00) + (int(bt2*(2**8)) & 0x000003FF))
-		payload = [mm_paramno, 0, 0, voiceno] + [int(p) for p in payload]
-		#logger.debug([hex(p) for p in payload])
-		return payload
-		
-	def sendMultiple(self, paramNum, voiceno, opno, payload, voicemode = True):
-		#logger.debug(voicemode)
-		tosend = self.format_command_multiple(paramNum, opno, voiceno, payload, voicemode = voicemode)
-		#with ILock('jlock', lock_directory=sys.path[0]):
-		logger.debug("voicemode: " + str(voicemode) + ": " + cmdNumber2Name[paramNum] + " voice: " + str(voiceno) + " opno: " + str(opno) + " PL(" + str(len(payload)) + "): " + str(payload[:8]))
-		#logger.debug(payload)
-		#logger.debug([hex(s) for s in tosend])
-		spi.xfer2(tosend)
-		#logger.debug("sent")
+	else:
+		logger.debug("preparing (" + str(voiceno) + ":" + str(opno) + ") " + cmdNum2Name[paramNum] + " " + str(payload))
+		payload = struct.pack(">I", int(payload))
+	payload_array = [paramNum, 1 << opno, (voicemode << 7) | (voiceno >> 8), voiceno] + [int(i) for i in payload] 
+	#logger.debug([hex(p) for p in payload_array])
+	return payload_array
 	
-	def gather(self, voicemode = True):
-		self.sendDictAcrossVoices = {}
-		self.sendDictAcrossOperators = {}
-		self.voicemode = voicemode
-		self.gathering = True
-		self.lowestVoiceIndex = 10000
-		
-	def release(self):
-		#logger.debug("sendDictAcrossVoices")
-		#logger.debug(self.sendDictAcrossVoices)
-		if self.voicemode:
-			for paramNum, opdict in self.sendDictAcrossVoices.items():
-				for opno, payloads in opdict.items():
-					self.sendMultiple(paramNum, self.lowestVoiceIndex, opno, payloads, voicemode = self.voicemode)
-		
-		else:
-			logger.debug(self.sendDictAcrossOperators)
-			for paramNum, voicedict in self.sendDictAcrossOperators.items():
-				for voiceno, payloads in voicedict.items():
-					self.sendMultiple(paramNum, voiceno, 0, payloads, voicemode = self.voicemode)
-			
-		self.gathering = False
-	
-	def send(self, paramNum, mm_opno,  voiceno,  payload):
-		retval = "NORETURN"
-		# gather data if gathering is on
-		if self.gathering: 
-			
-			#logger.debug("not sending " + str(paramNum) + " " + str(mm_opno) + " " + str(voiceno) + " " + str(payload))
-			# across voices 
-			if self.voicemode:
-				if paramNum not in self.sendDictAcrossVoices.keys():          self.sendDictAcrossVoices[paramNum] = {}
-				if mm_opno not in self.sendDictAcrossVoices[paramNum].keys(): self.sendDictAcrossVoices[paramNum][mm_opno] = []
-				self.sendDictAcrossVoices[paramNum][mm_opno] += [payload]
-			
-			else:
-				# within voice
-				if paramNum not in self.sendDictAcrossOperators.keys():          self.sendDictAcrossOperators[paramNum] = {}
-				if voiceno not in self.sendDictAcrossOperators[paramNum].keys(): self.sendDictAcrossOperators[paramNum][voiceno] = []
-				self.sendDictAcrossOperators[paramNum][voiceno] += [payload]
-				
-			self.lowestVoiceIndex = min(self.lowestVoiceIndex , voiceno)
-		else:
-			tosend = self.format_command_int(paramNum, mm_opno, voiceno, payload) 
-			#with ILock('jlock', lock_directory=sys.path[0]):
-			logger.debug("sending " + cmdNumber2Name[paramNum] + "(" + str(paramNum) + ")" + " operator:" + str(mm_opno) + " voice:" + str(voiceno) + " payload:" + str(payload))
-			logger.debug(tosend)
-			retval = spi.xfer2(tosend)
-			#logger.debug("sent")
-		return retval
 if __name__ == "__main__":
 	fpga_interface_inst = fpga_interface()
 	
 	#for voiceno in range(fpga_interface_inst.POLYPHONYCOUNT):
 	#	for opno in range(fpga_interface_inst.OPERATORCOUNT):
 	#		for command in fpga_interface_inst.cmdName2number.keys():
-	#			fpga_interface_inst.send(command, opno, voiceno, 0)
+	#			fpga_interface_inst.formatCommand(command, opno, voiceno, 0)
 				
 	# run testbench
 	
@@ -383,22 +282,22 @@ if __name__ == "__main__":
 		#print([hex(bitrev(a)) for a in fpga_interface_inst.getID()])
 		#print([hex(bitrev(a)) for a in fpga_interface_inst.getStream(cmd_readaudio)])
 	
-	fpga_interface_inst.send("cmd_env_clkdiv", 0, 0, 0)
+	fpga_interface_inst.formatCommand("cmd_env_clkdiv", 0, 0, 0)
 	
 	opno = 0
 	voiceno = 0
-	fpga_interface_inst.send("cmd_channelgain_right", opno, voiceno, 2**16)
-	fpga_interface_inst.send("cmd_gain_rate"      , opno, voiceno, 2**16)
-	fpga_interface_inst.send("cmd_gain"            , opno, voiceno, 2**16)
-	fpga_interface_inst.send("cmd_increment_rate" , opno, voiceno, 2**12)
-	fpga_interface_inst.send("cmd_increment"       , opno, voiceno, 2**22)
-	fpga_interface_inst.send("cmd_fm_algo"       , opno, voiceno, 1)
+	fpga_interface_inst.formatCommand("cmd_channelgain_right", opno, voiceno, 2**16)
+	fpga_interface_inst.formatCommand("cmd_gain_rate"      , opno, voiceno, 2**16)
+	fpga_interface_inst.formatCommand("cmd_gain"            , opno, voiceno, 2**16)
+	fpga_interface_inst.formatCommand("cmd_increment_rate" , opno, voiceno, 2**12)
+	fpga_interface_inst.formatCommand("cmd_increment"       , opno, voiceno, 2**22)
+	fpga_interface_inst.formatCommand("cmd_fm_algo"       , opno, voiceno, 1)
 
 	opno = 1
-	fpga_interface_inst.send("cmd_increment_rate", opno, voiceno, 2**30)
-	fpga_interface_inst.send("cmd_increment"      , opno, voiceno, 2**22)
-	fpga_interface_inst.send("cmd_fm_algo"      , opno, voiceno, 2)
+	fpga_interface_inst.formatCommand("cmd_increment_rate", opno, voiceno, 2**30)
+	fpga_interface_inst.formatCommand("cmd_increment"      , opno, voiceno, 2**22)
+	fpga_interface_inst.formatCommand("cmd_fm_algo"      , opno, voiceno, 2)
 	
-	fpga_interface_inst.send("cmd_flushspi", 0, 0, 0)
-	fpga_interface_inst.send("cmd_shift"   , 0, 0, 0)
+	fpga_interface_inst.formatCommand("cmd_flushspi", 0, 0, 0)
+	fpga_interface_inst.formatCommand("cmd_shift"   , 0, 0, 0)
 		

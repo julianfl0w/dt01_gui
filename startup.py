@@ -6,6 +6,7 @@ from patch import *
 import time
 import rtmidi
 from rtmidi.midiutil import *
+from rtmidi.midiutil import open_midiinput
 import mido
 import math
 import hjson as json
@@ -16,70 +17,22 @@ import threading
 import faulthandler
 import traceback
 import re
+import spi_interface
+
+# Import the package and create an audio effects chain function.
+from pysndfx import AudioEffectsChain
+fx = (
+    AudioEffectsChain()
+    #.highshelf()
+    .reverb()
+    #.phaser()
+    #.delay()
+    #.lowshelf()
+)
+audio = np.random.rand(256*8)
 
 faulthandler.enable()
  
-class MidiDevice(object):
-		
-	def __init__(self, i, patch, midi_portname):
-		print(midi_portname)
-		outfolder = "out"
-		os.makedirs(outfolder, exist_ok=True)
-		midi_portname_file = os.path.join(outfolder, re.sub(r'\W+', '', midi_portname) + ".txt")
-		faulthandler.dump_traceback(file=open(midi_portname_file, "w+"), all_threads=False)
-		logger.debug("__init__")
-		self.lock = threading.Lock()
-		TCP_IP = '127.0.0.1'
-		TCP_midi_portname = 5000 + int(i)
-		BUFFER_SIZE = 50  # Normally 1024, but we want fast response
-
-		#self.s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-		#self.s.bind((TCP_IP, TCP_midi_portname))
-		#self.s.setblocking(False)
-	
-		self.midi_portname  = midi_portname
-		self._wallclock  = time.time() 
-		
-		self.hold = 0 
-		
-		self.patches = [patch]
-		
-		self.timeTaken = []
-		self.iteration = 0
-		
-		
-	def __call__(self, event, data=None):
-		logger.debug("__CALL__")
-		#return 0
-		#self.lock.acquire()
-		
-		starttime = time.time() 
-		msg, deltatime = event
-		logger.debug(msg)
-		self._wallclock += deltatime
-		
-		msg = mido.Message.from_bytes(msg)
-		logger.debug("\n\n\n---------------")
-		logger.debug("processing " + msg.type)
-		
-		logger.debug(msg.type)
-		for patch in self.patches:
-			patch.processEvent(msg)
-		
-		#if self.iteration == 20:
-		#	self.iteration = 0
-		#	logger.setLevel(1)
-		#	#lvl = logger.getLevel()
-		#	logger.debug(self.timeTaken )
-		#	#self.timeTaken = []
-		#	#logger.setLevel(0)
-		#else:
-		#self.timeTaken += [time.time() - starttime]
-		#logger.warning(time.time() - starttime)
-			
-		self.iteration += 1
-		#self.lock.release()
-
 
 if __name__ == "__main__":
 	
@@ -111,60 +64,117 @@ if __name__ == "__main__":
 	dt01_inst.toFile(filename)
 	
 	logger.debug("Initializing")
-	dt01_inst.initialize()
+	initCommands = dt01_inst.getInitCommands()
+	for payload in initCommands:
+		spi_interface.send(payload)
+	
 	
 	GLOBAL_DEFAULT_PATCH = Patch(dt01_inst)
 	#dt01_inst.addPatch(GLOBAL_DEFAULT_PATCH)
 	
 	api=rtmidi.API_UNSPECIFIED
-	midiDev = []
+	allMidiDevicesAndPatches = []
 	midiin = rtmidi.MidiIn(get_api_from_environment(api))
 	
 	midi_ports_last = []
-
+	
+	# IRQUEUE Considerations
+	GPIO.setmode(GPIO.BOARD)
+	GPIO.setup(37 , GPIO.IN)
+	# flush queue
+	while(GPIO.input(37)):
+		spi_interface.send(dt01.formatCommand(dt01.cmd_readirqueue, 0, 0, 0))
+		res = spi_interface.send(dt01.formatCommand(0, 0, 0, 0))
+	
 	logger.debug("Entering main loop. Press Control-C to exit.")
 	lastCheck = 0
 	try:
+		maxLoop = 0
 		# Just wait for keyboard interrupt,
 		# everything else is handled via the input callback.
 		while True:
-		
-			# if 5 seconds have gone by
-			
-			#if time.time()-lastCheck > 1:
-			if lastCheck == 0:
+			loopstart = time.time()
+			# check for new devices
+			if time.time()-lastCheck > 1:
 				lastCheck = time.time()
 				midi_ports  = midiin.get_ports()
 				for i, midi_portname in enumerate(midi_ports):
 					if midi_portname not in midi_ports_last:
 						logger.debug("adding " + midi_portname)
 						try:
-							midiin, midi_portno = open_midiinput(midi_portname)
+							mididev, midi_portno = open_midiinput(midi_portname)
 						except (EOFError, KeyboardInterrupt):
 							sys.exit()
 			
-						logger.debug("Attaching MIDI input callback handler.")
-						#MidiDevice_inst = MidiDevice(i, GLOBAL_DEFAULT_PATCH, str(midi_portname))
-						MidiDevice_inst = MidiDevice(i, Patch(dt01_inst), str(midi_portname))
-						midiin.set_callback(MidiDevice_inst)
-						logger.debug("Handler: " + str(midiin))
-						midiDev += [MidiDevice_inst]
+						# no longer doing callbacks
+						#logger.debug("Attaching MIDI input callback handler.")
+						##allMidiDevicesAndPatchesice_inst = allMidiDevicesAndPatchesice(i, GLOBAL_DEFAULT_PATCH, str(midi_portname))
+						#allMidiDevicesAndPatchesice_inst = allMidiDevicesAndPatchesice(i, GLOBAL_DEFAULT_PATCH, str(midi_portname))
+						#midiin.set_callback(allMidiDevicesAndPatchesice_inst)
+						#logger.debug("Handler: " + str(midiin))
+						midiDevAndPatches = (mididev, [GLOBAL_DEFAULT_PATCH])
+						allMidiDevicesAndPatches += [midiDevAndPatches]
 				midi_ports_last = midi_ports
 				
 		
 			#c = sys.stdin.read(1)
 			#if c == 'd':
 			#	dt01_inst.dumpState()
-			#for dev in midiDev:
-			#	try:
-			#		data = dev.s.recv(50)
-			#		if len(data):
-			#			dev.loadPatch(data)
-			#	except Exception as e:
-			#		#logger.debug(Exception)
-			#		pass
-			pass
+			for dev, patches in allMidiDevicesAndPatches:
+				msg = dev.get_message()
+				if msg != None:
+					msg, dtime = msg
+					msg = mido.Message.from_bytes(msg)
+					logger.debug(msg)
+					for patch in patches:
+						commands = patch.midi2commands(msg)
+						logger.debug(commands)
+						for payload in commands:
+							spi_interface.send(payload)
 				
+					#logger.warning(time.time() - loopstart)
+				
+			# process the IRQUEUE
+			if(GPIO.input(37)):
+				spi_interface.send(dt01.formatCommand(dt01.cmd_readirqueue, 0, 0, 0))
+				res = spi_interface.send(dt01.formatCommand(0, 0, 0, 0))
+				logger.debug("res: " + str(res))
+				opno = int(math.log2((res[1]<<7) + (res[2]>>1)))
+				voiceno = int(((res[2] & 0x01)<<8) + res[3])
+				logger.debug("IRQUEUE! voice:" + str(voiceno) + " op:"+ str(opno))
+				currPhase = GLOBAL_DEFAULT_PATCH.envelopePhase[voiceno, opno]
+					
+				logger.debug("IRQUEUE! voice:" + str(voiceno) + " op:"+ str(opno) + " phase:" + str(currPhase))
+				if np.sum(res) == 0:
+					continue
+				if currPhase >= GLOBAL_DEFAULT_PATCH.phaseCount - 1:
+					logger.debug("STOP PHASE")
+					continue
+				logger.debug(GLOBAL_DEFAULT_PATCH.envelopePhase[0,:])
+				#logger.debug("self.envelopeExp "   + str(self.envelopeExp  [opno][currPhase]))
+				#logger.debug("self.envelopeLevel " + str(self.envelopeLevel[opno][currPhase]*baseEnv))
+				#logger.debug("self.envelopeRate "  + str(self.envelopeRate [opno][currPhase]))
+				
+				logger.debug(res)
+				
+				commands = []
+				commands += [dt01.formatCommand(dt01.cmd_env_rate, opno, voiceno, 0)                                  ]
+				commands += [dt01.formatCommand(dt01.cmd_envexp,   opno, voiceno, GLOBAL_DEFAULT_PATCH.envelopeExp  [opno][currPhase])]
+				commands += [dt01.formatCommand(dt01.cmd_env,      opno, voiceno, GLOBAL_DEFAULT_PATCH.envelopeLevel[opno][currPhase])]
+				commands += [dt01.formatCommand(dt01.cmd_env_rate, opno, voiceno, GLOBAL_DEFAULT_PATCH.envelopeRate [opno][currPhase])]
+				for payload in commands:
+					logger.debug(dt01.controlNum2Name[payload[0]] + " " + str(payload[4:8]))
+					spi_interface.send(payload)
+				GLOBAL_DEFAULT_PATCH.envelopePhase[voiceno, opno] = (GLOBAL_DEFAULT_PATCH.envelopePhase[voiceno, opno] + 1) % GLOBAL_DEFAULT_PATCH.phaseCount
+			
+			thisLoop = time.time() - loopstart
+			maxLoop = max([thisLoop, maxLoop])
+			
+			#fxstart = time.time()
+			#y = fx(audio)
+			#fxtime = time.time() - fxstart
+			#logger.warning("fxtime: " + str(fxtime))
+
 			
 	except KeyboardInterrupt:
 		logger.debug('')
