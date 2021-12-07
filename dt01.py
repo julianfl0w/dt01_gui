@@ -1,4 +1,4 @@
-
+import spi_interface
 import struct
 from bitarray import bitarray
 import logging
@@ -15,6 +15,7 @@ import socket
 import os
 import traceback
 import pickle
+import RPi.GPIO as GPIO
 
 import logging
 
@@ -136,47 +137,49 @@ class DT01():
 				newSet      += [newVoice]
 				index += 1
 			self.voiceSets += [newSet]
-
+		self.initialize()
+		
 	def getVoices(self):
 		# return the longest since activation
 		oldestSetIndex = np.argsort(self.loanTime)[0]
 		return self.voiceSets[oldestSetIndex]
 	
 	
-	def getInitCommands(self):
+	def initialize(self):
 		lowestVoiceIndex = min([v.index for v in self.voices])
+		initIRQueue()
 		
-		commands = []
-		commands += [formatCommand(cmd_static       , lowestVoiceIndex, 0, [0b11000000]*len(self.voices))]
-		commands += [formatCommand(cmd_sounding     , lowestVoiceIndex, 0, [0b00000001]*len(self.voices))]
-		commands += [formatCommand(cmd_fm_algo      , lowestVoiceIndex, 0, [0o77777777]*len(self.voices))]
-		commands += [formatCommand(cmd_am_algo      , lowestVoiceIndex, 0, [0o00000000]*len(self.voices))]
-		commands += [formatCommand(cmd_fbgain       , lowestVoiceIndex, 0, [0         ]*len(self.voices))]
-		commands += [formatCommand(cmd_fbsrc        , lowestVoiceIndex, 0, [0         ]*len(self.voices))]
+		formatAndSend(cmd_static       , lowestVoiceIndex, 0, [0b11000000]*len(self.voices))
+		formatAndSend(cmd_sounding     , lowestVoiceIndex, 0, [0b00000001]*len(self.voices))
+		formatAndSend(cmd_fm_algo      , lowestVoiceIndex, 0, [0o77777777]*len(self.voices))
+		formatAndSend(cmd_am_algo      , lowestVoiceIndex, 0, [0o00000000]*len(self.voices))
+		formatAndSend(cmd_fbgain       , lowestVoiceIndex, 0, [0         ]*len(self.voices))
+		formatAndSend(cmd_fbsrc        , lowestVoiceIndex, 0, [0         ]*len(self.voices))
 			
 		for channel in range(2):
-			commands += [formatCommand(cmd_channelgain, lowestVoiceIndex, 0, [2**16]*len(self.voices))]
+			formatAndSend(cmd_channelgain, lowestVoiceIndex, 0, [2**16]*len(self.voices))
 			
 		#paramNum, mm_opno,  voiceno,  payload
 		for opno in range(OPERATORCOUNT):
-			commands += [formatCommand(cmd_env            , lowestVoiceIndex, opno, [0   ]*len(self.voices))]
-			commands += [formatCommand(cmd_env_rate       , lowestVoiceIndex, opno, [0   ]*len(self.voices))]
-			commands += [formatCommand(cmd_envexp         , lowestVoiceIndex, opno, [0x01]*len(self.voices))]
+			formatAndSend(cmd_env            , lowestVoiceIndex, opno, [0   ]*len(self.voices))
+			formatAndSend(cmd_env_rate       , lowestVoiceIndex, opno, [2**12]*len(self.voices))
+			formatAndSend(cmd_envexp         , lowestVoiceIndex, opno, [0x00]*len(self.voices))
 
-		commands += [formatCommand(cmd_increment      , lowestVoiceIndex, 6, [2**12]*len(self.voices))] # * self.paramNum2Real[increment]
-		commands += [formatCommand(cmd_increment      , lowestVoiceIndex, 7, [2**12]*len(self.voices))] # * self.paramNum2Real[increment]
+		formatAndSend(cmd_increment      , lowestVoiceIndex, 0, [2**12]*len(self.voices)) # * self.paramNum2Real[increment]
+		formatAndSend(cmd_increment      , lowestVoiceIndex, 6, [2**12]*len(self.voices)) # * self.paramNum2Real[increment]
+		formatAndSend(cmd_increment      , lowestVoiceIndex, 7, [2**12]*len(self.voices)) # * self.paramNum2Real[increment]
 
-		commands += [formatCommand(cmd_increment_rate , lowestVoiceIndex, 0, [0   ]*len(self.voices))]
-		commands += [formatCommand(cmd_incexp         , lowestVoiceIndex, 0, [0x01]*len(self.voices))]
+		formatAndSend(cmd_increment_rate , lowestVoiceIndex, 0, [2**14]*len(self.voices))
+		formatAndSend(cmd_incexp         , lowestVoiceIndex, 0, [0x00]*len(self.voices))
 
-		commands += [formatCommand(cmd_flushspi     , 0, 0, 0)    ]
-		commands += [formatCommand(cmd_passthrough  , 0, 0, 0)    ]
-		commands += [formatCommand(cmd_shift        , 0, 0, 0)    ]
-		commands += [formatCommand(cmd_env_clkdiv   , 0, 0, 5)]
-		return commands
+		formatAndSend(cmd_flushspi     , 0, 0, 0)    
+		formatAndSend(cmd_passthrough  , 0, 0, 0)    
+		formatAndSend(cmd_shift        , 0, 0, 0)    
+		formatAndSend(cmd_env_clkdiv   , 0, 0, 2**12)
+		return 0
 		
-	def formatCommand(self, param, value):
-		return formatCommand(param, 0, 0, value)
+	def formatAndSend(self, param, value):
+		return formatAndSend(param, 0, 0, value)
 	
 		
 class Voice():
@@ -199,8 +202,8 @@ class Voice():
 		
 		self.allChildren = self.channels + self.operators 
 			
-	def formatCommand(self, param, value):
-		return formatCommand(param, self.index, 0, value)
+	def formatAndSend(self, param, value):
+		return formatAndSend(param, self.index, 0, value)
 
 
 class Channel():
@@ -209,8 +212,8 @@ class Channel():
 		self.voice = voice
 		self.selected = False
 		
-	def formatCommand(self, param, value):
-		return formatCommand(param, self.voice.index, self.index, value)
+	def formatAndSend(self, param, value):
+		return formatAndSend(param, self.voice.index, self.index, value)
 		
 
 # OPERATOR DESCRIPTIONS
@@ -225,8 +228,8 @@ class Operator():
 		self.static   = 0 
 		self.selected = False
 		
-	def formatCommand(self, param, value):
-		return formatCommand(param, self.voice.index, self.index, value)
+	def formatAndSend(self, param, value):
+		return formatAndSend(param, self.voice.index, self.index, value)
 
 	def __unicode__(self):
 		if self.index != None:
@@ -234,24 +237,40 @@ class Operator():
 		else:
 			return str(type(self)) + " #" + "ALL"
 
+def initIRQueue():
 
-def getID():
-	return getStream(cmd_readid)
-	
+	# IRQUEUE Considerations
+	# IRQUEUE Considerations
+	GPIO.setmode(GPIO.BOARD)
+	GPIO.setup(37 , GPIO.IN)
+	# flush queue
+	while(GPIO.input(37)):
+		formatAndSend(cmd_readirqueue, 0, 0, 0)
+		res = formatAndSend(0, 0, 0, 0)
+
 def getIRQueue():
-	return getStream(cmd_readirqueue)
+
+	formatAndSend(cmd_readirqueue, 0, 0, 0)
+	res = formatAndSend(0, 0, 0, 0)
+	logger.debug("res: " + str(res))
+	opno = int(math.log2((res[1]<<7) + (res[2]>>1)))
+	voiceno = int(((res[2] & 0x01)<<8) + res[3])
+	logger.debug("IRQUEUE! voice:" + str(voiceno) + " op:"+ str(opno))
 	
-def formatCommand(paramNum, voiceno, opno, payload, voicemode = 1):
+	return voiceno, opno
+
+def formatAndSend(paramNum, voiceno, opno, payload, voicemode = 1):
 	if type(payload) == list or type(payload) == np.ndarray :
 		logger.debug("preparing (" + str(voiceno) + ":" + str(opno) + ") " + cmdNum2Name[paramNum] + " len " + str(len(payload)) + " : "  + str(payload[0:8]))
 		payload = np.array(payload, dtype=np.int)
 		payload = payload.byteswap().tobytes()
 	else:
-		logger.debug("preparing (" + str(voiceno) + ":" + str(opno) + ") " + cmdNum2Name[paramNum] + " " + str(payload))
+		logger.debug("sending (" + str(voiceno) + ":" + str(opno) + ") " + cmdNum2Name[paramNum] + " " + str(payload))
 		payload = struct.pack(">I", int(payload))
 	payload_array = [paramNum, 1 << opno, (voicemode << 7) | (voiceno >> 8), voiceno] + [int(i) for i in payload] 
-	#logger.debug([hex(p) for p in payload_array])
-	return payload_array
+	#logger.debug([hex(p) for p in payload_array[:32]])
+	ret = spi_interface.send(payload_array)
+	return ret
 	
 if __name__ == "__main__":
 	fpga_interface_inst = fpga_interface()
@@ -259,7 +278,7 @@ if __name__ == "__main__":
 	#for voiceno in range(fpga_interface_inst.POLYPHONYCOUNT):
 	#	for opno in range(fpga_interface_inst.OPERATORCOUNT):
 	#		for command in fpga_interface_inst.cmdName2number.keys():
-	#			fpga_interface_inst.formatCommand(command, opno, voiceno, 0)
+	#			fpga_interface_inst.formatAndSend(command, opno, voiceno, 0)
 				
 	# run testbench
 	
@@ -282,22 +301,22 @@ if __name__ == "__main__":
 		#print([hex(bitrev(a)) for a in fpga_interface_inst.getID()])
 		#print([hex(bitrev(a)) for a in fpga_interface_inst.getStream(cmd_readaudio)])
 	
-	fpga_interface_inst.formatCommand("cmd_env_clkdiv", 0, 0, 0)
+	fpga_interface_inst.formatAndSend("cmd_env_clkdiv", 0, 0, 0)
 	
 	opno = 0
 	voiceno = 0
-	fpga_interface_inst.formatCommand("cmd_channelgain_right", opno, voiceno, 2**16)
-	fpga_interface_inst.formatCommand("cmd_gain_rate"      , opno, voiceno, 2**16)
-	fpga_interface_inst.formatCommand("cmd_gain"            , opno, voiceno, 2**16)
-	fpga_interface_inst.formatCommand("cmd_increment_rate" , opno, voiceno, 2**12)
-	fpga_interface_inst.formatCommand("cmd_increment"       , opno, voiceno, 2**22)
-	fpga_interface_inst.formatCommand("cmd_fm_algo"       , opno, voiceno, 1)
+	fpga_interface_inst.formatAndSend("cmd_channelgain_right", opno, voiceno, 2**16)
+	fpga_interface_inst.formatAndSend("cmd_gain_rate"      , opno, voiceno, 2**16)
+	fpga_interface_inst.formatAndSend("cmd_gain"            , opno, voiceno, 2**16)
+	fpga_interface_inst.formatAndSend("cmd_increment_rate" , opno, voiceno, 2**16)
+	fpga_interface_inst.formatAndSend("cmd_increment"       , opno, voiceno, 2**22)
+	fpga_interface_inst.formatAndSend("cmd_fm_algo"       , opno, voiceno, 1)
 
 	opno = 1
-	fpga_interface_inst.formatCommand("cmd_increment_rate", opno, voiceno, 2**30)
-	fpga_interface_inst.formatCommand("cmd_increment"      , opno, voiceno, 2**22)
-	fpga_interface_inst.formatCommand("cmd_fm_algo"      , opno, voiceno, 2)
+	fpga_interface_inst.formatAndSend("cmd_increment_rate", opno, voiceno, 2**30)
+	fpga_interface_inst.formatAndSend("cmd_increment"      , opno, voiceno, 2**22)
+	fpga_interface_inst.formatAndSend("cmd_fm_algo"      , opno, voiceno, 2)
 	
-	fpga_interface_inst.formatCommand("cmd_flushspi", 0, 0, 0)
-	fpga_interface_inst.formatCommand("cmd_shift"   , 0, 0, 0)
+	fpga_interface_inst.formatAndSend("cmd_flushspi", 0, 0, 0)
+	fpga_interface_inst.formatAndSend("cmd_shift"   , 0, 0, 0)
 		

@@ -47,8 +47,8 @@ class Note:
 # patch holds all state, including note and control state
 class Patch():
 					
-	def formatCommand(self, param, value):
-		dt01.formatCommand(param, 0, 0, value)
+	def formatAndSend(self, param, value):
+		dt01.formatAndSend(param, 0, 0, value)
 	
 	def processControl(self, paramName, value):
 		self.midi2commands(mido.Message('control_change', control = dt01.controlNum2Num [paramName], value = value)) #
@@ -96,10 +96,10 @@ class Patch():
 		
 		self.control[dt01.ctrl_env             ] = 0 #
 		self.control[dt01.ctrl_env_rate       ] = 64  #
-		self.control[dt01.ctrl_envexp          ] = 1   #
+		self.control[dt01.ctrl_envexp          ] = 0   #
 		self.control[dt01.ctrl_increment       ] = 64  #
 		self.control[dt01.ctrl_increment_rate ] = 0   #
-		self.control[dt01.ctrl_incexp          ] = 1   #
+		self.control[dt01.ctrl_incexp          ] = 0   #
 		self.control[dt01.ctrl_fmsrc           ] = 7   #fm off
 		self.control[dt01.ctrl_amsrc           ] = 0   #am off
 		self.control[dt01.ctrl_static          ] = 0   #
@@ -131,7 +131,7 @@ class Patch():
 		self.envelopeLevel[0] = np.array([2**12, 2**11, 0, 0])
 		#self.envelopeLevel = np.array([2**12, 2**11, 0, 0]) * np.ones((4, dt01.OPERATORCOUNT))
 		#logger.debug(self.envelopeLevel)
-		self.envelopeRate  = np.ones((dt01.OPERATORCOUNT, self.phaseCount)) * 2**8
+		self.envelopeRate  = np.ones((dt01.OPERATORCOUNT, self.phaseCount)) * 2**5
 		self.envelopeExp   = np.ones((dt01.OPERATORCOUNT, self.phaseCount))
 		self.envelopePhase = np.zeros((len(self.voices), dt01.OPERATORCOUNT), dtype=np.int)
 		self.baseEnv = np.zeros((len(self.voices), dt01.OPERATORCOUNT), dtype=np.float)
@@ -183,18 +183,30 @@ class Patch():
 		elif operator.index == 7:
 			self.computedState[dt01.cmd_increment, operator.voice.index, operator.index] = 2**12 * self.opControlNum2Real[operator.index,dt01.ctrl_increment] # * self.getCurrOpParam2Real(operator.index, dt01.increment)
 
-	def setPhaseAllOps(self, voice, phase):
-		commands = []
-		commands += [dt01.formatCommand(dt01.cmd_env_rate, voice.index, 0, [0]* dt01.OPERATORCOUNT , voicemode=False)                               ]
-		commands += [dt01.formatCommand(dt01.cmd_envexp,   voice.index, 0, self.envelopeExp  [:][phase], voicemode=False)                           ]
-		commands += [dt01.formatCommand(dt01.cmd_env,      voice.index, 0, self.baseEnv[voice.index,:]*self.envelopeLevel[:,phase], voicemode=False)]
-		commands += [dt01.formatCommand(dt01.cmd_env_rate, voice.index, 0, self.envelopeRate [:][phase], voicemode=False)                           ]
-		self.envelopePhase[voice.index, :] = phase
+	def setPhaseAllOps(self, voiceindex, phase):
+		dt01.formatAndSend(dt01.cmd_env_rate, voiceindex, 0, [0]* dt01.OPERATORCOUNT , voicemode=False)                               
+		dt01.formatAndSend(dt01.cmd_envexp,   voiceindex, 0, self.envelopeExp  [:,phase], voicemode=False)                           
+		dt01.formatAndSend(dt01.cmd_env,      voiceindex, 0, self.baseEnv[voiceindex,:]*self.envelopeLevel[:,phase], voicemode=False)
+		dt01.formatAndSend(dt01.cmd_env_rate, voiceindex, 0, self.envelopeRate [:,phase], voicemode=False)                           
+		self.envelopePhase[voiceindex, :] = phase
 		
-		logger.debug(self.baseEnv[voice.index,:])
+		logger.debug("sent env " + str(self.baseEnv[voiceindex,:]*self.envelopeLevel[:,phase]))
+		logger.debug("sent rate " + str(self.envelopeRate [:][phase]))
+		logger.debug(self.baseEnv[voiceindex,:])
 		logger.debug(self.envelopeLevel[:,phase])
-		return commands
-		
+		return 0
+	
+	def processIRQueue(self, 
+voiceno, opno):
+			currPhase = self.envelopePhase[voiceno, opno]
+				
+			logger.debug("proc IRQUEUE! voice:" + str(voiceno) + " op:"+ str(opno) + " phase:" + str(currPhase))
+
+			if currPhase >= self.phaseCount - 1:
+				logger.debug("STOP PHASE")
+			else:
+				self.setPhaseAllOps(voiceno, opno)
+	
 	def midi2commands(self, msg):
 	
 		commands = []
@@ -213,7 +225,7 @@ class Patch():
 				voice.spawntime = 0
 				for op in voice.operators:
 					self.setEnv(op)
-				commands += self.setPhaseAllOps(voice, 3)
+				self.setPhaseAllOps(voice.index, 3)
 			note.voices = []
 			note.held = False
 		
@@ -238,10 +250,10 @@ class Patch():
 				for operator in voice.operators:
 					self.setIncrement(operator)
 					self.setEnv(operator)
-				commands += [dt01.formatCommand(dt01.cmd_increment, voice.index, 0, self.computedState[dt01.cmd_increment,voice.index,:], voicemode = False)]
-				commands += self.setPhaseAllOps(voice, 0)
+				dt01.formatAndSend(dt01.cmd_increment, voice.index, 0, self.computedState[dt01.cmd_increment,voice.index,:], voicemode = False)
+				self.setPhaseAllOps(voice.index, 0)
 						
-				#dt01.formatCommand(dt01.cmd_env,       voice.index, 0, self.computedState[dt01.cmd_env,voice.index,:]      , voicemode = False)
+				#dt01.formatAndSend(dt01.cmd_env,       voice.index, 0, self.computedState[dt01.cmd_env,voice.index,:]      , voicemode = False)
 				
 		if msg.type == 'pitchwheel':
 			logger.debug("PW: " + str(msg.pitch))
@@ -256,7 +268,7 @@ class Patch():
 			for voice in self.voices:
 				for operator in voice.operators:
 					self.setIncrement(operator)
-			commands += [dt01.formatCommand(dt01.cmd_increment, 0, 0, self.computedState[dt01.cmd_increment,:,:], voicemode = False)]
+			dt01.formatAndSend(dt01.cmd_increment, 0, 0, self.computedState[dt01.cmd_increment,:,:], voicemode = False)
 				
 		elif msg.type == 'control_change':
 			
@@ -296,16 +308,16 @@ class Patch():
 				
 			if msg.control == dt01.ctrl_env_clkdiv:
 				logger.debug(" setting envclkc div " + str(self.controlNum2Val[dt01.ctrl_env_clkdiv]))
-				commands += [self.formatCommand(dt01.cmd_env_clkdiv , self.controlNum2Val[dt01.ctrl_env_clkdiv])]
+				[self.formatAndSend(dt01.cmd_env_clkdiv , self.controlNum2Val[dt01.ctrl_env_clkdiv])]
 				
 			if msg.control == dt01.ctrl_flushspi:
-				commands += [self.formatCommand(dt01.cmd_flushspi, self.controlNum2Val[dt01.ctrl_flushspi])]
+				[self.formatAndSend(dt01.cmd_flushspi, self.controlNum2Val[dt01.ctrl_flushspi])]
 				
 			if msg.control == dt01.ctrl_passthrough:
-				commands += [self.formatCommand(dt01.cmd_passthrough, self.controlNum2Val[dt01.ctrl_passthrough])]
+				[self.formatAndSend(dt01.cmd_passthrough, self.controlNum2Val[dt01.ctrl_passthrough])]
 				
 			if msg.control == dt01.ctrl_shift:
-				commands += [self.formatCommand(dt01.cmd_shift , self.controlNum2Val[dt01.ctrl_shift])]
+				[self.formatAndSend(dt01.cmd_shift , self.controlNum2Val[dt01.ctrl_shift])]
 				
 				
 			if msg.control == dt01.ctrl_tremolo_env:
@@ -331,75 +343,75 @@ class Patch():
 				if msg.control == dt01.ctrl_voicegain or msg.control == dt01.ctrl_pan : 
 					baseVolume = 2**16*self.controlNum2Real["ctrl_voicegain"]
 					if self.activeOperator == 0:
-						commands += [channel.formatCommand(dt01.cmd_channelgain, baseVolume*self.controlNum2Real["ctrl_pan"])] # assume 2 channels]
+						[channel.formatAndSend(dt01.cmd_channelgain, baseVolume*self.controlNum2Real["ctrl_pan"])] # assume 2 channels]
 					else:
 						#logger.debug(self.controlReal[10])
-						commands += [channel.formatCommand(dt01.cmd_channelgain, baseVolume*(1 - self.controlNum2Real["ctrl_pan"]))] # assume 2 channels]
+						[channel.formatAndSend(dt01.cmd_channelgain, baseVolume*(1 - self.controlNum2Real["ctrl_pan"]))] # assume 2 channels]
 	
 				# FM Algo
 				if msg.control == dt01.ctrl_fmsrc:
 					activeOperator.fmsrc = msg.value
-					formatCommandVal = 0
+					formatAndSendVal = 0
 					for i in reversed(range(dt01.OPERATORCOUNT)):
-						formatCommandVal = int(formatCommandVal) << int(math.log2(dt01.OPERATORCOUNT))
-						formatCommandVal += int(voice.operators[i].fmsrc)
-						#logger.debug(bin(formatCommandVal))
-					voice.formatCommand(dt01.cmd_fm_algo, formatCommandVal)
+						formatAndSendVal = int(formatAndSendVal) << int(math.log2(dt01.OPERATORCOUNT))
+						formatAndSendVal += int(voice.operators[i].fmsrc)
+						#logger.debug(bin(formatAndSendVal))
+					voice.formatAndSend(dt01.cmd_fm_algo, formatAndSendVal)
 				
 				#am algo
 				if msg.control == dt01.ctrl_amsrc:
-					formatCommandVal = 0
+					formatAndSendVal = 0
 					for i in reversed(range(dt01.OPERATORCOUNT)):
-						formatCommandVal = int(formatCommandVal) << int(math.log2(dt01.OPERATORCOUNT))
-						formatCommandVal += int(voice.operators[i].amsrc)
-						#logger.debug(bin(formatCommandVal))
-					voice.formatCommand(dt01.cmd_am_algo, formatCommandVal)
+						formatAndSendVal = int(formatAndSendVal) << int(math.log2(dt01.OPERATORCOUNT))
+						formatAndSendVal += int(voice.operators[i].amsrc)
+						#logger.debug(bin(formatAndSendVal))
+					voice.formatAndSend(dt01.cmd_am_algo, formatAndSendVal)
 					
 				if msg.control == dt01.ctrl_fbgain:
-					voice.formatCommand(dt01.cmd_fbgain   , 2**16 * self.controlNum2Real[dt01.ctrl_fbgain]  )
+					voice.formatAndSend(dt01.cmd_fbgain   , 2**16 * self.controlNum2Real[dt01.ctrl_fbgain]  )
 					
 				if msg.control == dt01.ctrl_fbsrc:
-					voice.formatCommand(dt01.cmd_fbsrc    , self.controlNum2Val[dt01.ctrl_fbsrc]   )
+					voice.formatAndSend(dt01.cmd_fbsrc    , self.controlNum2Val[dt01.ctrl_fbsrc]   )
 		
 				if msg.control == dt01.ctrl_sounding: 
 					activeOperator.sounding = msg.value
-					formatCommandVal = 0
+					formatAndSendVal = 0
 					for i in reversed(range(dt01.OPERATORCOUNT)):
-						formatCommandVal = int(formatCommandVal) << 1
-						formatCommandVal += int(voice.operators[i].sounding)
-						#logger.debug(bin(formatCommandVal))
-					voice.formatCommand(dt01.cmd_sounding, formatCommandVal)
+						formatAndSendVal = int(formatAndSendVal) << 1
+						formatAndSendVal += int(voice.operators[i].sounding)
+						#logger.debug(bin(formatAndSendVal))
+					voice.formatAndSend(dt01.cmd_sounding, formatAndSendVal)
 					
 				if msg.control == dt01.ctrl_static: 
 					activeOperator.static = msg.value
-					formatCommandVal = 0
+					formatAndSendVal = 0
 					for i in reversed(range(dt01.OPERATORCOUNT)):
-						formatCommandVal = int(formatCommandVal) << 1
-						formatCommandVal += int(voice.operators[i].static)
-					voice.formatCommand(dt01.cmd_static, formatCommandVal)
+						formatAndSendVal = int(formatAndSendVal) << 1
+						formatAndSendVal += int(voice.operators[i].static)
+					voice.formatAndSend(dt01.cmd_static, formatAndSendVal)
 		
 				if msg.control == dt01.ctrl_env: 
 					pass
 					# sounding operators begin on note_on
 					#self.setEnv(activeOperator)
-					#dt01.formatCommand(dt01.cmd_env, activeOperator.index, activeOperator.voice.index, self.computedState[dt01.cmd_env,activeOperator.voice.index,activeOperator.index])
+					#dt01.formatAndSend(dt01.cmd_env, activeOperator.index, activeOperator.voice.index, self.computedState[dt01.cmd_env,activeOperator.voice.index,activeOperator.index])
 				
 						
 				if msg.control == dt01.ctrl_env_rate: 
-					activeOperator.formatCommand(dt01.cmd_env_rate      , 2**10 * (1 - self.opControlNum2Real[activeOperator.index,dt01.ctrl_env_rate]) * (1 - self.controlNum2Real[dt01.ctrl_ratemento]) )
+					activeOperator.formatAndSend(dt01.cmd_env_rate      , 2**10 * (1 - self.opControlNum2Real[activeOperator.index,dt01.ctrl_env_rate]) * (1 - self.controlNum2Real[dt01.ctrl_ratemento]) )
 		# static oscillators do not have velocity-dependant env
 					
 				if msg.control == dt01.ctrl_increment:
 					self.setIncrement(activeOperator)
 					
 				if msg.control == dt01.ctrl_increment_rate: 
-					activeOperator.formatCommand(dt01.cmd_increment_rate, 2**10 * (1 - self.controlNum2Real[dt01.ctrl_ratemento]) * (1 - self.controlNum2Real[activeOperator.index,dt01.ctrl_increment_rate]))
+					activeOperator.formatAndSend(dt01.cmd_increment_rate, 2**10 * (1 - self.controlNum2Real[dt01.ctrl_ratemento]) * (1 - self.controlNum2Real[activeOperator.index,dt01.ctrl_increment_rate]))
 					
 				if msg.control == dt01.ctrl_incexp: 
-					activeOperator.formatCommand(dt01.cmd_incexp         , self.opControlNum2Val[self.activeOperator,dt01.ctrl_incexp])  
+					activeOperator.formatAndSend(dt01.cmd_incexp         , self.opControlNum2Val[self.activeOperator,dt01.ctrl_incexp])  
 					
 				if msg.control == dt01.ctrl_envexp: 
-					activeOperator.formatCommand(dt01.cmd_envexp         , self.opControlNum2Val[self.activeOperator,dt01.ctrl_envexp])
+					activeOperator.formatAndSend(dt01.cmd_envexp         , self.opControlNum2Val[self.activeOperator,dt01.ctrl_envexp])
 					
 					
 				if msg.control == dt01.ctrl_sustain: 
@@ -424,14 +436,14 @@ class Patch():
 				for operator in voice.operators:
 					self.setIncrement(operator)
 					
-			commands += [dt01.formatCommand(dt01.cmd_increment, 0, 0, self.computedState[dt01.cmd_increment,:,:], voicemode = False)]
+			[dt01.formatAndSend(dt01.cmd_increment, 0, 0, self.computedState[dt01.cmd_increment,:,:], voicemode = False)]
 				
 			
 		if msg.type == "note_off" or (msg.type == "note_on" and msg.velocity == 0):
 			# implement rising mono rate
 			for heldnote in self.allNotes[::-1]:
 				if heldnote.held and self.polyphony == self.voicesPerNote :
-					commands += self.midi2commands(heldnote.msg)
+					self.midi2commands(heldnote.msg)
 					break
 		
 		return commands
@@ -456,9 +468,9 @@ if __name__ == "__main__":
 	logger.debug("\n\nInitializing Patch")
 	testPatch = Patch(dt01_inst)
 	
-	logger.debug("\n\nformatCommanding post-patch init")
-	#dt01_inst.voices[0].operators[6].formatCommand(dt01.cmd_env, 2**15)
-	#dt01_inst.voices[0].operators[0].formatCommand(dt01.cmd_env, 2**16)
+	logger.debug("\n\nformatAndSending post-patch init")
+	#dt01_inst.voices[0].operators[6].formatAndSend(dt01.cmd_env, 2**15)
+	#dt01_inst.voices[0].operators[0].formatAndSend(dt01.cmd_env, 2**16)
 	
 	testPatch.midi2commands(mido.Message('control_change', control = dt01.ctrl_opno, value = 0)) #
 	testPatch.midi2commands(mido.Message('control_change', control = dt01.ctrl_sounding, value = 1)) #
@@ -470,7 +482,7 @@ if __name__ == "__main__":
 	
 	
 	testPatch.midi2commands(mido.Message('note_on', channel=0, note=24, velocity=23, time=0))
-	dt01_inst.voices[0].operators[0].formatCommand(dt01.cmd_env, 2**14)
+	dt01_inst.voices[0].operators[0].formatAndSend(dt01.cmd_env, 2**14)
 	
 	for i in range(1024):
 		testPatch.midi2commands(mido.Message('aftertouch', value = int(i/129))) #

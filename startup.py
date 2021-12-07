@@ -17,7 +17,6 @@ import threading
 import faulthandler
 import traceback
 import re
-import spi_interface
 
 # Import the package and create an audio effects chain function.
 from pysndfx import AudioEffectsChain
@@ -64,9 +63,7 @@ if __name__ == "__main__":
 	dt01_inst.toFile(filename)
 	
 	logger.debug("Initializing")
-	initCommands = dt01_inst.getInitCommands()
-	for payload in initCommands:
-		spi_interface.send(payload)
+	dt01_inst.initialize()
 	
 	
 	GLOBAL_DEFAULT_PATCH = Patch(dt01_inst)
@@ -78,13 +75,7 @@ if __name__ == "__main__":
 	
 	midi_ports_last = []
 	
-	# IRQUEUE Considerations
-	GPIO.setmode(GPIO.BOARD)
-	GPIO.setup(37 , GPIO.IN)
-	# flush queue
-	while(GPIO.input(37)):
-		spi_interface.send(dt01.formatCommand(dt01.cmd_readirqueue, 0, 0, 0))
-		res = spi_interface.send(dt01.formatCommand(0, 0, 0, 0))
+	dt01.initIRQueue()
 	
 	logger.debug("Entering main loop. Press Control-C to exit.")
 	lastCheck = 0
@@ -127,46 +118,15 @@ if __name__ == "__main__":
 					msg = mido.Message.from_bytes(msg)
 					logger.debug(msg)
 					for patch in patches:
-						commands = patch.midi2commands(msg)
-						logger.debug(commands)
-						for payload in commands:
-							spi_interface.send(payload)
+						patch.midi2commands(msg)
 				
 					#logger.warning(time.time() - loopstart)
 				
 			# process the IRQUEUE
 			if(GPIO.input(37)):
-				spi_interface.send(dt01.formatCommand(dt01.cmd_readirqueue, 0, 0, 0))
-				res = spi_interface.send(dt01.formatCommand(0, 0, 0, 0))
-				logger.debug("res: " + str(res))
-				opno = int(math.log2((res[1]<<7) + (res[2]>>1)))
-				voiceno = int(((res[2] & 0x01)<<8) + res[3])
-				logger.debug("IRQUEUE! voice:" + str(voiceno) + " op:"+ str(opno))
-				currPhase = GLOBAL_DEFAULT_PATCH.envelopePhase[voiceno, opno]
-					
-				logger.debug("IRQUEUE! voice:" + str(voiceno) + " op:"+ str(opno) + " phase:" + str(currPhase))
-				if np.sum(res) == 0:
-					continue
-				if currPhase >= GLOBAL_DEFAULT_PATCH.phaseCount - 1:
-					logger.debug("STOP PHASE")
-					continue
-				logger.debug(GLOBAL_DEFAULT_PATCH.envelopePhase[0,:])
-				#logger.debug("self.envelopeExp "   + str(self.envelopeExp  [opno][currPhase]))
-				#logger.debug("self.envelopeLevel " + str(self.envelopeLevel[opno][currPhase]*baseEnv))
-				#logger.debug("self.envelopeRate "  + str(self.envelopeRate [opno][currPhase]))
+				voiceno, opno = dt01.getIRQueue()
+				GLOBAL_DEFAULT_PATCH.processIRQueue(voiceno, opno)
 				
-				logger.debug(res)
-				
-				commands = []
-				commands += [dt01.formatCommand(dt01.cmd_env_rate, opno, voiceno, 0)                                  ]
-				commands += [dt01.formatCommand(dt01.cmd_envexp,   opno, voiceno, GLOBAL_DEFAULT_PATCH.envelopeExp  [opno][currPhase])]
-				commands += [dt01.formatCommand(dt01.cmd_env,      opno, voiceno, GLOBAL_DEFAULT_PATCH.envelopeLevel[opno][currPhase])]
-				commands += [dt01.formatCommand(dt01.cmd_env_rate, opno, voiceno, GLOBAL_DEFAULT_PATCH.envelopeRate [opno][currPhase])]
-				for payload in commands:
-					logger.debug(dt01.controlNum2Name[payload[0]] + " " + str(payload[4:8]))
-					spi_interface.send(payload)
-				GLOBAL_DEFAULT_PATCH.envelopePhase[voiceno, opno] = (GLOBAL_DEFAULT_PATCH.envelopePhase[voiceno, opno] + 1) % GLOBAL_DEFAULT_PATCH.phaseCount
-			
 			thisLoop = time.time() - loopstart
 			maxLoop = max([thisLoop, maxLoop])
 			
