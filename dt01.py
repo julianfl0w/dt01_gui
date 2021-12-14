@@ -46,10 +46,8 @@ controlNum2Name[13] = "ctrl_opno"
 OPBASE[0]  = 14
 controlNum2Name[14] = "ctrl_env"            
 controlNum2Name[15] = "ctrl_env_rate"      
-controlNum2Name[16] = "ctrl_envexp"         
 controlNum2Name[17] = "ctrl_increment"      
 controlNum2Name[18] = "ctrl_increment_rate"
-controlNum2Name[19] = "ctrl_incexp"         
 controlNum2Name[20] = "ctrl_fmsrc"         
 controlNum2Name[21] = "ctrl_amsrc"         
 controlNum2Name[22] = "ctrl_static"         
@@ -64,7 +62,6 @@ controlNum2Name[74] = "ctrl_filter_cutoff"   # common midi control
 
 
 # begin global params
-controlNum2Name[110] = "ctrl_env_clkdiv"     
 controlNum2Name[111] = "ctrl_flushspi"       
 controlNum2Name[112] = "ctrl_passthrough"    
 controlNum2Name[113] = "ctrl_shift"          
@@ -88,14 +85,11 @@ cmdName2number["cmd_fbsrc"          ] = 74
 cmdName2number["cmd_channelgain"    ] = 75
 cmdName2number["cmd_env"            ] = 76 
 cmdName2number["cmd_env_rate"      ] = 77 
-cmdName2number["cmd_envexp"         ] = 78 
 cmdName2number["cmd_increment"      ] = 79 
 cmdName2number["cmd_increment_rate"] = 80 
-cmdName2number["cmd_incexp"         ] = 81
 cmdName2number["cmd_flushspi"       ] = 120
 cmdName2number["cmd_passthrough"    ] = 121
 cmdName2number["cmd_shift"          ] = 122
-cmdName2number["cmd_env_clkdiv"     ] = 123
 
 cmdNum2Name = ["0"]*128
 for name, number in cmdName2number.items():
@@ -106,6 +100,9 @@ for name, number in cmdName2number.items():
 		#print(name + " = " + str(number))
 		exec(name + " = " + str(number))
 
+
+SamplesPerSecond = 96e3
+SamplePeriodSeconds = 1.0/SamplesPerSecond
 
 import inspect
 
@@ -156,26 +153,23 @@ class DT01():
 		formatAndSend(cmd_fbgain       , lowestVoiceIndex, 0, [0         ]*len(self.voices))
 		formatAndSend(cmd_fbsrc        , lowestVoiceIndex, 0, [0         ]*len(self.voices))
 			
-		for channel in range(2):
-			formatAndSend(cmd_channelgain, lowestVoiceIndex, 0, [2**16]*len(self.voices))
+		formatAndSend(cmd_channelgain, lowestVoiceIndex, 0, [2**16]*len(self.voices))
+		formatAndSend(cmd_channelgain, lowestVoiceIndex, 1, [2**16]*len(self.voices))
 			
 		#paramNum, mm_opno,  voiceno,  payload
 		for opno in range(OPERATORCOUNT):
+			formatAndSend(cmd_env_rate       , lowestVoiceIndex, opno, [0x00]*len(self.voices))
 			formatAndSend(cmd_env            , lowestVoiceIndex, opno, [0   ]*len(self.voices))
-			formatAndSend(cmd_env_rate       , lowestVoiceIndex, opno, [2**12]*len(self.voices))
-			formatAndSend(cmd_envexp         , lowestVoiceIndex, opno, [0x00]*len(self.voices))
 
-		formatAndSend(cmd_increment      , lowestVoiceIndex, 0, [2**12]*len(self.voices)) # * self.paramNum2Real[increment]
+		formatAndSend(cmd_increment      , lowestVoiceIndex, 0, [0x00]*len(self.voices)) # * self.paramNum2Real[increment]
 		formatAndSend(cmd_increment      , lowestVoiceIndex, 6, [2**12]*len(self.voices)) # * self.paramNum2Real[increment]
 		formatAndSend(cmd_increment      , lowestVoiceIndex, 7, [2**12]*len(self.voices)) # * self.paramNum2Real[increment]
 
-		formatAndSend(cmd_increment_rate , lowestVoiceIndex, 0, [2**14]*len(self.voices))
-		formatAndSend(cmd_incexp         , lowestVoiceIndex, 0, [0x00]*len(self.voices))
+		formatAndSend(cmd_increment_rate , lowestVoiceIndex, 0, [2**27]*len(self.voices))
 
 		formatAndSend(cmd_flushspi     , 0, 0, 0)    
 		formatAndSend(cmd_passthrough  , 0, 0, 0)    
 		formatAndSend(cmd_shift        , 0, 0, 0)    
-		formatAndSend(cmd_env_clkdiv   , 0, 0, 2**12)
 		return 0
 		
 	def formatAndSend(self, param, value):
@@ -245,8 +239,7 @@ def initIRQueue():
 	GPIO.setup(37 , GPIO.IN)
 	# flush queue
 	while(GPIO.input(37)):
-		formatAndSend(cmd_readirqueue, 0, 0, 0)
-		res = formatAndSend(0, 0, 0, 0)
+		getIRQueue()
 
 def getIRQueue():
 
@@ -260,15 +253,24 @@ def getIRQueue():
 	return voiceno, opno
 
 def formatAndSend(paramNum, voiceno, opno, payload, voicemode = 1):
-	if type(payload) == list or type(payload) == np.ndarray :
-		logger.debug("preparing (" + str(voiceno) + ":" + str(opno) + ") " + cmdNum2Name[paramNum] + " len " + str(len(payload)) + " : "  + str(payload[0:8]))
+	if type(payload) == list:
+		logger.debug("preparing (" + "v"+str(voicemode) + " : " + str(voiceno) + ":" + str(opno) + ") " + cmdNum2Name[paramNum] + " len " + str(len(payload)) + " : "  + str(payload[0:8]))
 		payload = np.array(payload, dtype=np.int)
 		payload = payload.byteswap().tobytes()
+	elif type(payload) == np.ndarray:
+		if payload.dtype == np.int:
+			payload = payload.byteswap().tobytes()
+		else:
+			logger.warning("USE INT PAYLOADS! " + cmdNum2Name[paramNum])
+			payload = np.array(payload, dtype=np.int)
+			payload = payload.byteswap().tobytes()
+			
 	else:
-		logger.debug("sending (" + str(voiceno) + ":" + str(opno) + ") " + cmdNum2Name[paramNum] + " " + str(payload))
+		if paramNum != cmd_readirqueue and paramNum != 0: 
+			logger.debug("sending (" + str(voiceno) + ":" + str(opno) + ") " + cmdNum2Name[paramNum] + " " + str(payload))
 		payload = struct.pack(">I", int(payload))
 	payload_array = [paramNum, 1 << opno, (voicemode << 7) | (voiceno >> 8), voiceno] + [int(i) for i in payload] 
-	#logger.debug([hex(p) for p in payload_array[:32]])
+	logger.debug(str(payload_array[0]) + ": " + str([hex(p) for p in payload_array[:32]]))
 	ret = spi_interface.send(payload_array)
 	return ret
 	
@@ -300,8 +302,6 @@ if __name__ == "__main__":
 		#print([hex(bitrev(a)) for a in fpga_interface_inst.getStream(cmd_readaudio)])
 		#print([hex(bitrev(a)) for a in fpga_interface_inst.getID()])
 		#print([hex(bitrev(a)) for a in fpga_interface_inst.getStream(cmd_readaudio)])
-	
-	fpga_interface_inst.formatAndSend("cmd_env_clkdiv", 0, 0, 0)
 	
 	opno = 0
 	voiceno = 0

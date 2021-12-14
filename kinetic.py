@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import sys
+import zmq
 from PyQt5.QtWidgets import * 
 from PyQt5.QtGui import * 
 from PyQt5.QtCore import * 
@@ -111,6 +112,11 @@ class MainWindow(QWidget):
 					patchButton.pressed.connect(self.patchPressed) 
 					
 			self.Stack.addWidget (self.fileScroll_widget)
+			
+			
+			context = zmq.Context()
+			socket = context.socket(zmq.PUB)
+			socket.bind("tcp://*:%s" % "5000")
 			
 			
 		self.folderScroll.setWidget(self.folderScroll_widget)

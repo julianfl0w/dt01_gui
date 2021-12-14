@@ -25,6 +25,10 @@ dt01_inst = dt01.DT01(polyphony = polyphony)
 
 logger.debug("Applying a light touch")
 
+envrate = 2**8
+if "basic" in sys.argv:
+	pass
+
 if "t" in sys.argv:
 	dt01_inst.voices[0].operators[6].formatAndSend(dt01.cmd_env, 2**14)
 	dt01_inst.voices[0].operators[6].formatAndSend(dt01.cmd_increment, 2**11)
@@ -68,21 +72,24 @@ if "p" in sys.argv:
 
 if "env" in sys.argv:
 	dt01_inst.voices[0].formatAndSend(dt01.cmd_fm_algo, 0o77777777)
-	dt01_inst.formatAndSend(dt01.cmd_env_clkdiv, 2**8)
 	dt01_inst.formatAndSend(dt01.cmd_shift, 2)
 	#dt01_inst.voices[0].operators[0].formatAndSend(dt01.cmd_envexp, envexp)
-	envrate = 2**8
+	dt01_inst.voices[0].operators[0].formatAndSend(dt01.cmd_increment_rate, 0)
 	dt01_inst.voices[0].operators[0].formatAndSend(dt01.cmd_increment, 2**23)
-	dt01_inst.voices[0].operators[0].formatAndSend(dt01.cmd_increment_rate, 2**18)
-	dt01_inst.voices[0].operators[0].formatAndSend(dt01.cmd_env, 2**16)
-	dt01_inst.voices[0].operators[0].formatAndSend(dt01.cmd_env_rate, envrate)
+	dt01_inst.voices[0].operators[0].formatAndSend(dt01.cmd_increment_rate, 2**28)
+	dt01_inst.voices[0].operators[0].formatAndSend(dt01.cmd_env_rate, 0)
+	dt01_inst.voices[0].operators[0].formatAndSend(dt01.cmd_env, 2**28)
+	dt01_inst.voices[0].operators[0].formatAndSend(dt01.cmd_env_rate, 2**20)
 
-	while(not GPIO.input(37)):
-		pass
+	while(1):
+		while(not GPIO.input(37)):
+			pass
 		
-	voiceno, opno = dt01.getIRQueue()
-	
-	dt01.formatAndSend(dt01.cmd_env_rate, voiceno, opno, 0)
-	#dt01.formatAndSend(dt01.cmd_envexp,   voiceno, opno, envexp)
-	dt01.formatAndSend(dt01.cmd_env,      voiceno, opno, 0)
-	dt01.formatAndSend(dt01.cmd_env_rate, voiceno, opno, envrate)
+		voiceno, opno = dt01.getIRQueue()
+		logger.debug("recvd irq (" + str(voiceno) + "," + str(opno) + ")")
+		
+		dt01.formatAndSend(dt01.cmd_env_rate, voiceno, opno, 0)
+		#dt01.formatAndSend(dt01.cmd_envexp,   voiceno, opno, envexp)
+		dt01.formatAndSend(dt01.cmd_env,      voiceno, opno, 0)
+		dt01.formatAndSend(dt01.cmd_env_rate, voiceno, opno, 2**10)
+		
