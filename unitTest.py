@@ -75,7 +75,7 @@ if "env" in sys.argv:
 	dt01_inst.formatAndSend(dt01.cmd_shift, 2)
 	#dt01_inst.voices[0].operators[0].formatAndSend(dt01.cmd_envexp, envexp)
 	dt01_inst.voices[0].operators[0].formatAndSend(dt01.cmd_increment_rate, 0)
-	dt01_inst.voices[0].operators[0].formatAndSend(dt01.cmd_increment, 2**23)
+	dt01_inst.voices[0].operators[0].formatAndSend(dt01.cmd_increment, 2**24)
 	dt01_inst.voices[0].operators[0].formatAndSend(dt01.cmd_increment_rate, 2**28)
 	dt01_inst.voices[0].operators[0].formatAndSend(dt01.cmd_env_rate, 0)
 	dt01_inst.voices[0].operators[0].formatAndSend(dt01.cmd_env, 2**28)

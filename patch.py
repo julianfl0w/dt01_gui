@@ -89,44 +89,6 @@ class Patch():
 			voice.note  = self.allNotes[0]
 			voice.patch = self
 				
-	
-		self.control = [0]*CONTROLCOUNT
-		
-		# set default control values
-		self.control[dt01.ctrl_vibrato_env     ] = 0   #
-		self.control[dt01.ctrl_tremolo_env     ] = 0   #
-		self.control[dt01.ctrl_fbgain          ] = 0  
-		self.control[dt01.ctrl_fbsrc           ] = 0  
-		self.control[dt01.ctrl_expression      ] = 0   # common midi control
-		
-		self.control[dt01.ctrl_env             ] = 0 #
-		self.control[dt01.ctrl_env_rate       ] = 64  #
-		self.control[dt01.ctrl_increment       ] = 64  #
-		self.control[dt01.ctrl_increment_rate ] = 0   #
-		self.control[dt01.ctrl_fmsrc           ] = 7   #fm off
-		self.control[dt01.ctrl_amsrc           ] = 0   #am off
-		self.control[dt01.ctrl_static          ] = 0   #
-		self.control[dt01.ctrl_sounding        ] = 0   #
-		
-		self.control[dt01.ctrl_sustain         ] = 0  # common midi control
-		self.control[dt01.ctrl_ratemento      ] = 127  # common midi control
-		self.control[dt01.ctrl_filter_resonance] = 0  # common midi control
-		self.control[dt01.ctrl_filter_cutoff   ] = 0  # common midi control
-		
-		self.control[dt01.ctrl_flushspi        ] = 0   #   
-		self.control[dt01.ctrl_passthrough     ] = 0   #   
-		self.control[dt01.ctrl_shift           ] = 0   #   
-		
-		
-		self.controlReal = np.zeros((CONTROLCOUNT))
-
-		# establish defaults
-		self.controlNum2Val = np.zeros((CONTROLCOUNT))
-		self.controlNum2Real= np.zeros((CONTROLCOUNT))
-		
-		self.opControlNum2Val = np.zeros((dt01.OPERATORCOUNT, CONTROLCOUNT))
-		self.opControlNum2Real= np.zeros((dt01.OPERATORCOUNT, CONTROLCOUNT))
-		
 		# more defaults : should be programmable by patch
 		self.phaseCount = 4
 		
@@ -146,24 +108,6 @@ class Patch():
 		
 		self.envelopePhase = np.zeros((len(self.voices), dt01.OPERATORCOUNT), dtype=np.int)
 		
-		#			
-		#self.midi2commands(mido.Message('pitchwheel', pitch = 64))
-		#self.midi2commands(mido.Message('aftertouch', value = 0))
-		#for note in self.allNotes:
-		#	self.midi2commands(mido.Message('polytouch', note = note.index, value = 0))
-		#	
-		
-		# doesnt belong here
-		#self.midi2commands(mido.Message('control_change', control = dt01.ctrl_opno    , value = 0)) #
-		#self.midi2commands(mido.Message('control_change', control = dt01.ctrl_env     , value = 127)) #
-		#self.midi2commands(mido.Message('control_change', control = dt01.ctrl_opno    , value = 1)) #
-		#self.midi2commands(mido.Message('control_change', control = dt01.ctrl_env     , value = 2)) #
-		#
-		#self.midi2commands(mido.Message('control_change', control = dt01.ctrl_opno      , value = 6)) #
-		#self.midi2commands(mido.Message('control_change', control = dt01.ctrl_increment , value = 16)) #
-		#self.midi2commands(mido.Message('control_change', control = dt01.ctrl_opno      , value = 7)) #
-		#self.midi2commands(mido.Message('control_change', control = dt01.ctrl_increment , value = 16)) #
-		
 	def loadJson(self, filename):
 		with open(filename, 'r') as f:
 			self.patchDict = json.loads(f.read)
@@ -173,20 +117,6 @@ class Patch():
 		if self.patchDict["Algorithm"] == 0:
 			return
 	
-	def getCurrOpParam2Real(self, index, paramNum):
-		return self.controlNum2Real[index,paramNum]
-		
-	def getCurrOpParam2Val(self, index, paramNum):
-		return self.controlNum2Val[index,paramNum]
-	
-	def setIncrement(self, operator):
-		if operator.index < 6:
-			self.computedState[dt01.cmd_increment, operator.voice.index, operator.index] = self.pitchwheelReal * (1 + self.aftertouchReal) * operator.voice.note.defaultIncrement
-		elif operator.index == 6:
-			self.computedState[dt01.cmd_increment, operator.voice.index, operator.index] = 2**14 * self.opControlNum2Real[operator.index,dt01.ctrl_increment] # * self.getCurrOpParam2Real(operator.index, dt01.increment)
-		elif operator.index == 7:
-			self.computedState[dt01.cmd_increment, operator.voice.index, operator.index] = 2**12 * self.opControlNum2Real[operator.index,dt01.ctrl_increment] # * self.getCurrOpParam2Real(operator.index, dt01.increment)
-
 	def setenvelopeLevelReal(opno, phase, value):
 		self.envelopeLevelReal[opno,phase] = value
 		
@@ -216,10 +146,10 @@ class Patch():
 			dt01.formatAndSend(dt01.cmd_env,      voiceno, opno, self.envelopeLevelFixed[opno,phase], voicemode=False)
 			logger.debug("sending rate " + str(self.envStepSizeFixed[opno,phase]))
 			dt01.formatAndSend(dt01.cmd_env_rate, voiceno, opno, self.envStepSizeFixed[opno,phase], voicemode=False)                           
-		
+	
+	
 	def midi2commands(self, msg):
 	
-		commands = []
 		logger.debug("\n\nProcessing " + str(msg))
 			
 		if msg.type == "note_off" or (msg.type == "note_on" and msg.velocity == 0):
@@ -254,10 +184,9 @@ class Patch():
 				voice.indexInCluser = voiceNoInCluster
 				voice.note = note
 				note.voices += [voice]
-
-				for operator in voice.operators:
-					self.setIncrement(operator)
-				dt01.formatAndSend(dt01.cmd_increment, voice.index, 0, self.computedState[dt01.cmd_increment,voice.index,:], voicemode = False)
+				logger.debug("modifier " + str(self.pitchwheelReal * (1 + self.aftertouchReal)))
+				voice.setAllIncrements(self.pitchwheelReal * (1 + self.aftertouchReal))
+				
 				self.setPhaseAllOps(voice.index, 0)
 						
 				#dt01.formatAndSend(dt01.cmd_env,       voice.index, 0, self.computedState[dt01.cmd_env,voice.index,:]      , voicemode = False)
@@ -273,22 +202,13 @@ class Patch():
 			logger.debug("PWREAL " + str(self.pitchwheelReal))
 			
 			for voice in self.voices:
-				for operator in voice.operators:
-					self.setIncrement(operator)
-			dt01.formatAndSend(dt01.cmd_increment, 0, 0, self.computedState[dt01.cmd_increment,:,:], voicemode = False)
+				voice.setAllIncrements(self.pitchwheelReal * (1 + self.aftertouchReal))
 				
 		elif msg.type == 'control_change':
-			
-			self.control[msg.control]     = msg.value
-			self.controlReal[msg.control] = msg.value/127.0
-			
+						
 			logger.debug("control : " + str(msg.control) + " (" + dt01.controlNum2Name[msg.control] +  "): " + str(msg.value))
 
 			event = "control[" + str(msg.control) + "]"
-			
-			# patch stores control vals for each operator
-			self.controlNum2Val [msg.control] = msg.value
-			self.controlNum2Real[msg.control] = msg.value/127.0
 			
 			# selection
 			if msg.control == dt01.ctrl_opno:
@@ -349,10 +269,9 @@ class Patch():
 				if msg.control == dt01.ctrl_voicegain or msg.control == dt01.ctrl_pan : 
 					baseVolume = 2**16*self.controlNum2Real["ctrl_voicegain"]
 					if self.activeOperator == 0:
-						[channel.formatAndSend(dt01.cmd_channelgain, baseVolume*self.controlNum2Real["ctrl_pan"])] # assume 2 channels]
+						channel.formatAndSend(dt01.cmd_channelgain, baseVolume*self.controlNum2Real["ctrl_pan"]) # assume 2 channels]
 					else:
-						#logger.debug(self.controlReal[10])
-						[channel.formatAndSend(dt01.cmd_channelgain, baseVolume*(1 - self.controlNum2Real["ctrl_pan"]))] # assume 2 channels]
+						channel.formatAndSend(dt01.cmd_channelgain, baseVolume*(1 - self.controlNum2Real["ctrl_pan"])) # assume 2 channels]
 	
 				# FM Algo
 				if msg.control == dt01.ctrl_fmsrc:
@@ -365,36 +284,20 @@ class Patch():
 					voice.formatAndSend(dt01.cmd_fm_algo, formatAndSendVal)
 				
 				#am algo
-				if msg.control == dt01.ctrl_amsrc:
-					formatAndSendVal = 0
-					for i in reversed(range(dt01.OPERATORCOUNT)):
-						formatAndSendVal = int(formatAndSendVal) << int(math.log2(dt01.OPERATORCOUNT))
-						formatAndSendVal += int(voice.operators[i].amsrc)
-						#logger.debug(bin(formatAndSendVal))
-					voice.formatAndSend(dt01.cmd_am_algo, formatAndSendVal)
+				if msg.control == dt01.ctrl_amsrc:  
+					voice.setAMSrc(self.activeOperator.index, msg.value)
 					
-				if msg.control == dt01.ctrl_fbgain:
-					voice.formatAndSend(dt01.cmd_fbgain   , 2**16 * self.controlNum2Real[dt01.ctrl_fbgain]  )
+				if msg.control == dt01.ctrl_fbgain: 
+					voice.setFBGainReal(msg.value / 127.0)
 					
 				if msg.control == dt01.ctrl_fbsrc:
-					voice.formatAndSend(dt01.cmd_fbsrc    , self.controlNum2Val[dt01.ctrl_fbsrc]   )
+					voice.setFBSource(dt01.cmd_fbsrc)
 		
 				if msg.control == dt01.ctrl_sounding: 
-					activeOperator.sounding = msg.value
-					formatAndSendVal = 0
-					for i in reversed(range(dt01.OPERATORCOUNT)):
-						formatAndSendVal = int(formatAndSendVal) << 1
-						formatAndSendVal += int(voice.operators[i].sounding)
-						#logger.debug(bin(formatAndSendVal))
-					voice.formatAndSend(dt01.cmd_sounding, formatAndSendVal)
+					voice.setSounding(self, activeOperator, msg.value & 0x01)
 					
 				if msg.control == dt01.ctrl_static: 
-					activeOperator.static = msg.value
-					formatAndSendVal = 0
-					for i in reversed(range(dt01.OPERATORCOUNT)):
-						formatAndSendVal = int(formatAndSendVal) << 1
-						formatAndSendVal += int(voice.operators[i].static)
-					voice.formatAndSend(dt01.cmd_static, formatAndSendVal)
+					voice.setStatic(self, activeOperator, msg.value & 0x01)
 		
 				if msg.control == dt01.ctrl_env: 
 					pass
@@ -408,7 +311,7 @@ class Patch():
 		# static oscillators do not have velocity-dependant env
 					
 				if msg.control == dt01.ctrl_increment:
-					self.setIncrement(activeOperator)
+					voice.setAllIncrements(self.pitchwheelReal * (1 + self.aftertouchReal))
 					
 				if msg.control == dt01.ctrl_increment_rate: 
 					activeOperator.formatAndSend(dt01.cmd_increment_rate, 2**8 * (1 - self.controlNum2Real[dt01.ctrl_ratemento]) * (1 - self.controlNum2Real[activeOperator.index,dt01.ctrl_increment_rate]))
@@ -432,11 +335,8 @@ class Patch():
 			self.aftertouchReal = msg.value/127.0
 			
 			for voice in self.voices:
-				for operator in voice.operators:
-					self.setIncrement(operator)
-					
-			dt01.formatAndSend(dt01.cmd_increment, 0, 0, self.computedState[dt01.cmd_increment,:,:], voicemode = False)
-				
+				voice.setAllIncrements(self.pitchwheelReal * (1 + self.aftertouchReal))
+									
 			
 		if msg.type == "note_off" or (msg.type == "note_on" and msg.velocity == 0):
 			# implement rising mono rate
@@ -445,7 +345,7 @@ class Patch():
 					self.midi2commands(heldnote.msg)
 					break
 		
-		return commands
+		return True
 
 
 def startup():
@@ -494,6 +394,7 @@ def startup():
 	socket.setsockopt_string(zmq.SUBSCRIBE, "")
 
 	logger.debug("Entering main loop. Press Control-C to exit.")
+	loopstart = time.time()
 	lastCheck = 0
 	try:
 		maxLoop = 0
@@ -529,7 +430,6 @@ def startup():
 			for dev, patches in allMidiDevicesAndPatches:
 				msg = dev.get_message()
 				if msg != None:
-					loopstart = time.time()
 					msg, dtime = msg
 					msg = mido.Message.from_bytes(msg)
 					logger.debug(msg)
@@ -537,7 +437,8 @@ def startup():
 						patch.midi2commands(msg)
 				
 					logger.warning(time.time() - loopstart)
-				
+			loopstart = time.time()
+			
 			# process the IRQUEUE
 			if(GPIO.input(37)):
 				voiceno, opno = dt01.getIRQueue()

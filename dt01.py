@@ -50,7 +50,6 @@ controlNum2Name[17] = "ctrl_increment"
 controlNum2Name[18] = "ctrl_increment_rate"
 controlNum2Name[20] = "ctrl_fmsrc"         
 controlNum2Name[21] = "ctrl_amsrc"         
-controlNum2Name[22] = "ctrl_static"         
 controlNum2Name[23] = "ctrl_sounding"         
    
 
@@ -76,7 +75,6 @@ cmdName2number = {}
 cmdName2number["cmd_readirqueue"    ] = 64
 cmdName2number["cmd_readaudio"      ] = 65
 cmdName2number["cmd_readid"         ] = 66
-cmdName2number["cmd_static"         ] = 67
 cmdName2number["cmd_sounding"       ] = 69
 cmdName2number["cmd_fm_algo"        ] = 70
 cmdName2number["cmd_am_algo"        ] = 71
@@ -146,7 +144,6 @@ class DT01():
 		lowestVoiceIndex = min([v.index for v in self.voices])
 		initIRQueue()
 		
-		formatAndSend(cmd_static       , lowestVoiceIndex, 0, [0b11000000]*len(self.voices))
 		formatAndSend(cmd_sounding     , lowestVoiceIndex, 0, [0b00000001]*len(self.voices))
 		formatAndSend(cmd_fm_algo      , lowestVoiceIndex, 0, [0o77777777]*len(self.voices))
 		formatAndSend(cmd_am_algo      , lowestVoiceIndex, 0, [0o00000000]*len(self.voices))
@@ -195,9 +192,37 @@ class Voice():
 		self.channels += [Channel(self, 1)]
 		
 		self.allChildren = self.channels + self.operators 
-			
-	def formatAndSend(self, param, value):
-		return formatAndSend(param, self.index, 0, value)
+	
+	
+	def setAllIncrements(self, modifier):
+		allIncrements = modifier * [op.getIncrement() for op in self.operators]
+		self.formatAndSend(cmd_increment, allIncrements, voicemode = False)
+	
+	def setFBGainReal(self, fbgainreal):
+		self.formatAndSend(cmd_fbgain, 2**16*fbgainreal)
+		
+	def setFBSource(self, source):
+		self.formatAndSend(cmd_fbsrc, source)
+	
+	def setAMSrc(self, opno, source):
+		self.operators[opno].amsrc = source
+		formatAndSendVal = 0
+		for i in reversed(range(dt01.OPERATORCOUNT)):
+			formatAndSendVal = int(formatAndSendVal) << int(math.log2(dt01.OPERATORCOUNT))
+			formatAndSendVal += int(voice.operators[i].amsrc)
+			#logger.debug(bin(formatAndSendVal))
+		voice.formatAndSend(dt01.cmd_am_algo, formatAndSendVal)
+		
+	def applySounding(self, isSounding):
+		formatAndSendVal = 0
+		for i in reversed(range(dt01.OPERATORCOUNT)):
+			formatAndSendVal = int(formatAndSendVal) << 1
+			formatAndSendVal += int(voice.operators[i].sounding)
+			#logger.debug(bin(formatAndSendVal))
+		voice.formatAndSend(dt01.cmd_sounding, formatAndSendVal)
+	
+	def formatAndSend(self, param, value, voicemode = False):
+		return formatAndSend(param, self.index, 0, value, voicemode)
 
 
 class Channel():
@@ -216,15 +241,25 @@ class Operator():
 		self.index = index
 		self.voice = voice
 		self.base  = OPBASE[self.index]
-		self.sounding = 0
+		self.sounding = 1
 		self.fmsrc    = 7
 		self.amsrc    = 0
-		self.static   = 0 
 		self.selected = False
+		self.baseIncrement = 0
+		self.incrementScale = 1
 		
 	def formatAndSend(self, param, value):
 		return formatAndSend(param, self.voice.index, self.index, value)
-
+	
+	def getIncrement(self):
+		increment = self.baseIncrement + self.incrementScale * self.voice.note.defaultIncrement
+		#logger.debug("increment " + str(increment))
+		return increment
+		
+	def setSounding(self, sounding):
+		self.sounding = isSounding
+		self.voice.applySounding() # need to update by voice because of memory layout in FPGA
+		
 	def __unicode__(self):
 		if self.index != None:
 			return str(str(type(self))) + " #" + str(self.index) + " of Voice " + str(self.voice) 
@@ -258,6 +293,7 @@ def formatAndSend(paramNum, voiceno, opno, payload, voicemode = 1):
 		payload = np.array(payload, dtype=np.int)
 		payload = payload.byteswap().tobytes()
 	elif type(payload) == np.ndarray:
+		logger.debug("preparing (" + "v"+str(voicemode) + " : " + str(voiceno) + ":" + str(opno) + ") " + cmdNum2Name[paramNum] + " len " + str(len(payload)) + " : "  + str(payload[0:8]))
 		if payload.dtype == np.int:
 			payload = payload.byteswap().tobytes()
 		else:
@@ -270,7 +306,7 @@ def formatAndSend(paramNum, voiceno, opno, payload, voicemode = 1):
 			logger.debug("sending (" + str(voiceno) + ":" + str(opno) + ") " + cmdNum2Name[paramNum] + " " + str(payload))
 		payload = struct.pack(">I", int(payload))
 	payload_array = [paramNum, 1 << opno, (voicemode << 7) | (voiceno >> 8), voiceno] + [int(i) for i in payload] 
-	logger.debug(str(payload_array[0]) + ": " + str([hex(p) for p in payload_array[:32]]))
+	#logger.debug(str(payload_array[0]) + ": " + str([hex(p) for p in payload_array[:32]]))
 	ret = spi_interface.send(payload_array)
 	return ret
 	
@@ -318,5 +354,5 @@ if __name__ == "__main__":
 	fpga_interface_inst.formatAndSend("cmd_fm_algo"      , opno, voiceno, 2)
 	
 	fpga_interface_inst.formatAndSend("cmd_flushspi", 0, 0, 0)
-	fpga_interface_inst.formatAndSend("cmd_shift"   , 0, 0, 0)
+	fpga_interface_inst.formatAndSend("cmd_shift"   , 0, 0, 2)
 		
