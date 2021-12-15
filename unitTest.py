@@ -26,6 +26,18 @@ dt01_inst = dt01.DT01(polyphony = polyphony)
 logger.debug("Applying a light touch")
 
 envrate = 2**8
+
+if "passthrough" in sys.argv:
+	dt01_inst.formatAndSend(dt01.cmd_passthrough, 1)
+	dt01_inst.formatAndSend(dt01.cmd_shift      , 0)  
+	dt01_inst.voices[0].operators[0].formatAndSend(dt01.cmd_increment_rate, 0)
+	dt01_inst.voices[0].operators[0].formatAndSend(dt01.cmd_increment, 2**24)
+	dt01_inst.voices[0].operators[0].formatAndSend(dt01.cmd_increment_rate, 2**28)
+	dt01_inst.voices[0].operators[0].formatAndSend(dt01.cmd_env_rate, 0)
+	dt01_inst.voices[0].operators[0].formatAndSend(dt01.cmd_env, 2**28)
+	dt01_inst.voices[0].operators[0].formatAndSend(dt01.cmd_env_rate, 2**20)
+
+	
 if "basic" in sys.argv:
 	pass
 
@@ -63,16 +75,14 @@ if "f" in sys.argv:
 	dt01_inst.voices[0].formatAndSend(dt01.cmd_fm_algo, 0o77754321)
 	
 if "p" in sys.argv:
-	dt01_inst.gather()
 	dt01_inst.voices[0].operators[0].formatAndSend(dt01.cmd_env, 2**16)
 	dt01_inst.voices[1].operators[0].formatAndSend(dt01.cmd_env, 2**16)
 	dt01_inst.voices[0].formatAndSend(dt01.cmd_increment, 2**13)
 	dt01_inst.voices[1].formatAndSend(dt01.cmd_increment, 2**13*3/2)
-	dt01_inst.release()
 
 if "env" in sys.argv:
 	dt01_inst.voices[0].formatAndSend(dt01.cmd_fm_algo, 0o77777777)
-	dt01_inst.formatAndSend(dt01.cmd_shift, 2)
+	dt01_inst.formatAndSend(dt01.cmd_shift, 0)
 	#dt01_inst.voices[0].operators[0].formatAndSend(dt01.cmd_envexp, envexp)
 	dt01_inst.voices[0].operators[0].formatAndSend(dt01.cmd_increment_rate, 0)
 	dt01_inst.voices[0].operators[0].formatAndSend(dt01.cmd_increment, 2**24)

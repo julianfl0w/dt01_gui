@@ -74,13 +74,13 @@ class Patch():
 		self.allNotes = []
 		self.opZeros = np.array([0]* dt01.OPERATORCOUNT, dtype=np.int)
 
-		
-		self.computedState = np.zeros((128, self.polyphony, dt01.OPERATORCOUNT), dtype=np.int) # fpga cmd, voice, operator
 		for i in range(MIDINOTES):
 			self.allNotes+= [Note(i)]
 			
 		self.activeOperator = 0
 		self.voices = dt01_inst.getVoices()
+		self.lowestVoiceIndex = min([v.index for v in self.voices])
+		self.voiceCount = len(self.voices)
 
 		self.allChildren = self.voices
 	
@@ -115,7 +115,12 @@ class Patch():
 		
 		# apply algo https://scsynth.org/t/coding-fm-synthesis-algorithms/1381
 		if self.patchDict["Algorithm"] == 0:
-			return
+			fmAlgo = [1, 7, 3, 4, 5]
+			fbSrc  = 6
+			
+		dt01.formatAndSend(dt01.cmd_fm_algo, self.lowestVoiceIndex, 0, [Voice.getFMAlgo(fmAlgo)]*self.voiceCount, voicemode=True)         
+			
+		return 0
 	
 	def setenvelopeLevelReal(opno, phase, value):
 		self.envelopeLevelReal[opno,phase] = value
@@ -215,8 +220,6 @@ class Patch():
 				self.activeOperator = min(msg.value, 7)
 				#logger.debug(self.activeOperator)
 				
-			self.opControlNum2Val [self.activeOperator,msg.control] = msg.value
-			self.opControlNum2Real[self.activeOperator,msg.control] = msg.value/127.0
 			logger.debug("Setting op " + str(self.activeOperator) + " control: " + str(msg.control) + " value: " + str(msg.value/127.0))
 			
 			# forward some controls
@@ -273,15 +276,6 @@ class Patch():
 					else:
 						channel.formatAndSend(dt01.cmd_channelgain, baseVolume*(1 - self.controlNum2Real["ctrl_pan"])) # assume 2 channels]
 	
-				# FM Algo
-				if msg.control == dt01.ctrl_fmsrc:
-					activeOperator.fmsrc = msg.value
-					formatAndSendVal = 0
-					for i in reversed(range(dt01.OPERATORCOUNT)):
-						formatAndSendVal = int(formatAndSendVal) << int(math.log2(dt01.OPERATORCOUNT))
-						formatAndSendVal += int(voice.operators[i].fmsrc)
-						#logger.debug(bin(formatAndSendVal))
-					voice.formatAndSend(dt01.cmd_fm_algo, formatAndSendVal)
 				
 				#am algo
 				if msg.control == dt01.ctrl_amsrc:  
@@ -296,9 +290,6 @@ class Patch():
 				if msg.control == dt01.ctrl_sounding: 
 					voice.setSounding(self, activeOperator, msg.value & 0x01)
 					
-				if msg.control == dt01.ctrl_static: 
-					voice.setStatic(self, activeOperator, msg.value & 0x01)
-		
 				if msg.control == dt01.ctrl_env: 
 					pass
 					# sounding operators begin on note_on

@@ -150,8 +150,8 @@ class DT01():
 		formatAndSend(cmd_fbgain       , lowestVoiceIndex, 0, [0         ]*len(self.voices))
 		formatAndSend(cmd_fbsrc        , lowestVoiceIndex, 0, [0         ]*len(self.voices))
 			
-		formatAndSend(cmd_channelgain, lowestVoiceIndex, 0, [2**16]*len(self.voices))
-		formatAndSend(cmd_channelgain, lowestVoiceIndex, 1, [2**16]*len(self.voices))
+		formatAndSend(cmd_channelgain, lowestVoiceIndex, 0, [2**16 / 8]*len(self.voices))
+		formatAndSend(cmd_channelgain, lowestVoiceIndex, 1, [2**16 / 8]*len(self.voices))
 			
 		#paramNum, mm_opno,  voiceno,  payload
 		for opno in range(OPERATORCOUNT):
@@ -166,7 +166,7 @@ class DT01():
 
 		formatAndSend(cmd_flushspi     , 0, 0, 0)    
 		formatAndSend(cmd_passthrough  , 0, 0, 0)    
-		formatAndSend(cmd_shift        , 0, 0, 0)    
+		formatAndSend(cmd_shift        , 0, 0, 6)    # -4
 		return 0
 		
 	def formatAndSend(self, param, value):
@@ -203,6 +203,17 @@ class Voice():
 		
 	def setFBSource(self, source):
 		self.formatAndSend(cmd_fbsrc, source)
+	
+	def getFMAlgo(algo):
+		formatAndSendVal = 0
+		for i in reversed(range(dt01.OPERATORCOUNT)):
+			formatAndSendVal = int(formatAndSendVal) << int(math.log2(dt01.OPERATORCOUNT))
+			formatAndSendVal += int(algo[i])
+			#logger.debug(bin(formatAndSendVal))
+		return formatAndSendVal
+		
+	def setFMAlgo(self, algo):
+		self.formatAndSend(dt01.cmd_fm_algo, getFMAlgo(algo))
 	
 	def setAMSrc(self, opno, source):
 		self.operators[opno].amsrc = source
