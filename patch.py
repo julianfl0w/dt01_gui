@@ -23,6 +23,7 @@ import math
 import multiprocessing
 import RPi.GPIO as GPIO
 import zmq
+import algos
 logger = logging.getLogger('DT01')
 
 import socket
@@ -56,7 +57,7 @@ class Patch():
 	def processControl(self, paramName, value):
 		self.midi2commands(mido.Message('control_change', control = dt01.controlNum2Num [paramName], value = value)) #
 		
-	def __init__(self, dt01_inst):
+	def __init__(self, dt01_inst, patchFilename):
 		logger.debug("patch init ")
 		self.dt01_inst = dt01_inst
 		self.polyphony = 64
@@ -92,41 +93,89 @@ class Patch():
 		# more defaults : should be programmable by patch
 		self.phaseCount = 4
 		
-		self.envelopeLevelReal= np.zeros((dt01.OPERATORCOUNT, self.phaseCount))
-		self.envelopeLevelReal[0] = np.array([0.125, 0.125, 0.125, 0])
-		self.envelopeLevelFixed = np.array(self.envelopeLevelReal*2**31, dtype=np.int)
-		
-		# env_period (samples) = Fs * envelopeTimeSeconds
-		self.envelopeTimeSeconds  = np.ones((dt01.OPERATORCOUNT, self.phaseCount)) * 0.01
-		#self.envelopeTimeSeconds[0] = np.array([2**24, 0, 0, 2**7])
-		self.envelopeTimeSeconds[0,3] = 3
-		
-		self.envTimeSamples = self.envelopeTimeSeconds * dt01.SamplesPerSecond
-		logger.debug("self.envTimeSamples:" + str(self.envTimeSamples))
-		self.envStepSizeReal   = np.abs(self.envelopeLevelFixed - np.roll(self.envelopeLevelFixed, 1)) / self.envTimeSamples
-		self.envStepSizeFixed  = np.array(self.envStepSizeReal, dtype=np.int)
+		self.envelopeLevelReal  = np.zeros((dt01.OPERATORCOUNT, self.phaseCount))
+		self.envelopeLevelFixed = np.zeros((dt01.OPERATORCOUNT, self.phaseCount), dtype=np.int)
+		self.envStepSizeReal    = np.zeros((dt01.OPERATORCOUNT, self.phaseCount))
+		self.envStepSizeFixed   = np.zeros((dt01.OPERATORCOUNT, self.phaseCount), dtype=np.int)
+		#
+		## env_period (samples) = Fs * envelopeTimeSeconds
+		#self.envelopeTimeSeconds  = np.ones((dt01.OPERATORCOUNT, self.phaseCount)) * 0.01
+		##self.envelopeTimeSeconds[0] = np.array([2**24, 0, 0, 2**7])
+		#self.envelopeTimeSeconds[0,3] = 3
+		#
+		#self.envTimeSamples = self.envelopeTimeSeconds * dt01.SamplesPerSecond
+		#logger.debug("self.envTimeSamples:" + str(self.envTimeSamples))
+		#self.envStepSizeReal   = np.abs(self.envelopeLevelFixed - np.roll(self.envelopeLevelFixed, 1)) / self.envTimeSamples
+		#self.envStepSizeFixed  = np.array(self.envStepSizeReal, dtype=np.int)
 		
 		self.envelopePhase = np.zeros((len(self.voices), dt01.OPERATORCOUNT), dtype=np.int)
 		
 	def loadJson(self, filename):
 		with open(filename, 'r') as f:
-			self.patchDict = json.loads(f.read)
-		logger.debug("loading " + self.patchDict["Name"])
+			patchDict = json.loads(f.read)
+		self.patchDict = patchDict
+		logger.debug("loading " + patchDict["Name"])
 		
-		# apply algo https://scsynth.org/t/coding-fm-synthesis-algorithms/1381
-		if self.patchDict["Algorithm"] == 0:
-			fmAlgo = [1, 7, 3, 4, 5]
-			fbSrc  = 6
+		fmAlgo, fbSrc, sounding = algos.getAlgo(patchDict["Algorithm"])
+		
+		soundPayload = int(0)
+		for operator in enumerate(sounding):
+			soundPayload += (1 << operator)
 			
-		dt01.formatAndSend(dt01.cmd_fm_algo, self.lowestVoiceIndex, 0, [Voice.getFMAlgo(fmAlgo)]*self.voiceCount, voicemode=True)         
+		## FM, (AM), and Feedback Algos
+		dt01.formatAndSend(dt01.cmd_fm_algo , self.lowestVoiceIndex, 0, [Voice.getFMAlgo(fmAlgo)]*self.voiceCount, voicemode=True)         
+		dt01.formatAndSend(dt01.cmd_sounding, self.lowestVoiceIndex, 0, [soundPayload]*self.voiceCount, voicemode=True)         
+		dt01.formatAndSend(dt01.cmd_fbgain  , self.lowestVoiceIndex, 0, [2**16*patchDict["Feedback"] / 127.0]*self.voiceCount, voicemode=True)
+		
+		## LFOs
+		LFODict = patchDict["LFO"]
+		dt01.formatAndSend(dt01.cmd_increment_rate  , self.lowestVoiceIndex, 6, [2**18]*self.voiceCount, voicemode=True)
+		dt01.formatAndSend(dt01.cmd_increment       , self.lowestVoiceIndex, 6, [2**20*LFODict["Speed"] / 127.0]*self.voiceCount, voicemode=True)
+		dt01.formatAndSend(dt01.cmd_env_rate        , self.lowestVoiceIndex, 6, [2**18*LFODict["Delay"]]*self.voiceCount, voicemode=True)
+		dt01.formatAndSend(dt01.cmd_env             , self.lowestVoiceIndex, 6, [2**20*LFODict["AM Depth"] / 127.0]*self.voiceCount, voicemode=True)
+		dt01.formatAndSend(dt01.cmd_increment_rate  , self.lowestVoiceIndex, 7, [2**18]*self.voiceCount, voicemode=True)
+		dt01.formatAndSend(dt01.cmd_increment       , self.lowestVoiceIndex, 7, [2**20*LFODict["Speed"] / 127.0]*self.voiceCount, voicemode=True)
+		dt01.formatAndSend(dt01.cmd_env_rate        , self.lowestVoiceIndex, 7, [2**18*LFODict["Delay"]]*self.voiceCount, voicemode=True)
+		dt01.formatAndSend(dt01.cmd_env             , self.lowestVoiceIndex, 7, [2**20*LFODict["Pitch Mod Depth"] / 127.0]*self.voiceCount, voicemode=True)
+		
+		# ignoring pitch envelope generator for now
+		
+		for operator in range(6):
+			opDict = patchDict["Operator" + str(operator+1)]
+			if opDict["Oscillator Mode"] == "Frequency (Ratio)":
+				for voice in self.voices:
+					voice.operators[operator].incrementScale = opDict["Frequency"] * (1 + opDict["Detune"] / 127.0)
+			else:
+				for voice in self.voices:
+					voice.operators[operator].baseIncrement  = (2**32)*opDict["Frequency"] / dt01.SamplesPerSecond
+					voice.operators[operator].incrementScale = 1
+					
+			envDict = opDict["Envelope Generator"]
+			setenvelopeLevelReal(operator, 0, envDict["Level 1"]/127.0)
+			setenvelopeLevelReal(operator, 1, envDict["Level 2"]/127.0)
+			setenvelopeLevelReal(operator, 2, envDict["Level 3"]/127.0)
+			setenvelopeLevelReal(operator, 3, envDict["Level 4"]/127.0)
+			setenvelopeTimeSeconds(operator, 0, 4*envDict["Rate 1"]/127.0)
+			setenvelopeTimeSeconds(operator, 1, 4*envDict["Rate 2"]/127.0)
+			setenvelopeTimeSeconds(operator, 2, 4*envDict["Rate 3"]/127.0)
+			setenvelopeTimeSeconds(operator, 3, 4*envDict["Rate 4"]/127.0)
+			
+			# ignoring level scaling
+			# and rate scaling
 			
 		return 0
 	
 	def setenvelopeLevelReal(opno, phase, value):
-		self.envelopeLevelReal[opno,phase] = value
+		self.envelopeLevelReal[opno,phase]  = value
+		self.envelopeLevelFixed[opno,phase] = value*2**31
+		self.envStepSizeSamples   = np.abs(envelopeLevelFixed[opno,phase] - envelopeLevelFixed[opno,phase+1])
+		self.envStepSizeReal    = envStepSizeSamples / self.envTimeSamples
 		
 	def setenvelopeTimeSeconds(opno, phase, value):
 		self.envelopeTimeSeconds[opno,phase] = value
+		self.envTimeSamples = self.envelopeTimeSeconds * dt01.SamplesPerSecond
+		logger.debug("self.envTimeSamples:" + str(self.envTimeSamples))
+		
 
 	def setPhaseAllOps(self, voiceno, phase):
 		dt01.formatAndSend(dt01.cmd_env_rate, voiceno, 0, self.opZeros, voicemode=False)                               
@@ -176,7 +225,7 @@ class Patch():
 		if msg.type == "note_on":
 			note = self.allNotes[msg.note]
 			note.velocity     = msg.velocity
-			note.velocityReal = msg.velocity/127.0
+			note.velocityReal = (msg.velocity/127.0)**2
 			note.held = True
 			note.msg = msg
 			# spawn some voices!
@@ -194,7 +243,7 @@ class Patch():
 				
 				self.setPhaseAllOps(voice.index, 0)
 						
-				#dt01.formatAndSend(dt01.cmd_env,       voice.index, 0, self.computedState[dt01.cmd_env,voice.index,:]      , voicemode = False)
+				dt01.formatAndSend(dt01.cmd_channelgain, voice.index, 0, [2**16*note.velocityReal]*2, voicemode = False)
 				
 		if msg.type == 'pitchwheel':
 			logger.debug("PW: " + str(msg.pitch))
@@ -325,8 +374,10 @@ class Patch():
 			self.aftertouch = msg.value
 			self.aftertouchReal = msg.value/127.0
 			
-			for voice in self.voices:
-				voice.setAllIncrements(self.pitchwheelReal * (1 + self.aftertouchReal))
+			#for voice in self.voices:
+			#	voice.setAllIncrements(self.pitchwheelReal * (1 + self.aftertouchReal))
+			for operator in range(6):
+				dt01.formatAndSend(dt01.cmd_increment, self.lowestVoiceIndex, operator, [self.pitchwheelReal * (1 + self.aftertouchReal)*voice.operators[operator].getIncrement() for voice in self.voices])
 									
 			
 		if msg.type == "note_off" or (msg.type == "note_on" and msg.velocity == 0):
@@ -339,7 +390,7 @@ class Patch():
 		return True
 
 
-def startup():
+def startup(patchFilename = "PatchTranslate/rhodes1_12/F__Rhodes_.json"):
 	
 	PID = os.getpid()
 	
@@ -356,18 +407,11 @@ def startup():
 		
 	logger.debug("Instantiating DT01")
 	polyphony = 512
-	filename = "dt01_" + str(int(polyphony)) + ".pkl"
-
-	#if os.path.exists(filename):
-	#	logger.debug("reading from file")
-	#	dt01_inst = dt01.DT01_fromFile(filename)
-	#	logger.debug("finished reading")
-	#else:
+	
 	logger.debug("initializing from scratch")
 	dt01_inst = dt01.DT01(polyphony = polyphony)
 		
-	GLOBAL_DEFAULT_PATCH = Patch(dt01_inst)
-	#dt01_inst.addPatch(GLOBAL_DEFAULT_PATCH)
+	GLOBAL_DEFAULT_PATCH = Patch(dt01_inst, patchFilename)
 	
 	api=rtmidi.API_UNSPECIFIED
 	allMidiDevicesAndPatches = []
@@ -444,4 +488,4 @@ def startup():
 		del midiin
 
 if __name__ == "__main__":
-	startup()
+	startup("PatchTranslate/rhodes1_12/F__Rhodes_.json")

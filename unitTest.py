@@ -38,19 +38,36 @@ if "passthrough" in sys.argv:
 	dt01_inst.voices[0].operators[0].formatAndSend(dt01.cmd_env_rate, 2**20)
 
 	
-if "basic" in sys.argv:
-	pass
+if "c5" in sys.argv:
+	dt01_inst.formatAndSend(dt01.cmd_shift      , 0)  
+	dt01_inst.voices[0].operators[0].formatAndSend(dt01.cmd_increment_rate, 0)
+	dt01_inst.voices[0].operators[0].formatAndSend(dt01.cmd_increment, 23409809)
+	dt01_inst.voices[0].operators[0].formatAndSend(dt01.cmd_increment_rate, 23409808/8)
+	dt01_inst.voices[0].operators[0].formatAndSend(dt01.cmd_env_rate, 0)
+	dt01_inst.voices[0].operators[0].formatAndSend(dt01.cmd_env, 2**28)
+	dt01_inst.voices[0].operators[0].formatAndSend(dt01.cmd_env_rate, 2**20)
 
 if "t" in sys.argv:
-	dt01_inst.voices[0].operators[6].formatAndSend(dt01.cmd_env, 2**14)
-	dt01_inst.voices[0].operators[6].formatAndSend(dt01.cmd_increment, 2**11)
-	dt01_inst.voices[0].operators[0].formatAndSend(dt01.cmd_env, 2**16)
+	dt01_inst.voices[0].operators[6].formatAndSend(dt01.cmd_env_rate, 2**20)
+	dt01_inst.voices[0].operators[6].formatAndSend(dt01.cmd_env, 2**28)
+	dt01_inst.voices[0].operators[6].formatAndSend(dt01.cmd_increment_rate, 2**28)
+	dt01_inst.voices[0].operators[6].formatAndSend(dt01.cmd_increment, 2**18)
+	
+	dt01_inst.voices[0].operators[0].formatAndSend(dt01.cmd_increment_rate, 2**28)
+	dt01_inst.voices[0].operators[0].formatAndSend(dt01.cmd_env_rate, 2**20)
+	dt01_inst.voices[0].operators[0].formatAndSend(dt01.cmd_env, 2**30)
 	dt01_inst.voices[0].operators[0].formatAndSend(dt01.cmd_increment, 2**23)
 	
 if "v" in sys.argv:
-	dt01_inst.voices[0].formatAndSend(dt01.cmd_increment, 2**27)
-	dt01_inst.voices[0].operators[0].formatAndSend(dt01.cmd_env, 2**16)
-	dt01_inst.voices[0].operators[7].formatAndSend(dt01.cmd_env, 2**7)
+	dt01_inst.voices[0].operators[7].formatAndSend(dt01.cmd_env_rate, 2**20)
+	dt01_inst.voices[0].operators[7].formatAndSend(dt01.cmd_env, 2**19)
+	dt01_inst.voices[0].operators[7].formatAndSend(dt01.cmd_increment_rate, 2**28)
+	dt01_inst.voices[0].operators[7].formatAndSend(dt01.cmd_increment, 2**18)
+	
+	dt01_inst.voices[0].operators[0].formatAndSend(dt01.cmd_increment_rate, 2**28)
+	dt01_inst.voices[0].operators[0].formatAndSend(dt01.cmd_env_rate, 2**20)
+	dt01_inst.voices[0].operators[0].formatAndSend(dt01.cmd_env, 2**30)
+	dt01_inst.voices[0].operators[0].formatAndSend(dt01.cmd_increment, 2**23)
 	
 if "fb" in sys.argv:
 	dt01_inst.voices[0].formatAndSend(dt01.cmd_increment, 2**27)

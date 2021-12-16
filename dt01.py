@@ -82,9 +82,9 @@ cmdName2number["cmd_fbgain"         ] = 73
 cmdName2number["cmd_fbsrc"          ] = 74
 cmdName2number["cmd_channelgain"    ] = 75
 cmdName2number["cmd_env"            ] = 76 
-cmdName2number["cmd_env_rate"      ] = 77 
+cmdName2number["cmd_env_rate"       ] = 77 
 cmdName2number["cmd_increment"      ] = 79 
-cmdName2number["cmd_increment_rate"] = 80 
+cmdName2number["cmd_increment_rate" ] = 80 
 cmdName2number["cmd_flushspi"       ] = 120
 cmdName2number["cmd_passthrough"    ] = 121
 cmdName2number["cmd_shift"          ] = 122
@@ -145,8 +145,8 @@ class DT01():
 		initIRQueue()
 		
 		formatAndSend(cmd_sounding     , lowestVoiceIndex, 0, [0b00000001]*len(self.voices))
-		formatAndSend(cmd_fm_algo      , lowestVoiceIndex, 0, [0o77777777]*len(self.voices))
-		formatAndSend(cmd_am_algo      , lowestVoiceIndex, 0, [0o00000000]*len(self.voices))
+		formatAndSend(cmd_fm_algo      , lowestVoiceIndex, 0, [0x77777777]*len(self.voices))
+		formatAndSend(cmd_am_algo      , lowestVoiceIndex, 0, [0x00000000]*len(self.voices))
 		formatAndSend(cmd_fbgain       , lowestVoiceIndex, 0, [0         ]*len(self.voices))
 		formatAndSend(cmd_fbsrc        , lowestVoiceIndex, 0, [0         ]*len(self.voices))
 			
@@ -166,7 +166,7 @@ class DT01():
 
 		formatAndSend(cmd_flushspi     , 0, 0, 0)    
 		formatAndSend(cmd_passthrough  , 0, 0, 0)    
-		formatAndSend(cmd_shift        , 0, 0, 6)    # -4
+		formatAndSend(cmd_shift        , 0, 0, 4)    # -4
 		return 0
 		
 	def formatAndSend(self, param, value):
@@ -193,9 +193,8 @@ class Voice():
 		
 		self.allChildren = self.channels + self.operators 
 	
-	
 	def setAllIncrements(self, modifier):
-		allIncrements = modifier * [op.getIncrement() for op in self.operators]
+		allIncrements = [modifier * op.getIncrement() for op in self.operators]
 		self.formatAndSend(cmd_increment, allIncrements, voicemode = False)
 	
 	def setFBGainReal(self, fbgainreal):
@@ -207,8 +206,8 @@ class Voice():
 	def getFMAlgo(algo):
 		formatAndSendVal = 0
 		for i in reversed(range(dt01.OPERATORCOUNT)):
-			formatAndSendVal = int(formatAndSendVal) << int(math.log2(dt01.OPERATORCOUNT))
-			formatAndSendVal += int(algo[i])
+			formatAndSendVal = int(formatAndSendVal) << 4
+			formatAndSendVal += int(algo[i] - 1)
 			#logger.debug(bin(formatAndSendVal))
 		return formatAndSendVal
 		
@@ -219,7 +218,7 @@ class Voice():
 		self.operators[opno].amsrc = source
 		formatAndSendVal = 0
 		for i in reversed(range(dt01.OPERATORCOUNT)):
-			formatAndSendVal = int(formatAndSendVal) << int(math.log2(dt01.OPERATORCOUNT))
+			formatAndSendVal = int(formatAndSendVal) << 4
 			formatAndSendVal += int(voice.operators[i].amsrc)
 			#logger.debug(bin(formatAndSendVal))
 		voice.formatAndSend(dt01.cmd_am_algo, formatAndSendVal)
