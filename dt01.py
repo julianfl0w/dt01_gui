@@ -155,8 +155,8 @@ class DT01():
 			
 		#paramNum, mm_opno,  voiceno,  payload
 		for opno in range(OPERATORCOUNT):
-			formatAndSend(cmd_env_rate       , lowestVoiceIndex, opno, [0x00]*len(self.voices))
 			formatAndSend(cmd_env            , lowestVoiceIndex, opno, [0   ]*len(self.voices))
+			formatAndSend(cmd_env_rate       , lowestVoiceIndex, opno, [2**27]*len(self.voices))
 
 		formatAndSend(cmd_increment      , lowestVoiceIndex, 0, [0x00]*len(self.voices)) # * self.paramNum2Real[increment]
 		formatAndSend(cmd_increment      , lowestVoiceIndex, 6, [2**12]*len(self.voices)) # * self.paramNum2Real[increment]
@@ -194,7 +194,7 @@ class Voice():
 		self.allChildren = self.channels + self.operators 
 	
 	def setAllIncrements(self, modifier):
-		allIncrements = [modifier * op.getIncrement() for op in self.operators]
+		allIncrements = [min(modifier * op.getIncrement(), 2**30) for op in self.operators[:6]]
 		self.formatAndSend(cmd_increment, allIncrements, voicemode = False)
 	
 	def setFBGainReal(self, fbgainreal):
@@ -203,9 +203,10 @@ class Voice():
 	def setFBSource(self, source):
 		self.formatAndSend(cmd_fbsrc, source)
 	
-	def getFMAlgo(algo):
+	def getFMAlgo(self, algo):
 		formatAndSendVal = 0
-		for i in reversed(range(dt01.OPERATORCOUNT)):
+		logger.debug(algo)
+		for i in reversed(range(6)):
 			formatAndSendVal = int(formatAndSendVal) << 4
 			formatAndSendVal += int(algo[i] - 1)
 			#logger.debug(bin(formatAndSendVal))
@@ -290,10 +291,10 @@ def getIRQueue():
 
 	formatAndSend(cmd_readirqueue, 0, 0, 0)
 	res = formatAndSend(0, 0, 0, 0)
-	logger.debug("res: " + str(res))
+	#logger.debug("res: " + str(res))
 	opno = int(math.log2((res[1]<<7) + (res[2]>>1)))
 	voiceno = int(((res[2] & 0x01)<<8) + res[3])
-	logger.debug("IRQUEUE! voice:" + str(voiceno) + " op:"+ str(opno))
+	#logger.debug("IRQUEUE! voice:" + str(voiceno) + " op:"+ str(opno))
 	
 	return voiceno, opno
 

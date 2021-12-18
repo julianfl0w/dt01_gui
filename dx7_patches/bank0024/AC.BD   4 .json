@@ -1,0 +1,184 @@
+{
+    "Filename": "sysex/bank0024.syx",
+    "Voice": 20,
+    "Name": "AC.BD   4 ",
+    "Algorithm": 18,
+    "Feedback": 6,
+    "LFO": {
+        "Wave": "Triangle",
+        "Speed": 80,
+        "Delay": 0,
+        "Pitch Mod Depth": 0,
+        "AM Depth": 0,
+        "Sync": "On",
+        "Pitch Modulation Sensitivity": 5
+    },
+    "Oscillator Key Sync": "On",
+    "Pitch Envelope Generator": {
+        "Rate 1": 47,
+        "Rate 2": 61,
+        "Rate 3": 55,
+        "Rate 4": 0,
+        "Level 1": 60,
+        "Level 2": 43,
+        "Level 3": 42,
+        "Level 4": 71
+    },
+    "Transpose": "D",
+    "Operator1": {
+        "AM Sensitivity": 3,
+        "Oscillator Mode": "Frequency (Ratio)",
+        "Frequency": 1,
+        "Detune": 0,
+        "Envelope Generator": {
+            "Rate 1": 99,
+            "Rate 2": 37,
+            "Rate 3": 61,
+            "Rate 4": 66,
+            "Level 1": 99,
+            "Level 2": 84,
+            "Level 3": 0,
+            "Level 4": 0
+        },
+        "Keyboard Level Scaling": {
+            "Breakpoint": "C",
+            "Left Curve": "-LIN",
+            "Right Curve": "-LIN",
+            "Left Depth": 0,
+            "Right Depth": 0
+        },
+        "Keyboard Rate Scaling": 5,
+        "Output Level": 99,
+        "Key Velocity Sensitivity": 7
+    },
+    "Operator2": {
+        "AM Sensitivity": 0,
+        "Oscillator Mode": "Fixed Frequency (Hz)",
+        "Frequency": 234.423,
+        "Detune": 0,
+        "Envelope Generator": {
+            "Rate 1": 99,
+            "Rate 2": 63,
+            "Rate 3": 99,
+            "Rate 4": 64,
+            "Level 1": 99,
+            "Level 2": 0,
+            "Level 3": 0,
+            "Level 4": 0
+        },
+        "Keyboard Level Scaling": {
+            "Breakpoint": "F",
+            "Left Curve": "-LIN",
+            "Right Curve": "-LIN",
+            "Left Depth": 97,
+            "Right Depth": 50
+        },
+        "Keyboard Rate Scaling": 0,
+        "Output Level": 64,
+        "Key Velocity Sensitivity": 4
+    },
+    "Operator3": {
+        "AM Sensitivity": 0,
+        "Oscillator Mode": "Fixed Frequency (Hz)",
+        "Frequency": 213.796,
+        "Detune": 0,
+        "Envelope Generator": {
+            "Rate 1": 99,
+            "Rate 2": 77,
+            "Rate 3": 43,
+            "Rate 4": 66,
+            "Level 1": 99,
+            "Level 2": 0,
+            "Level 3": 0,
+            "Level 4": 0
+        },
+        "Keyboard Level Scaling": {
+            "Breakpoint": "E",
+            "Left Curve": "-LIN",
+            "Right Curve": "-LIN",
+            "Left Depth": 50,
+            "Right Depth": 0
+        },
+        "Keyboard Rate Scaling": 1,
+        "Output Level": 88,
+        "Key Velocity Sensitivity": 0
+    },
+    "Operator4": {
+        "AM Sensitivity": 0,
+        "Oscillator Mode": "Fixed Frequency (Hz)",
+        "Frequency": 28.8403,
+        "Detune": 0,
+        "Envelope Generator": {
+            "Rate 1": 99,
+            "Rate 2": 53,
+            "Rate 3": 54,
+            "Rate 4": 62,
+            "Level 1": 99,
+            "Level 2": 74,
+            "Level 3": 0,
+            "Level 4": 0
+        },
+        "Keyboard Level Scaling": {
+            "Breakpoint": "C",
+            "Left Curve": "-LIN",
+            "Right Curve": "-LIN",
+            "Left Depth": 7,
+            "Right Depth": 0
+        },
+        "Keyboard Rate Scaling": 1,
+        "Output Level": 69,
+        "Key Velocity Sensitivity": 1
+    },
+    "Operator5": {
+        "AM Sensitivity": 0,
+        "Oscillator Mode": "Fixed Frequency (Hz)",
+        "Frequency": 5.12861,
+        "Detune": 0,
+        "Envelope Generator": {
+            "Rate 1": 99,
+            "Rate 2": 57,
+            "Rate 3": 35,
+            "Rate 4": 99,
+            "Level 1": 99,
+            "Level 2": 89,
+            "Level 3": 0,
+            "Level 4": 0
+        },
+        "Keyboard Level Scaling": {
+            "Breakpoint": "A",
+            "Left Curve": "-LIN",
+            "Right Curve": "-LIN",
+            "Left Depth": 0,
+            "Right Depth": 0
+        },
+        "Keyboard Rate Scaling": 0,
+        "Output Level": 97,
+        "Key Velocity Sensitivity": 0
+    },
+    "Operator6": {
+        "AM Sensitivity": 0,
+        "Oscillator Mode": "Fixed Frequency (Hz)",
+        "Frequency": 38.9045,
+        "Detune": 0,
+        "Envelope Generator": {
+            "Rate 1": 99,
+            "Rate 2": 28,
+            "Rate 3": 29,
+            "Rate 4": 99,
+            "Level 1": 99,
+            "Level 2": 86,
+            "Level 3": 0,
+            "Level 4": 0
+        },
+        "Keyboard Level Scaling": {
+            "Breakpoint": "D",
+            "Left Curve": "+LIN",
+            "Right Curve": "-LIN",
+            "Left Depth": 8,
+            "Right Depth": 0
+        },
+        "Keyboard Rate Scaling": 0,
+        "Output Level": 89,
+        "Key Velocity Sensitivity": 0
+    }
+}

@@ -1,4 +1,4 @@
-def getAlgo(self, algoNum):
+def getAlgo(algoNum):
 	# apply algo https://scsynth.org/t/coding-fm-synthesis-algorithms/1381
 	# numbers 1-indexed as written. they will be converted to 0-index later
 	# 8 means no fmSrc

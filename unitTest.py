@@ -39,7 +39,7 @@ if "passthrough" in sys.argv:
 
 	
 if "c5" in sys.argv:
-	dt01_inst.formatAndSend(dt01.cmd_shift      , 0)  
+	dt01_inst.formatAndSend(dt01.cmd_shift      , 4)  
 	dt01_inst.voices[0].operators[0].formatAndSend(dt01.cmd_increment_rate, 0)
 	dt01_inst.voices[0].operators[0].formatAndSend(dt01.cmd_increment, 23409809)
 	dt01_inst.voices[0].operators[0].formatAndSend(dt01.cmd_increment_rate, 23409808/8)
@@ -48,15 +48,22 @@ if "c5" in sys.argv:
 	dt01_inst.voices[0].operators[0].formatAndSend(dt01.cmd_env_rate, 2**20)
 
 if "t" in sys.argv:
-	dt01_inst.voices[0].operators[6].formatAndSend(dt01.cmd_env_rate, 2**20)
-	dt01_inst.voices[0].operators[6].formatAndSend(dt01.cmd_env, 2**28)
+	opno = 5
+	dt01_inst.formatAndSend(dt01.cmd_sounding   , 1<<opno)  
+	dt01_inst.formatAndSend(dt01.cmd_shift      , 4)  
+	dt01_inst.voices[0].operators[6].formatAndSend(dt01.cmd_env_rate, 0)
+	dt01_inst.voices[0].operators[6].formatAndSend(dt01.cmd_env, 2**29)
+	dt01_inst.voices[0].operators[6].formatAndSend(dt01.cmd_env_rate, 2**28)
+	dt01_inst.voices[0].operators[6].formatAndSend(dt01.cmd_increment_rate, 0)
+	dt01_inst.voices[0].operators[6].formatAndSend(dt01.cmd_increment, 2**17)
 	dt01_inst.voices[0].operators[6].formatAndSend(dt01.cmd_increment_rate, 2**28)
-	dt01_inst.voices[0].operators[6].formatAndSend(dt01.cmd_increment, 2**18)
 	
-	dt01_inst.voices[0].operators[0].formatAndSend(dt01.cmd_increment_rate, 2**28)
-	dt01_inst.voices[0].operators[0].formatAndSend(dt01.cmd_env_rate, 2**20)
-	dt01_inst.voices[0].operators[0].formatAndSend(dt01.cmd_env, 2**30)
-	dt01_inst.voices[0].operators[0].formatAndSend(dt01.cmd_increment, 2**23)
+	dt01_inst.voices[0].operators[opno].formatAndSend(dt01.cmd_increment_rate, 0)
+	dt01_inst.voices[0].operators[opno].formatAndSend(dt01.cmd_increment,      23409809/2)
+	dt01_inst.voices[0].operators[opno].formatAndSend(dt01.cmd_increment_rate, 23409808/2/8)
+	dt01_inst.voices[0].operators[opno].formatAndSend(dt01.cmd_env_rate, 0)
+	dt01_inst.voices[0].operators[opno].formatAndSend(dt01.cmd_env, 2**28)
+	dt01_inst.voices[0].operators[opno].formatAndSend(dt01.cmd_env_rate, 2**20)
 	
 if "v" in sys.argv:
 	dt01_inst.voices[0].operators[7].formatAndSend(dt01.cmd_env_rate, 2**20)

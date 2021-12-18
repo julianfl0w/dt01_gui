@@ -289,6 +289,7 @@ int Verify(const DX7Sysex *sysex)
     }
     if (sysex->sysexEndF7 != 0xF7)
     {
+        printf("FOUND %x\n", sysex->sysexEndF7);
         printf("Did not find sysex end F7\n");
         return 1;
     }

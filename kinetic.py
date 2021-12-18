@@ -18,6 +18,7 @@ class JulianButton(QPushButton):
 
 	def __init__(self, name, parentLayout, childLayout, index):
 		super().__init__()
+		self.i = index
 		labelImage = text_to_image(name, size=(BUTTON_WIDTH, BUTTON_HEIGHT))
 		_icon = QIcon(labelImage.replace("__COLOR__", '0'))
 		self.setIcon(_icon)
@@ -26,7 +27,6 @@ class JulianButton(QPushButton):
 		self.childLayout  = childLayout
 		self.colorTuple = (labelImage.replace("__COLOR__", '0'), labelImage.replace("__COLOR__", '1'), labelImage.replace("__COLOR__", '2'))
 		self.activeColor = 0
-		self.i = index
 		parentLayout.addRow(self)
 			
 	def setColor(self, color):
@@ -64,7 +64,7 @@ class MainWindow(QWidget):
 		dir_last_released = id(sender)
 		
 
-	def patchPressed(self):
+	def patchPressed(self, filepath):
 		global patch_last_released 
 		sender = self.sender()
 		
@@ -77,6 +77,8 @@ class MainWindow(QWidget):
 		
 		patch_last_released = id(sender)
 		
+		print(filepath)
+		
 	def __init__(self, parent=None):
 		super().__init__(parent)
 		self.folderScroll = QScrollArea()
@@ -88,11 +90,10 @@ class MainWindow(QWidget):
 		self.folderScroll_layout = QFormLayout(self.folderScroll_widget)
 		
 		dirno = 0
-		for i, x in enumerate(os.walk(os.path.join(sys.path[0], 'patches/'))):
-			# 0th return is some meta bullshit	
-			if i == 0: 
-				continue
-			buttonLabel = os.path.basename(x[0]) 
+		allPatchesDir = os.path.join(sys.path[0], 'dx7_patches/')
+		for dirno, dirname in enumerate(os.listdir(allPatchesDir)):
+			print("dirname:"  + dirname)
+			buttonLabel = os.path.basename(dirname) 
 
 			#each directory gets a self.fileScroll
 			self.fileScroll = QScrollArea()
@@ -102,21 +103,23 @@ class MainWindow(QWidget):
 			self.fileScroll.setContentsMargins(0, 0, 0, 0)
 			
 			#my_button.released.connect(self.dirReleased) 
-			dirButton = JulianButton(buttonLabel, self.folderScroll_layout, self.fileScroll_widget, i-1)
+			dirButton = JulianButton(buttonLabel, self.folderScroll_layout, self.fileScroll_widget, dirno)
 			dirButton.pressed.connect(self.dirPressed) 
-			
-			for j, file in enumerate(os.listdir(x[0])):
-				if file.endswith(".json"):
-					buttonLabel = file.replace('.json', '') 
-					patchButton = JulianButton(buttonLabel, self.fileScroll_layout, None, j)
-					patchButton.pressed.connect(self.patchPressed) 
-					
-			self.Stack.addWidget (self.fileScroll_widget)
-			
 			
 			context = zmq.Context()
 			socket = context.socket(zmq.PUB)
 			socket.bind("tcp://*:%s" % "5000")
+			
+			i = 0
+			for file in os.listdir(os.path.join(allPatchesDir, dirname)):
+				if file.endswith(".json"):
+					filepath    = os.path.join(dirname, file)
+					buttonLabel = file.replace('.json', '') 
+					patchButton = JulianButton(buttonLabel, self.fileScroll_layout, self.fileScroll_widget, i)
+					i+=1
+					patchButton.pressed.connect(lambda: self.patchPressed(filepath)) 
+					
+			self.Stack.addWidget (self.fileScroll_widget)
 			
 			
 		self.folderScroll.setWidget(self.folderScroll_widget)
