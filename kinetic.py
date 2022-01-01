@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 import sys
+import os
 import zmq
+import cv2
 from PyQt5.QtWidgets import * 
 from PyQt5.QtGui import * 
 from PyQt5.QtCore import * 
 from text_to_image import *
 
+import subprocess
 dirButtons = dict()
 fileButtons = dict()
 dir_last_released = 0
@@ -16,10 +19,14 @@ BUTTON_HEIGHT = 50
 		
 class JulianButton(QPushButton):
 
-	def __init__(self, name, parentLayout, childLayout, index):
+	def __init__(self, name, parentLayout, childLayout, index, path, socket = None):
 		super().__init__()
 		self.i = index
-		labelImage = text_to_image(name, size=(BUTTON_WIDTH, BUTTON_HEIGHT))
+		self.socket = socket
+		self.path = path
+		os.makedirs("images", exist_ok=True)
+		imageFilename = os.path.join("images", path, ".png")
+		labelImage = text_to_image(name, size=(BUTTON_WIDTH, BUTTON_HEIGHT))	
 		_icon = QIcon(labelImage.replace("__COLOR__", '0'))
 		self.setIcon(_icon)
 		self.setIconSize(QSize(BUTTON_WIDTH, BUTTON_HEIGHT))
@@ -64,7 +71,7 @@ class MainWindow(QWidget):
 		dir_last_released = id(sender)
 		
 
-	def patchPressed(self, filepath):
+	def patchPressed(self):
 		global patch_last_released 
 		sender = self.sender()
 		
@@ -76,22 +83,43 @@ class MainWindow(QWidget):
 		sender.activeColor = 1
 		
 		patch_last_released = id(sender)
+		sender.socket.send_string(sender.path)
 		
-		print(filepath)
+		print(sender.path)
+		
+		bs = subprocess.check_output(["ps -aef | grep python"], shell=True).decode('utf-8')
+		if bs.count('\n') < 4:
+			os.system("sudo taskset 0x00000004 sudo python3 /home/pi/dt01_gui/patch.py &")
 		
 	def __init__(self, parent=None):
 		super().__init__(parent)
-		self.folderScroll = QScrollArea()
 		self.Stack = QStackedWidget (self)
 		self.hlayout = QHBoxLayout(self)
+		
+		self.folderScroll = QScrollArea()
+		self.folderScroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+		self.folderScroll.horizontalScrollBar().setEnabled(False);
 		self.hlayout.addWidget(self.folderScroll)
-
 		self.folderScroll_widget = QWidget()
 		self.folderScroll_layout = QFormLayout(self.folderScroll_widget)
+		self.folderScroll.setContentsMargins(0, 0, 0, 0)
+		QScroller.grabGesture(
+			self.folderScroll.viewport(), QScroller.LeftMouseButtonGesture
+		)
+		
+		context = zmq.Context()
+		socket = context.socket(zmq.PUB)
+		socket.bind("tcp://*:5555")
+		
+		#os.system("sudo taskset 0x00000004 sudo python3 /home/pi/dt01_gui/patch.py &")
 		
 		dirno = 0
 		allPatchesDir = os.path.join(sys.path[0], 'dx7_patches/')
-		for dirno, dirname in enumerate(os.listdir(allPatchesDir)):
+		for dirno, dirname in enumerate(sorted(os.listdir(allPatchesDir))):
+		
+			# for now
+			#if dirno > 10:
+			#	break
 			print("dirname:"  + dirname)
 			buttonLabel = os.path.basename(dirname) 
 
@@ -102,34 +130,31 @@ class MainWindow(QWidget):
 			self.fileScroll.setWidget(self.fileScroll_widget)
 			self.fileScroll.setContentsMargins(0, 0, 0, 0)
 			
+			QScroller.grabGesture(
+				self.fileScroll.viewport(), QScroller.LeftMouseButtonGesture
+			)
+			
 			#my_button.released.connect(self.dirReleased) 
-			dirButton = JulianButton(buttonLabel, self.folderScroll_layout, self.fileScroll_widget, dirno)
+			dirButton = JulianButton(buttonLabel, self.folderScroll_layout, self.fileScroll_widget, dirno, dirname)
 			dirButton.pressed.connect(self.dirPressed) 
 			
-			context = zmq.Context()
-			socket = context.socket(zmq.PUB)
-			socket.bind("tcp://*:%s" % "5000")
 			
 			i = 0
 			for file in os.listdir(os.path.join(allPatchesDir, dirname)):
 				if file.endswith(".json"):
-					filepath    = os.path.join(dirname, file)
+					filepath    = os.path.join(allPatchesDir, dirname, file)
 					buttonLabel = file.replace('.json', '') 
-					patchButton = JulianButton(buttonLabel, self.fileScroll_layout, self.fileScroll_widget, i)
+					patchButton = JulianButton(buttonLabel, self.fileScroll_layout, self.fileScroll_widget, i, filepath, socket)
 					i+=1
-					patchButton.pressed.connect(lambda: self.patchPressed(filepath)) 
+					patchButton.pressed.connect(self.patchPressed) 
 					
 			self.Stack.addWidget (self.fileScroll_widget)
 			
-			
+		# set the widget after it has been set up
 		self.folderScroll.setWidget(self.folderScroll_widget)
-		self.folderScroll.setContentsMargins(0, 0, 0, 0)
 		
 		self.hlayout.addWidget(self.Stack)
 		
-		QScroller.grabGesture(
-			self.folderScroll.viewport(), QScroller.LeftMouseButtonGesture
-		)
 		
 		
 if __name__ == '__main__':

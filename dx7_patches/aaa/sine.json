@@ -9,7 +9,7 @@
         "Speed": 50,
         "Delay": 33,
         "Pitch Mod Depth": 0,
-        "AM Depth": 50,
+        "AM Depth": 100,
         "Sync": "Off",
         "Pitch Modulation Sensitivity": 0
     },
@@ -74,7 +74,7 @@
             "Right Depth": 0
         },
         "Keyboard Rate Scaling": 3,
-        "Output Level": 70,
+        "Output Level": 0,
         "Key Velocity Sensitivity": 7
     },
     "Operator3": {
@@ -100,7 +100,7 @@
             "Right Depth": 0
         },
         "Keyboard Rate Scaling": 3,
-        "Output Level": 99,
+        "Output Level": 0,
         "Key Velocity Sensitivity": 2
     },
     "Operator4": {
@@ -126,7 +126,7 @@
             "Right Depth": 0
         },
         "Keyboard Rate Scaling": 3,
-        "Output Level": 89,
+        "Output Level": 0,
         "Key Velocity Sensitivity": 6
     },
     "Operator5": {
@@ -152,7 +152,7 @@
             "Right Depth": 0
         },
         "Keyboard Rate Scaling": 3,
-        "Output Level": 99,
+        "Output Level": 0,
         "Key Velocity Sensitivity": 0
     },
     "Operator6": {
@@ -178,7 +178,7 @@
             "Right Depth": 19
         },
         "Keyboard Rate Scaling": 3,
-        "Output Level": 79,
+        "Output Level": 0,
         "Key Velocity Sensitivity": 6
     }
 }

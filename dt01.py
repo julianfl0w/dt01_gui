@@ -75,6 +75,7 @@ cmdName2number = {}
 cmdName2number["cmd_readirqueue"    ] = 64
 cmdName2number["cmd_readaudio"      ] = 65
 cmdName2number["cmd_readid"         ] = 66
+
 cmdName2number["cmd_sounding"       ] = 69
 cmdName2number["cmd_fm_algo"        ] = 70
 cmdName2number["cmd_am_algo"        ] = 71
@@ -132,7 +133,25 @@ class DT01():
 				newSet      += [newVoice]
 				index += 1
 			self.voiceSets += [newSet]
-		self.initialize()
+		
+		initDict = {}
+		initDict["sounding"] = 0b00000001
+		initDict["fm_algo" ] = 0x77777777
+		initDict["am_algo" ] = 0x00000000
+		initDict["fbgain"  ] = 0         
+		initDict["fbsrc"   ] = 0         
+		initDict["channelgain"] = [2**16/8, 2**16/8]         
+		initDict["env"]       = [0    , 0    , 0    , 0    , 0    , 0    , 0    , 0    ]
+		initDict["env_rate" ] = [2**27, 2**27, 2**27, 2**27, 2**27, 2**27, 2**27, 2**27]
+		
+		initDict["increment"      ] = [0    , 0    , 0    , 0    , 0    , 0    , 2**12, 2**12]
+		initDict["increment_rate" ] = [2**29, 2**29, 2**29, 2**29, 2**29, 2**29, 2**29, 2**29]
+		
+		initDict["flushspi"    ] = 0
+		initDict["passthrough" ] = 0
+		initDict["shift"       ] = 4
+			
+		self.initialize(initDict)
 		
 	def getVoices(self):
 		# return the longest since activation
@@ -140,33 +159,32 @@ class DT01():
 		return self.voiceSets[oldestSetIndex]
 	
 	
-	def initialize(self):
-		lowestVoiceIndex = min([v.index for v in self.voices])
+	def initialize(self, initDict, voices = None):
+		if voices == None:
+			voices = self.voices
+		lowestVoiceIndex = min([v.index for v in voices])
 		initIRQueue()
 		
-		formatAndSend(cmd_sounding     , lowestVoiceIndex, 0, [0b00000001]*len(self.voices))
-		formatAndSend(cmd_fm_algo      , lowestVoiceIndex, 0, [0x77777777]*len(self.voices))
-		formatAndSend(cmd_am_algo      , lowestVoiceIndex, 0, [0x00000000]*len(self.voices))
-		formatAndSend(cmd_fbgain       , lowestVoiceIndex, 0, [0         ]*len(self.voices))
-		formatAndSend(cmd_fbsrc        , lowestVoiceIndex, 0, [0         ]*len(self.voices))
-			
-		formatAndSend(cmd_channelgain, lowestVoiceIndex, 0, [2**16 / 8]*len(self.voices))
-		formatAndSend(cmd_channelgain, lowestVoiceIndex, 1, [2**16 / 8]*len(self.voices))
+		formatAndSend(cmd_sounding     , lowestVoiceIndex, 0, [initDict["sounding"]]*len(voices))
+		formatAndSend(cmd_fm_algo      , lowestVoiceIndex, 0, [initDict["fm_algo" ]]*len(voices))
+		formatAndSend(cmd_am_algo      , lowestVoiceIndex, 0, [initDict["am_algo" ]]*len(voices))
+		formatAndSend(cmd_fbgain       , lowestVoiceIndex, 0, [initDict["fbgain"  ]]*len(voices))
+		formatAndSend(cmd_fbsrc        , lowestVoiceIndex, 0, [initDict["fbsrc"   ]]*len(voices))
+		
+		for channel in range(2):
+			formatAndSend(cmd_channelgain, lowestVoiceIndex, channel, [initDict["channelgain"][channel]]*len(voices))
 			
 		#paramNum, mm_opno,  voiceno,  payload
 		for opno in range(OPERATORCOUNT):
-			formatAndSend(cmd_env            , lowestVoiceIndex, opno, [0   ]*len(self.voices))
-			formatAndSend(cmd_env_rate       , lowestVoiceIndex, opno, [2**27]*len(self.voices))
+			formatAndSend(cmd_env            , lowestVoiceIndex, opno, [initDict["env"]      [opno]]*len(voices))
+			formatAndSend(cmd_env_rate       , lowestVoiceIndex, opno, [initDict["env_rate" ][opno]]*len(voices))
 
-		formatAndSend(cmd_increment      , lowestVoiceIndex, 0, [0x00]*len(self.voices)) # * self.paramNum2Real[increment]
-		formatAndSend(cmd_increment      , lowestVoiceIndex, 6, [2**12]*len(self.voices)) # * self.paramNum2Real[increment]
-		formatAndSend(cmd_increment      , lowestVoiceIndex, 7, [2**12]*len(self.voices)) # * self.paramNum2Real[increment]
+			formatAndSend(cmd_increment      , lowestVoiceIndex, opno, [initDict["increment"      ][opno]]*len(voices)) # * self.paramNum2Real[increment]
+			formatAndSend(cmd_increment_rate , lowestVoiceIndex, opno, [initDict["increment_rate" ][opno]]*len(voices)) # * self.paramNum2Real[increment]
 
-		formatAndSend(cmd_increment_rate , lowestVoiceIndex, 0, [2**27]*len(self.voices))
-
-		formatAndSend(cmd_flushspi     , 0, 0, 0)    
-		formatAndSend(cmd_passthrough  , 0, 0, 0)    
-		formatAndSend(cmd_shift        , 0, 0, 4)    # -4
+		formatAndSend(cmd_flushspi     , 0, 0, initDict["flushspi"    ])    
+		formatAndSend(cmd_passthrough  , 0, 0, initDict["passthrough" ])    
+		formatAndSend(cmd_shift        , 0, 0, initDict["shift"       ])    # -4
 		return 0
 		
 	def formatAndSend(self, param, value):
@@ -264,7 +282,9 @@ class Operator():
 	
 	def getIncrement(self):
 		increment = self.baseIncrement + self.incrementScale * self.voice.note.defaultIncrement
-		#logger.debug("increment " + str(increment))
+		#logger.debug(str(self.index) + " self.baseIncrement " + str(self.baseIncrement))
+		#logger.debug(str(self.index) + " self.incrementScale " + str(self.incrementScale))
+		#logger.debug(str(self.index) + " self.voice.note.defaultIncrement " + str(self.voice.note.defaultIncrement))
 		return increment
 		
 	def setSounding(self, sounding):
@@ -291,12 +311,16 @@ def getIRQueue():
 
 	formatAndSend(cmd_readirqueue, 0, 0, 0)
 	res = formatAndSend(0, 0, 0, 0)
-	#logger.debug("res: " + str(res))
-	opno = int(math.log2((res[1]<<7) + (res[2]>>1)))
+	opnos = []
+	opres = (res[1]<<7) + (res[2]>>1)
+	#logger.debug("res: " + str(hex(opres)))
+	for opno in range(8):
+		if (opres >> opno) & 0x01:
+			opnos += [opno]
 	voiceno = int(((res[2] & 0x01)<<8) + res[3])
 	#logger.debug("IRQUEUE! voice:" + str(voiceno) + " op:"+ str(opno))
 	
-	return voiceno, opno
+	return voiceno, opnos
 
 def formatAndSend(paramNum, voiceno, opno, payload, voicemode = 1):
 	if type(payload) == list:

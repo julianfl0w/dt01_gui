@@ -7,11 +7,11 @@ def getAlgo(algoNum):
 	FB   = 7
 	
 	#random dt01 params
-	sum_5_6 = 8
-	sum_4_5 = 9
-	sum_4_5_6 = 10
-	sum_2_3_5 = 11
-	sum_2_3_4 = 12
+	SUM_5_6   = 9 
+	SUM_4_5   = 10
+	SUM_4_5_6 = 11
+	SUM_2_3_5 = 12
+	SUM_2_3_4 = 13
 	
 		
 	############################################
@@ -20,13 +20,13 @@ def getAlgo(algoNum):
 		fbSrc  = 6
 		sounding = [1, 3]
 	elif algoNum == 2:
-		fmAlgo = [1, FB, 3, 4, 5]
+		fmAlgo = [2, FB, 4, 5, 6, NOFM]
 		fbSrc  = 2
 		sounding = [1, 3]
 		
 	############################################
 	elif algoNum == 3:
-		fmAlgo = [2, 3, 4, 5, 6, FB]
+		fmAlgo = [2, 3, NOFM, 5, 6, FB]
 		fbSrc  = 6
 		sounding = [1, 4]
 	elif algoNum == 4:
@@ -50,121 +50,121 @@ def getAlgo(algoNum):
 		fbSrc  = 5
 		sounding = [1, 3]
 	elif algoNum == 8:
-		fmAlgo = [2, NOFM, 4, FB, 6, NOMOD]
+		fmAlgo = [2, NOFM, 4, FB, 6, NOFM]
 		fbSrc  = 4
 		sounding = [1, 3]
 	elif algoNum == 9:
-		fmAlgo = [2, FB, 4, NOMOD, 6, NOMOD]
+		fmAlgo = [2, FB, 4, NOFM, 6, NOFM]
 		fbSrc  = 2
 		sounding = [1, 3]
 		
 	############################################
 	elif algoNum == 10:
-		fmAlgo = [2, 3, FB, SUM_5_6, NOMOD, NOMOD]
+		fmAlgo = [2, 3, FB, SUM_5_6, NOFM, NOFM]
 		fbSrc  = 2
 		sounding = [1, 4]
 	elif algoNum == 11:
-		fmAlgo = [2, 3, NOMOD, SUM_5_6, NOMOD, FB]
+		fmAlgo = [2, 3, NOFM, SUM_5_6, NOFM, FB]
 		fbSrc  = 6
 		sounding = [1, 4]
 		
 	############################################
 	elif algoNum == 12:
-		fmAlgo = [2, FB, SUM_4_5_6, NOMOD, NOMOD, NOMOD]
+		fmAlgo = [2, FB, SUM_4_5_6, NOFM, NOFM, NOFM]
 		fbSrc  = 2
 		sounding = [1, 3]
 	elif algoNum == 13:
-		fmAlgo = [2, NOMOD, SUM_4_5_6, NOMOD, NOMOD, FB]
+		fmAlgo = [2, NOFM, SUM_4_5_6, NOFM, NOFM, FB]
 		fbSrc  = 6
 		sounding = [1, 3]
 		
 	############################################
 	elif algoNum == 14:
-		fmAlgo = [2, NOMOD, 4, SUM_5_6, NOMOD, FB]
+		fmAlgo = [2, NOFM, 4, SUM_5_6, NOFM, FB]
 		fbSrc  = 6
 		sounding = [1, 3]
 	elif algoNum == 15:
-		fmAlgo = [2, FB, 4, SUM_5_6, NOMOD, NOMOD]
+		fmAlgo = [2, FB, 4, SUM_5_6, NOFM, NOFM]
 		fbSrc  = 2
 		sounding = [1, 3]
 		
 	############################################
 	elif algoNum == 16:
-		fmAlgo = [SUM_2_3_5, NOMOD, 4, NOMOD, 6, FB]
+		fmAlgo = [SUM_2_3_5, NOFM, 4, NOFM, 6, FB]
 		fbSrc  = 6
 		sounding = [1]
 	elif algoNum == 17:
-		fmAlgo = [SUM_2_3_5, FB, 4, NOMOD, 6, NOMOD]
+		fmAlgo = [SUM_2_3_5, FB, 4, NOFM, 6, NOFM]
 		fbSrc  = 2
 		sounding = [1]
 	elif algoNum == 18:
-		fmAlgo = [SUM_2_3_5, NOMOD, FB, 5, 6, NOMOD]
+		fmAlgo = [SUM_2_3_5, NOFM, FB, 5, 6, NOFM]
 		fbSrc  = 3
 		sounding = [1]
 		
 	############################################
 	elif algoNum == 19:
-		fmAlgo = [2, 3, NOMOD, 6, 6, FB]
+		fmAlgo = [2, 3, NOFM, 6, 6, FB]
 		fbSrc  = 6
 		sounding = [1, 4, 5]
 	elif algoNum == 20:
-		fmAlgo = [3, 3, FB, SUM_5_6, NOMOD, NOMOD]
+		fmAlgo = [3, 3, FB, SUM_5_6, NOFM, NOFM]
 		fbSrc  = 3
 		sounding = [1, 2, 4]
 	elif algoNum == 21:
-		fmAlgo = [3, 3, FB, 6, 6, NOMOD]
+		fmAlgo = [3, 3, FB, 6, 6, NOFM]
 		fbSrc  = 3
 		sounding = [1, 2, 4, 5]
 	elif algoNum == 22:
-		fmAlgo = [2, NOMOD, 6, 6, 6, FB]
+		fmAlgo = [2, NOFM, 6, 6, 6, FB]
 		fbSrc  = 6
 		sounding = [1, 3, 4, 5]
 	elif algoNum == 23:
-		fmAlgo = [NOMOD, 3, NOMOD, 6, 6, FB]
+		fmAlgo = [NOFM, 3, NOFM, 6, 6, FB]
 		fbSrc  = 6
 		sounding = [1, 2, 4, 5]
 	elif algoNum == 24:
-		fmAlgo = [NOMOD, NOMOD, 6, 6, 6, FB]
+		fmAlgo = [NOFM, NOFM, 6, 6, 6, FB]
 		fbSrc  = 6
 		sounding = [1, 2, 3, 4, 5]
 	elif algoNum == 25:
-		fmAlgo = [NOMOD, NOMOD, NOMOD, 6, 6, FB]
+		fmAlgo = [NOFM, NOFM, NOFM, 6, 6, FB]
 		fbSrc  = 6
 		sounding = [1, 2, 3, 4, 5]
 		
 	############################################
 	elif algoNum == 26:
-		fmAlgo = [NOMOD, 3, NOMOD, SUM_5_6, NOMOD, FB]
+		fmAlgo = [NOFM, 3, NOFM, SUM_5_6, NOFM, FB]
 		fbSrc  = 6
 		sounding = [1, 2, 4]
 	elif algoNum == 27:
-		fmAlgo = [NOMOD, 3, FB, SUM_5_6, NOMOD, NOMOD]
+		fmAlgo = [NOFM, 3, FB, SUM_5_6, NOFM, NOFM]
 		fbSrc  = 3
 		sounding = [1, 2, 4]
 		
 	############################################
 	elif algoNum == 28:
-		fmAlgo = [2, NOMOD, 4, 5, FB, NOMOD]
+		fmAlgo = [2, NOFM, 4, 5, FB, NOFM]
 		fbSrc  = 5
 		sounding = [1, 3, 6]
 		
 	############################################
 	elif algoNum == 29:
-		fmAlgo = [NOMOD, NOMOD, 4, NOMOD, 6, FB]
+		fmAlgo = [NOFM, NOFM, 4, NOFM, 6, FB]
 		fbSrc  = 6
 		sounding = [1, 2, 3, 5]
 	elif algoNum == 30:
-		fmAlgo = [NOMOD, NOMOD, 4, 5, FB, NOMOD]
+		fmAlgo = [NOFM, NOFM, 4, 5, FB, NOFM]
 		fbSrc  = 5
 		sounding = [1, 2, 3, 6]
 		
 	############################################
 	elif algoNum == 31:
-		fmAlgo = [NOMOD, NOMOD, NOMOD, NOMOD, 6, FB]
+		fmAlgo = [NOFM, NOFM, NOFM, NOFM, 6, FB]
 		fbSrc  = 6
 		sounding = [1, 2, 3, 4, 5]
 	elif algoNum == 32:
-		fmAlgo = [NOMOD, NOMOD, NOMOD, NOMOD, NOMOD, FB]
+		fmAlgo = [NOFM, NOFM, NOFM, NOFM, NOFM, FB]
 		fbSrc  = 6
 		sounding = [1, 2, 3, 4, 5, 6]
 	
