@@ -54,7 +54,7 @@
     "Operator2": {
         "AM Sensitivity": 0,
         "Oscillator Mode": "Frequency (Ratio)",
-        "Frequency": 14,
+        "Frequency": 1,
         "Detune": 0,
         "Envelope Generator": {
             "Rate 1": 95,

@@ -116,6 +116,7 @@ class DT01():
 			pickle.dump(self, f)
 	
 	def __init__(self, polyphony = 512):
+		
 		self.voices = 0
 		self.polyphony = polyphony
 		self.voicesPerPatch = min(self.polyphony, 64)
@@ -128,12 +129,13 @@ class DT01():
 		for i in range(self.patchesPerDT01):
 			newSet = []
 			for j in range(self.voicesPerPatch):
-				newVoice = Voice(index)
+				newVoice = Voice(index, self)
 				self.voices += [newVoice]
 				newSet      += [newVoice]
 				index += 1
 			self.voiceSets += [newSet]
 		
+	
 		initDict = {}
 		initDict["sounding"] = 0b00000001
 		initDict["fm_algo" ] = 0x77777777
@@ -150,7 +152,12 @@ class DT01():
 		initDict["flushspi"    ] = 0
 		initDict["passthrough" ] = 0
 		initDict["shift"       ] = 4
-			
+		
+		self.baseIncrement    = np.zeros((self.polyphony, OPERATORCOUNT))
+		self.incrementScale   = np.zeros((self.polyphony, OPERATORCOUNT))
+		self.defaultIncrement = np.zeros((self.polyphony, OPERATORCOUNT))
+		self.tosend           = np.zeros((self.polyphony, OPERATORCOUNT), dtype = np.int)
+		
 		self.initialize(initDict)
 		
 	def getVoices(self):
@@ -158,6 +165,12 @@ class DT01():
 		oldestSetIndex = np.argsort(self.loanTime)[0]
 		return self.voiceSets[oldestSetIndex]
 	
+	def setAllIncrements(self, modifier, lowestVoice, polyphony):
+		self.tosend = (self.baseIncrement   [lowestVoice.index:lowestVoice.index+polyphony] + \
+				 self.incrementScale  [lowestVoice.index:lowestVoice.index+polyphony] * \
+				 self.defaultIncrement[lowestVoice.index:lowestVoice.index+polyphony] * modifier).astype(np.int)
+		for op in lowestVoice.operators:
+			op.formatAndSend(cmd_increment, self.tosend[:, op.index], voicemode = True)
 	
 	def initialize(self, initDict, voices = None):
 		if voices == None:
@@ -187,13 +200,14 @@ class DT01():
 		formatAndSend(cmd_shift        , 0, 0, initDict["shift"       ])    # -4
 		return 0
 		
-	def formatAndSend(self, param, value):
-		return formatAndSend(param, 0, 0, value)
+	def formatAndSend(self, param, value, voicemode = True):
+		return formatAndSend(param, 0, 0, value, voicemode = voicemode)
 	
 		
 class Voice():
 		
-	def __init__(self, index):
+	def __init__(self, index, dt01_inst):
+		self.dt01_inst = dt01_inst
 		self.index = index
 		self.spawntime = 0
 		self.index = index
@@ -202,6 +216,8 @@ class Voice():
 		self.defaultIncrement = 0
 		self.indexInCluster = 0
 		self.operators = []
+		self.opZeros = np.array([0]* OPERATORCOUNT, dtype=np.int)
+
 		for opindex in range(OPERATORCOUNT):
 			self.operators += [Operator(self, opindex)]
 		
@@ -210,11 +226,39 @@ class Voice():
 		self.channels += [Channel(self, 1)]
 		
 		self.allChildren = self.channels + self.operators 
+		self.allIncrements = np.zeros((OPERATORCOUNT), dtype=np.int)
 	
+		# state info
+		self.phaseCount = 4
+		self.envelopeLevelAbsolute = np.zeros((self.phaseCount, OPERATORCOUNT), dtype=np.int)
+		self.envRatePerSample      = np.zeros((self.phaseCount, OPERATORCOUNT), dtype=np.int)
+		self.envTimeSeconds        = np.zeros((self.phaseCount, OPERATORCOUNT), dtype=np.float)
+		self.envTimeSamples        = np.zeros((self.phaseCount, OPERATORCOUNT), dtype=np.int)
+		self.envStepAbsolute       = np.zeros((self.phaseCount, OPERATORCOUNT), dtype=np.int)
+		
 	def setAllIncrements(self, modifier):
-		allIncrements = [min(modifier * op.getIncrement(), 2**30) for op in self.operators[:6]]
-		self.formatAndSend(cmd_increment, allIncrements, voicemode = False)
+		for op in self.operators:
+			self.allIncrements[op.index] = op.baseIncrement + op.incrementScale * op.voice.note.defaultIncrement * modifier
+		self.formatAndSend(cmd_increment, self.allIncrements[:6], voicemode = False)
 	
+	def setPhaseAllOps(self, phase):
+		self.formatAndSend(cmd_env_rate, self.opZeros[:6], voicemode=False)                               
+		self.formatAndSend(cmd_env,      self.envelopeLevelAbsolute[phase,:6], voicemode=False)
+		self.formatAndSend(cmd_env_rate, self.envRatePerSample[phase,:6], voicemode=False)                           
+		for op in self.operators:
+			op.envelopePhase = phase
+		
+		return 0
+		
+	def silenceAllOps(self):
+		self.formatAndSend(cmd_env_rate, self.opZeros[:6], voicemode=False)                               
+		self.formatAndSend(cmd_env,      self.envelopeLevelAbsolute[3,:6], voicemode=False)
+		self.formatAndSend(cmd_env_rate, self.envStepAbsolute[3,:6], voicemode=False)                               
+		for op in self.operators:
+			op.envelopePhase = 3
+		
+		return 0
+		
 	def setFBGainReal(self, fbgainreal):
 		self.formatAndSend(cmd_fbgain, 2**16*fbgainreal)
 		
@@ -263,7 +307,6 @@ class Channel():
 	def formatAndSend(self, param, value):
 		return formatAndSend(param, self.voice.index, self.index, value)
 		
-
 # OPERATOR DESCRIPTIONS
 class Operator():
 	def __init__(self, voice, index):
@@ -277,19 +320,54 @@ class Operator():
 		self.baseIncrement = 0
 		self.incrementScale = 1
 		
-	def formatAndSend(self, param, value):
-		return formatAndSend(param, self.voice.index, self.index, value)
-	
-	def getIncrement(self):
-		increment = self.baseIncrement + self.incrementScale * self.voice.note.defaultIncrement
-		#logger.debug(str(self.index) + " self.baseIncrement " + str(self.baseIncrement))
-		#logger.debug(str(self.index) + " self.incrementScale " + str(self.incrementScale))
-		#logger.debug(str(self.index) + " self.voice.note.defaultIncrement " + str(self.voice.note.defaultIncrement))
-		return increment
+		self.phaseCount = 4
+		self.envelopeLevelAbsolute = np.zeros((self.phaseCount), dtype=np.int)
+		self.envRatePerSample      = np.zeros((self.phaseCount), dtype=np.int)
+		self.envTimeSeconds        = np.zeros((self.phaseCount), dtype=np.float)
+		self.envTimeSamples        = np.zeros((self.phaseCount), dtype=np.int)
+		self.envStepAbsolute       = np.zeros((self.phaseCount), dtype=np.int)
+		self.envelopePhase         = 3
 		
+	def formatAndSend(self, param, value, voicemode = False):
+		return formatAndSend(param, self.voice.index, self.index, value, voicemode=voicemode)
+			
 	def setSounding(self, sounding):
 		self.sounding = isSounding
 		self.voice.applySounding() # need to update by voice because of memory layout in FPGA
+		
+	def setEnvTimeSecondsAndLevelReal(self, sounding, phase, timeSeconds, levelReal):
+	
+		opno = self.index
+		# sounding vs nonsounding difference?
+		if opno in sounding:
+			self.envelopeLevelAbsolute[phase] = levelReal*(2**31)
+		else:
+			self.envelopeLevelAbsolute[phase] = levelReal*(2**31)
+			
+		# Falling env is 4x slower than rising
+		if self.envelopeLevelAbsolute[phase] > self.envelopeLevelAbsolute[(phase+self.phaseCount-1) % self.phaseCount]:
+			timeSeconds *= 4
+			
+		#clip
+		self.envTimeSeconds[phase]   = max(0.005, timeSeconds)
+			
+		self.envTimeSamples[phase]   = self.envTimeSeconds[phase] * SamplesPerSecond
+		self.envStepAbsolute[phase]  = np.abs(self.envelopeLevelAbsolute[phase] - self.envelopeLevelAbsolute[(phase+self.phaseCount-1) % self.phaseCount])
+		# if new level is too close to old level, set to the smallest increase that makes time
+		lastPhase = (phase + self.phaseCount -1) % self.phaseCount
+		if abs(self.envelopeLevelAbsolute[phase] - self.envelopeLevelAbsolute[lastPhase]) < self.envTimeSamples[phase]:
+			self.envelopeLevelAbsolute[phase] = self.envelopeLevelAbsolute[lastPhase] + self.envTimeSamples[phase]
+			self.envStepAbsolute[phase]  = np.abs(self.envelopeLevelAbsolute[phase] - self.envelopeLevelAbsolute[(phase+self.phaseCount-1) % self.phaseCount])
+			self.envRatePerSample[phase] = 1
+		else:
+			self.envRatePerSample[phase] = self.envStepAbsolute[phase] / self.envTimeSamples[phase] # scale the envelope rate to the difference between this step and the next
+		
+		# update dt01 array
+		self.voice.envelopeLevelAbsolute[phase, self.index] = self.envelopeLevelAbsolute[phase]
+		self.voice.envRatePerSample     [phase, self.index] = self.envRatePerSample     [phase]
+		self.voice.envTimeSeconds       [phase, self.index] = self.envTimeSeconds       [phase]
+		self.voice.envTimeSamples       [phase, self.index] = self.envTimeSamples       [phase]
+		self.voice.envStepAbsolute      [phase, self.index] = self.envStepAbsolute      [phase]
 		
 	def __unicode__(self):
 		if self.index != None:
