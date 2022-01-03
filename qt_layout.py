@@ -23,6 +23,13 @@ class jButton(QPushButton):
 		self.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
 		self.setFont(QFont('Arial', 30))
 
+class arrowButton(QToolButton):
+	def __init__(self, text, app_inst):
+		super().__init__(text = text)
+		selected = False
+		self.app_inst = app_inst
+		self.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
+		self.setFont(QFont('Arial', 30))
 # Boxlayout is the App class
 
 class MainWindow(QWidget):
@@ -35,9 +42,9 @@ class MainWindow(QWidget):
 		print(instance.app_inst)
 		for button in instance.app_inst.button_files:
 			button.selected = False
-			button.background_color = [0,0,0,0]
+			button.setStyleSheet("background-color: white")
 		instance.selected = True
-		instance.background_color = [1,1,1,1]
+		instance.setStyleSheet("background-color: lightblue")
 		
 		sendpath = os.path.join(instance.app_inst.allPatchesDir, instance.app_inst.activeFolder, instance.text()) + ".json"
 		instance.app_inst.socket.send_string(sendpath)
@@ -50,9 +57,9 @@ class MainWindow(QWidget):
 		print(instance.app_inst)
 		for button in instance.app_inst.button_folders:
 			button.selected = False
-			button.background_color = [0,0,0,0]
+			button.setStyleSheet("background-color: white")
 		instance.selected = True
-		instance.background_color = [1,1,1,1]
+		instance.setStyleSheet("background-color: lightblue")
 		instance.app_inst.activeFolder = instance.text()
 		instance.app_inst.filelist = [file for file in sorted(os.listdir(os.path.join(instance.app_inst.allPatchesDir, instance.text()))) if file.endswith(".json") ]
 		while len(instance.app_inst.filelist) % FILES_PER_SCREEN:
@@ -65,7 +72,7 @@ class MainWindow(QWidget):
 		instance.app_inst.filelist = instance.app_inst.filelist[-FILES_PER_SCREEN:] + instance.app_inst.filelist[:-FILES_PER_SCREEN]
 		for i, button in enumerate(instance.app_inst.button_files):
 			button.selected = False
-			button.background_color = [0,0,0,0]
+			button.setStyleSheet("background-color: white")
 			button.setText(instance.app_inst.filelist[i].replace(".json",""))
 		self.filecallback(instance.app_inst.button_files[0])
 
@@ -74,7 +81,7 @@ class MainWindow(QWidget):
 		instance.app_inst.filelist = instance.app_inst.filelist[FILES_PER_SCREEN:] + instance.app_inst.filelist[:FILES_PER_SCREEN]
 		for i, button in enumerate(instance.app_inst.button_files):
 			button.selected = False
-			button.background_color = [0,0,0,0]
+			button.setStyleSheet("background-color: white")
 			button.setText(instance.app_inst.filelist[i].replace(".json",""))
 		self.filecallback(instance.app_inst.button_files[0])
 
@@ -83,7 +90,7 @@ class MainWindow(QWidget):
 		instance.app_inst.categories = instance.app_inst.categories[-FILES_PER_SCREEN:] + instance.app_inst.categories[:-FILES_PER_SCREEN]
 		for i, button in enumerate(instance.app_inst.button_folders):
 			button.selected = False
-			button.background_color = [0,0,0,0]
+			button.setStyleSheet("background-color: white")
 			button.setText(instance.app_inst.categories[i].replace(".json",""))
 		self.foldercallback(instance.app_inst.button_folders[0])
 
@@ -92,7 +99,7 @@ class MainWindow(QWidget):
 		instance.app_inst.categories = instance.app_inst.categories[FILES_PER_SCREEN:] + instance.app_inst.categories[:FILES_PER_SCREEN]
 		for i, button in enumerate(instance.app_inst.button_folders):
 			button.selected = False
-			button.background_color = [0,0,0,0]
+			button.setStyleSheet("background-color: white")
 			button.setText(instance.app_inst.categories[i].replace(".json",""))
 		self.foldercallback(instance.app_inst.button_folders[0])
 
@@ -125,14 +132,18 @@ class MainWindow(QWidget):
 		self.filecallback(self.button_files[0]) #select the first one
 		
 		
-		button_scroll_folder_up   = jButton(text="UP", app_inst = self)
+		button_scroll_folder_up   = arrowButton(text="UP", app_inst = self)
+		button_scroll_folder_up.setArrowType(Qt.UpArrow)
 		button_scroll_folder_up.pressed.connect(self.foldersUp)
-		button_scroll_folder_down = jButton(text="DOWN", app_inst = self)
+		button_scroll_folder_down = arrowButton(text="DOWN", app_inst = self)
+		button_scroll_folder_down.setArrowType(Qt.DownArrow)
 		button_scroll_folder_down.pressed.connect(self.foldersDown)
 		
-		button_scroll_file_up   = jButton(text="UP", app_inst = self)
+		button_scroll_file_up   = arrowButton(text="UP", app_inst = self)
+		button_scroll_file_up.setArrowType(Qt.UpArrow)
 		button_scroll_file_up.pressed.connect(self.filesUp)
-		button_scroll_file_down = jButton(text="DOWN", app_inst = self)
+		button_scroll_file_down = arrowButton(text="DOWN", app_inst = self)
+		button_scroll_file_down.setArrowType(Qt.DownArrow)
 		button_scroll_file_down.pressed.connect(self.filesDown)
 		
 		self.navbox    = QHBoxLayout()
