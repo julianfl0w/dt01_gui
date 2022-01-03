@@ -1,18 +1,23 @@
-# Sample Kivy app demonstrating the working of Box layout
-
- 
 
 # imports
-
 from kivy.app import App
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
+from kivy.core.window import Window
+import platform
+import os
+import sys
+import zmq
 
- 
+# fullscreen only on RPI (i use Windows otherwise)
+if platform.system() == 'Linux':
+	Window.fullscreen = True
+
+FILES_PER_SCREEN = 4
 
 class jButton(Button):
 	def __init__(self, text, app_inst):
-		super().__init__(text = text, background_color = [0,0,0,0])
+		super().__init__(text = text, background_color = [0,0,0,0], background_down = "green")
 		selected = False
 		self.app_inst = app_inst
 
@@ -20,45 +25,107 @@ class jButton(Button):
 
 class BoxLayoutDemo(App):
 	def filecallback(self, instance):
+		if instance.text == "":
+			return
 		print('The button <%s> is being pressed' % instance.text)
 		print(instance.app_inst)
 		for button in instance.app_inst.button_files:
 			button.selected = False
 			button.background_color = [0,0,0,0]
+		instance.selected = True
 		instance.background_color = [1,1,1,1]
+		
+		sendpath = os.path.join(instance.app_inst.allPatchesDir, instance.text)
+		instance.app_inst.socket.send_string(sendpath)
 
 	def foldercallback(self, instance):
+		if instance.text == "":
+			return
 		print('The button <%s> is being pressed' % instance.text)
 		print(instance.app_inst)
 		for button in instance.app_inst.button_folders:
 			button.selected = False
 			button.background_color = [0,0,0,0]
+		instance.selected = True
 		instance.background_color = [1,1,1,1]
+		
+		instance.app_inst.filelist = [file for file in os.listdir(os.path.join(instance.app_inst.allPatchesDir, instance.text)) if file.endswith(".json") ]
+		while len(instance.app_inst.filelist) % FILES_PER_SCREEN:
+			instance.app_inst.filelist += [""]
+		for i, button in enumerate(instance.app_inst.button_files):
+			button.text = instance.app_inst.filelist[i].replace(".json","")
+		
+	def filesUp(self, instance):
+		instance.app_inst.filelist = instance.app_inst.filelist[-FILES_PER_SCREEN:] + instance.app_inst.filelist[:-FILES_PER_SCREEN]
+		for i, button in enumerate(instance.app_inst.button_files):
+			button.selected = False
+			button.background_color = [0,0,0,0]
+			button.text = instance.app_inst.filelist[i].replace(".json","")
+		self.filecallback(instance.app_inst.button_files[0])
+
+	def filesDown(self, instance):
+		instance.app_inst.filelist = instance.app_inst.filelist[FILES_PER_SCREEN:] + instance.app_inst.filelist[:FILES_PER_SCREEN]
+		for i, button in enumerate(instance.app_inst.button_files):
+			button.selected = False
+			button.background_color = [0,0,0,0]
+			button.text = instance.app_inst.filelist[i].replace(".json","")
+		self.filecallback(instance.app_inst.button_files[0])
+
+	def foldersUp(self, instance):
+		instance.app_inst.categories = instance.app_inst.categories[-FILES_PER_SCREEN:] + instance.app_inst.categories[:-FILES_PER_SCREEN]
+		for i, button in enumerate(instance.app_inst.button_folders):
+			button.selected = False
+			button.background_color = [0,0,0,0]
+			button.text = instance.app_inst.categories[i].replace(".json","")
+		self.foldercallback(instance.app_inst.button_folders[0])
+
+	def foldersDown(self, instance):
+		instance.app_inst.categories = instance.app_inst.categories[FILES_PER_SCREEN:] + instance.app_inst.categories[:FILES_PER_SCREEN]
+		for i, button in enumerate(instance.app_inst.button_folders):
+			button.selected = False
+			button.background_color = [0,0,0,0]
+			button.text = instance.app_inst.categories[i].replace(".json","")
+		self.foldercallback(instance.app_inst.button_folders[0])
+
 
 	def build(self):
 
-		FILES_PER_SCREEN = 4
+		context = zmq.Context()
+		self.socket = context.socket(zmq.PUB)
+		self.socket.bind("tcp://*:5555")
 		
+		self.allPatchesDir = os.path.join(sys.path[0], 'dx7_patches/')
+		self.categories = os.listdir(self.allPatchesDir)
+		while len(self.categories) % FILES_PER_SCREEN:
+			self.categories += [""]
+				
 		self.folderbox   = BoxLayout(orientation='vertical')
-		self.button_folders   = [jButton(text="Folder", app_inst = self) for i in range(FILES_PER_SCREEN)]
+		self.button_folders   = [jButton(text=self.categories[i], app_inst = self) for i in range(FILES_PER_SCREEN)]
 		for button in self.button_folders:
 			button.bind(on_press=self.foldercallback)
 			self.folderbox.add_widget(button )
-		self.foldercallback(self.button_folders[0]) #select the first one
 			
 		self.filebox   = BoxLayout(orientation='vertical')
 		self.button_files   = [jButton(text="File", app_inst = self) for i in range(FILES_PER_SCREEN)]
 		for button in self.button_files:
 			button.bind(on_press=self.filecallback)
 			self.filebox.add_widget(button )
+			
+		self.foldercallback(self.button_folders[0]) #select the first one
 		self.filecallback(self.button_files[0]) #select the first one
 		
 		
-		self.navbox    = BoxLayout(orientation='horizontal')
 		button_scroll_folder_up   = jButton(text="UP", app_inst = self)
+		button_scroll_folder_up.bind(on_press=self.foldersUp)
 		button_scroll_folder_down = jButton(text="DOWN", app_inst = self)
-		button_scroll_file_up     = jButton(text="UP", app_inst = self)
-		button_scroll_file_down   = jButton(text="DOWN", app_inst = self)
+		button_scroll_folder_down.bind(on_press=self.foldersDown)
+		
+		button_scroll_file_up   = jButton(text="UP", app_inst = self)
+		button_scroll_file_up.bind(on_press=self.filesUp)
+		button_scroll_file_down = jButton(text="DOWN", app_inst = self)
+		button_scroll_file_down.bind(on_press=self.filesDown)
+		
+		self.navbox    = BoxLayout(orientation='horizontal')
 		self.navbox.add_widget(button_scroll_folder_up  )
 		self.navbox.add_widget(button_scroll_folder_down)
 		self.navbox.add_widget(button_scroll_file_up    )
@@ -75,10 +142,6 @@ class BoxLayoutDemo(App):
 		self.verticalBox.add_widget(self.navbox )
 
 		return self.verticalBox
-
-   
-
- 
 
 # Instantiate and run the kivy app
 
