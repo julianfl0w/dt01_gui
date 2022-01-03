@@ -38,7 +38,7 @@ class MainWindow(QWidget):
 		instance.selected = True
 		instance.background_color = [1,1,1,1]
 		
-		sendpath = os.path.join(instance.app_inst.allPatchesDir, instance.app_inst.activeFolder, instance.text())
+		sendpath = os.path.join(instance.app_inst.allPatchesDir, instance.app_inst.activeFolder, instance.text()) + ".json"
 		instance.app_inst.socket.send_string(sendpath)
 
 	def foldercallback(self, instance = None):
