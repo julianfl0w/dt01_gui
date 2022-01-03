@@ -7,6 +7,7 @@ import platform
 import os
 import sys
 import zmq
+import platform
 
 # fullscreen only on RPI (i use Windows otherwise)
 #if platform.system() == 'Linux':
@@ -155,8 +156,11 @@ class MainWindow(QWidget):
 if __name__ == '__main__':
 	app = QApplication(sys.argv)
 	main_window = MainWindow()
-	main_window.show()
-	#main_window.showFullScreen()
+	if "armv7l" in platform.platform():
+		main_window.showFullScreen()
+	else:
+		main_window.show()
+		
 	sys.exit(app.exec_())
 
  
