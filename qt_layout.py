@@ -20,6 +20,7 @@ class jButton(QPushButton):
 		super().__init__(text = text)
 		selected = False
 		self.app_inst = app_inst
+		self.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
 
 # Boxlayout is the App class
 
@@ -134,6 +135,10 @@ class MainWindow(QWidget):
 		button_scroll_file_down.pressed.connect(self.filesDown)
 		
 		self.navbox    = QHBoxLayout()
+		button_scroll_folder_up  .setFixedHeight(50)
+		button_scroll_folder_down.setFixedHeight(50)
+		button_scroll_file_up    .setFixedHeight(50)
+		button_scroll_file_down  .setFixedHeight(50)
 		self.navbox.addWidget(button_scroll_folder_up  )
 		self.navbox.addWidget(button_scroll_folder_down)
 		self.navbox.addWidget(button_scroll_file_up    )
