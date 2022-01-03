@@ -166,6 +166,7 @@ class DT01():
 		return self.voiceSets[oldestSetIndex]
 	
 	def setAllIncrements(self, modifier, lowestVoice, polyphony):
+		# no way to avoid casting it seems
 		self.tosend = (self.baseIncrement   [lowestVoice.index:lowestVoice.index+polyphony] + \
 				 self.incrementScale  [lowestVoice.index:lowestVoice.index+polyphony] * \
 				 self.defaultIncrement[lowestVoice.index:lowestVoice.index+polyphony] * modifier).astype(np.int)
@@ -219,7 +220,7 @@ class Voice():
 		self.opZeros = np.array([0]* OPERATORCOUNT, dtype=np.int)
 
 		for opindex in range(OPERATORCOUNT):
-			self.operators += [Operator(self, opindex)]
+			self.operators += [Operator(self, opindex, dt01_inst)]
 		
 		self.channels = []
 		self.channels += [Channel(self, 0)]
@@ -238,7 +239,8 @@ class Voice():
 		
 	def setAllIncrements(self, modifier):
 		for op in self.operators:
-			self.allIncrements[op.index] = op.baseIncrement + op.incrementScale * op.voice.note.defaultIncrement * modifier
+			logger.debug(modifier)
+			self.allIncrements[op.index] = max(op.baseIncrement + op.incrementScale * op.voice.note.defaultIncrement * modifier, 2**30)
 		self.formatAndSend(cmd_increment, self.allIncrements[:6], voicemode = False)
 	
 	def setPhaseAllOps(self, phase):
@@ -251,9 +253,9 @@ class Voice():
 		return 0
 		
 	def silenceAllOps(self):
-		self.formatAndSend(cmd_env_rate, self.opZeros[:6], voicemode=False)                               
-		self.formatAndSend(cmd_env,      self.envelopeLevelAbsolute[3,:6], voicemode=False)
-		self.formatAndSend(cmd_env_rate, self.envStepAbsolute[3,:6], voicemode=False)                               
+		self.formatAndSend(cmd_env_rate, self.opZeros[:6], voicemode=False)
+		self.formatAndSend(cmd_env,      self.opZeros[:6], voicemode=False)
+		self.formatAndSend(cmd_env_rate, np.maximum(np.ones((6), dtype = np.int), self.envStepAbsolute[3,:6]), voicemode=False)                               
 		for op in self.operators:
 			op.envelopePhase = 3
 		
@@ -309,7 +311,8 @@ class Channel():
 		
 # OPERATOR DESCRIPTIONS
 class Operator():
-	def __init__(self, voice, index):
+	def __init__(self, voice, index, dt01_inst):
+		self.dt01_inst = dt01_inst
 		self.index = index
 		self.voice = voice
 		self.base  = OPBASE[self.index]
@@ -330,7 +333,46 @@ class Operator():
 		
 	def formatAndSend(self, param, value, voicemode = False):
 		return formatAndSend(param, self.voice.index, self.index, value, voicemode=voicemode)
+	
+	def setup(self, opDict, sounding0indexed):
+	
+		self.envelopePhase = 3
+		if self.index in sounding0indexed: 
+			self.sounding = 1
+		else:
+			self.sounding = 0
 			
+		envDict = opDict["Envelope Generator"]
+		if opDict["Oscillator Mode"] == "Frequency (Ratio)":
+			self.baseIncrement  = 0
+			self.incrementScale = opDict["Frequency"] * (1 + (opDict["Detune"] / 7.0) / 80)
+			
+		else:
+			self.baseIncrement  = (2**32)*opDict["Frequency"] / SamplesPerSecond
+			self.incrementScale = 0
+				
+		self.dt01_inst.baseIncrement [self.voice.index, self.index] = self.baseIncrement 
+		self.dt01_inst.incrementScale[self.voice.index, self.index] = self.incrementScale
+			
+		#https://github.com/google/music-synthesizer-for-android/blob/f67d41d313b7dc85f6fb99e79e515cc9d208cfff/app/src/main/jni/env.cc
+		levellut = [0, 5, 9, 13, 17, 20, 23, 25, 27, 29, 31, 33, 35, 37, 39, 41, 42, 43, 45, 46]
+		outlevel = opDict["Output Level"]
+		if outlevel >= 20:
+			self.outputLevelReal = 28 + outlevel
+		else:
+			self.outputLevelReal = levellut[outlevel];
+		self.outputLevelReal /= 128.0
+		
+		maxSeconds = 10 # gets multiplied again by 4 if its a release (as opposed to attack)
+		gamma = 4
+		
+		if envDict["Rate 4"] == 0:
+			envDict["Rate 4"] = 1
+		
+		for phase in range(4):
+			self.setEnvTimeSecondsAndLevelReal(sounding0indexed, phase, maxSeconds*pow(1-(envDict["Rate " + str(1+phase)]/127.0), gamma), self.outputLevelReal * (envDict["Level " + str(1+phase)]/127.0))
+	
+
 	def setSounding(self, sounding):
 		self.sounding = isSounding
 		self.voice.applySounding() # need to update by voice because of memory layout in FPGA

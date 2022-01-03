@@ -1,17 +1,23 @@
 
+import os
+os.environ['KIVY_WINDOW'] = 'egl_rpi'
+os.environ['KIVY_WINDOW'] = 'sdl2'
 # imports
+from kivy.logger import Logger, LOG_LEVELS
+Logger.setLevel(LOG_LEVELS["debug"])
 from kivy.app import App
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.core.window import Window
 import platform
-import os
 import sys
 import zmq
 
+
 # fullscreen only on RPI (i use Windows otherwise)
 if platform.system() == 'Linux':
-	Window.fullscreen = True
+        pass
+        #Window.fullscreen = True
 
 FILES_PER_SCREEN = 4
 

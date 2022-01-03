@@ -129,35 +129,8 @@ class Patch():
 	
 		for voice in self.voices:
 			for operator in voice.operators[:6]:
-			
-				if operator.index in sounding0indexed: 
-					operator.sounding = 1
-				else:
-					operator.sounding = 0
-					
 				opDict = patchDict["Operator" + str(operator.index+1)]
-				envDict = opDict["Envelope Generator"]
-				if opDict["Oscillator Mode"] == "Frequency (Ratio)":
-					operator.baseIncrement  = 0
-					operator.incrementScale = opDict["Frequency"] * (1 + (opDict["Detune"] / 7.0) / 70)
-					
-				else:
-					operator.baseIncrement  = (2**32)*opDict["Frequency"] / dt01.SamplesPerSecond
-					operator.incrementScale = 0
-						
-				self.dt01_inst.baseIncrement [voice.index, operator.index] = operator.baseIncrement 
-				self.dt01_inst.incrementScale[voice.index, operator.index] = operator.incrementScale
-					
-				outputLevelReal = (opDict["Output Level"]/127.0)
-				maxSeconds = 10 # gets multiplied again by 4 if its a release (as opposed to attack)
-				gamma = 4
-				
-				if envDict["Rate 4"] == 0:
-					envDict["Rate 4"] = 1
-				
-				for phase in range(4):
-					operator.setEnvTimeSecondsAndLevelReal(sounding0indexed, phase, maxSeconds*pow(1-(envDict["Rate " + str(1+phase)]/127.0), gamma), outputLevelReal * (envDict["Level " + str(1+phase)]/127.0))
-			
+				operator.setup(opDict, sounding0indexed)
 			
 		# format sounding
 		soundPayload = int(0)
