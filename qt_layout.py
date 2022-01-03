@@ -23,15 +23,6 @@ class jButton(QPushButton):
 		self.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
 		self.setFont(QFont('Arial', 30))
 
-class arrowButton(QToolButton):
-	def __init__(self, text, app_inst):
-		super().__init__(text = text)
-		selected = False
-		self.app_inst = app_inst
-		self.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
-		self.setFont(QFont('Arial', 30))
-# Boxlayout is the App class
-
 class MainWindow(QWidget):
 
 	def filecallback(self, instance = None):
@@ -132,18 +123,14 @@ class MainWindow(QWidget):
 		self.filecallback(self.button_files[0]) #select the first one
 		
 		
-		button_scroll_folder_up   = arrowButton(text="UP", app_inst = self)
-		button_scroll_folder_up.setArrowType(Qt.UpArrow)
+		button_scroll_folder_up   = jButton(text="▲", app_inst = self)
 		button_scroll_folder_up.pressed.connect(self.foldersUp)
-		button_scroll_folder_down = arrowButton(text="DOWN", app_inst = self)
-		button_scroll_folder_down.setArrowType(Qt.DownArrow)
+		button_scroll_folder_down = jButton(text="▼", app_inst = self)
 		button_scroll_folder_down.pressed.connect(self.foldersDown)
 		
-		button_scroll_file_up   = arrowButton(text="UP", app_inst = self)
-		button_scroll_file_up.setArrowType(Qt.UpArrow)
+		button_scroll_file_up   = jButton(text="▲", app_inst = self)
 		button_scroll_file_up.pressed.connect(self.filesUp)
-		button_scroll_file_down = arrowButton(text="DOWN", app_inst = self)
-		button_scroll_file_down.setArrowType(Qt.DownArrow)
+		button_scroll_file_down = jButton(text="▼", app_inst = self)
 		button_scroll_file_down.pressed.connect(self.filesDown)
 		
 		self.navbox    = QHBoxLayout()

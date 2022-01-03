@@ -9,5 +9,5 @@ export DISPLAY=:0
 #cd "$parent_path"
 sudo python3 /home/pi/dt01_gui/clearspi.py # start over the spi
 sudo taskset 0x00000004 sudo python3 /home/pi/dt01_gui/patch.py &
-python3 /home/pi/dt01_gui/kinetic.py &
+python3 /home/pi/dt01_gui/qt_layout.py &
 export STARTED=1
