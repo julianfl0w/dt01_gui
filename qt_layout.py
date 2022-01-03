@@ -21,6 +21,7 @@ class jButton(QPushButton):
 		selected = False
 		self.app_inst = app_inst
 		self.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
+		self.setFont(QFont('Arial', 30))
 
 # Boxlayout is the App class
 
