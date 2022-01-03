@@ -53,7 +53,7 @@ class MainWindow(QWidget):
 		instance.selected = True
 		instance.background_color = [1,1,1,1]
 		
-		instance.app_inst.filelist = [file for file in os.listdir(os.path.join(instance.app_inst.allPatchesDir, instance.text())) if file.endswith(".json") ]
+		instance.app_inst.filelist = [file for file in sorted(os.listdir(os.path.join(instance.app_inst.allPatchesDir, instance.text()))) if file.endswith(".json") ]
 		while len(instance.app_inst.filelist) % FILES_PER_SCREEN:
 			instance.app_inst.filelist += [""]
 		for i, button in enumerate(instance.app_inst.button_files):
@@ -104,7 +104,7 @@ class MainWindow(QWidget):
 		self.socket.bind("tcp://*:5555")
 		
 		self.allPatchesDir = os.path.join(sys.path[0], 'dx7_patches/')
-		self.categories = os.listdir(self.allPatchesDir)
+		self.categories = sorted(os.listdir(self.allPatchesDir))
 		while len(self.categories) % FILES_PER_SCREEN:
 			self.categories += [""]
 				
