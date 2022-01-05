@@ -96,6 +96,9 @@ class MainWindow(QWidget):
 			button.setText(instance.app_inst.categories[i].replace(".json",""))
 		self.foldercallback(instance.app_inst.button_folders[0])
 
+	def settings(self, instance = None):
+		sys.exit()
+
 
 	def __init__(self, parent=None):
 		super().__init__(parent)
@@ -130,6 +133,9 @@ class MainWindow(QWidget):
 		button_scroll_folder_down = jButton(text="▼", app_inst = self)
 		button_scroll_folder_down.pressed.connect(self.foldersDown)
 		
+		settings_button   = jButton(text="⚙", app_inst = self)
+		settings_button.pressed.connect(self.settings)
+		
 		button_scroll_file_up   = jButton(text="▲", app_inst = self)
 		button_scroll_file_up.pressed.connect(self.filesUp)
 		button_scroll_file_down = jButton(text="▼", app_inst = self)
@@ -142,6 +148,7 @@ class MainWindow(QWidget):
 		button_scroll_file_down  .setFixedHeight(50)
 		self.navbox.addWidget(button_scroll_folder_up  )
 		self.navbox.addWidget(button_scroll_folder_down)
+		self.navbox.addWidget(settings_button)
 		self.navbox.addWidget(button_scroll_file_up    )
 		self.navbox.addWidget(button_scroll_file_down  )
 		self.navbox.size_hint = (1, 0.3)
