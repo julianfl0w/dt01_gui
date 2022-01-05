@@ -35,7 +35,8 @@ class MainWindow(QWidget):
 			button.selected = False
 			button.setStyleSheet("background-color: white")
 		instance.selected = True
-		instance.setStyleSheet("background-color: lightblue")
+		#instance.setStyleSheet("background-color: lightblue")
+		instance.setStyleSheet("background-color: blue")
 		
 		sendpath = os.path.join(instance.app_inst.allPatchesDir, instance.app_inst.activeFolder, instance.text()) + ".json"
 		instance.app_inst.socket.send_string(sendpath)
@@ -50,7 +51,8 @@ class MainWindow(QWidget):
 			button.selected = False
 			button.setStyleSheet("background-color: white")
 		instance.selected = True
-		instance.setStyleSheet("background-color: lightblue")
+		#instance.setStyleSheet("background-color: lightblue")
+		instance.setStyleSheet("background-color: blue")
 		instance.app_inst.activeFolder = instance.text()
 		instance.app_inst.filelist = [file for file in sorted(os.listdir(os.path.join(instance.app_inst.allPatchesDir, instance.text()))) if file.endswith(".json") ]
 		while len(instance.app_inst.filelist) % FILES_PER_SCREEN:

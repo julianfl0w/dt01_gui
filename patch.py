@@ -96,20 +96,13 @@ class Patch():
 		self.phaseCount = 4
 		
 		self.loadJson(patchFilename)
-		
-	def loadJson(self, filename):
 	
-		with open(filename, 'r') as f:
-			patchDict = json.loads(f.read())
-		self.patchDict = patchDict
-		logger.debug("loading " + patchDict["Name"])
+	def getInitDict(self, patchDict):
 		initDict = {}
 		
 		initDict["fm_algo" ], initDict["fbsrc"   ], initDict["sounding"] = algos.getAlgo(patchDict["Algorithm"])
-		
+		sounding0indexed = [s-1 for s in initDict["sounding"]]
 		initDict["fbsrc"   ] = initDict["fbsrc"   ]-1
-		
-		initDict["am_algo" ] = 0x00000000
 		initDict["fbgain"  ] = 2**16*patchDict["Feedback"] / 127.0         
 		
 		LFODict = patchDict["LFO"]
@@ -124,7 +117,34 @@ class Patch():
 		initDict["passthrough" ] = 0
 		initDict["shift"       ] = max(2 - len(initDict["sounding"]), 0)
 		
-		sounding0indexed = [s-1 for s in initDict["sounding"]]
+		# format sounding
+		soundPayload = int(0)
+		for operator in sounding0indexed: 
+			soundPayload += (1 << (operator))
+		initDict["sounding"] = soundPayload
+	
+		# format fm algo
+		fm_algo_payload = int(0)
+		for i, src in enumerate(initDict["fm_algo" ]):
+			fm_algo_payload = fm_algo_payload + ((src-1) << (i*4))
+		initDict["fm_algo" ] = fm_algo_payload
+		
+		initDict["am_algo" ] = 0x00000000
+		# format am algo
+		# am_algo_payload = int(0)
+		# for i, src in enumerate(initDict["am_algo" ]):
+		# 	am_algo_payload += src << (i*4)
+		# initDict["am_algo" ] = am_algo_payload
+		
+		return initDict, sounding0indexed
+		
+	def loadJson(self, filename):
+	
+		with open(filename, 'r') as f:
+			patchDict = json.loads(f.read())
+		self.patchDict = patchDict
+		logger.debug("loading " + patchDict["Name"])
+		initDict, sounding0indexed = self.getInitDict(patchDict)
 		
 		# ignoring pitch envelope generator for now
 	
@@ -133,24 +153,26 @@ class Patch():
 				opDict = patchDict["Operator" + str(operator.index+1)]
 				operator.setup(opDict, sounding0indexed)
 			
-		# format sounding
-		soundPayload = int(0)
-		for operator in sounding0indexed: 
-			soundPayload += (1 << (operator))
-		initDict["sounding"] = soundPayload
+		self.dt01_inst.initialize(initDict, voices = self.voices)
 		
-		# format fm algo
-		fm_algo_payload = int(0)
-		for i, src in enumerate(initDict["fm_algo" ]):
-			fm_algo_payload = fm_algo_payload + ((src-1) << (i*4))
-		initDict["fm_algo" ] = fm_algo_payload
+		return 0
 		
-		# format am algo
-		# am_algo_payload = int(0)
-		# for i, src in enumerate(initDict["am_algo" ]):
-		# 	am_algo_payload += src << (i*4)
-		# initDict["am_algo" ] = am_algo_payload
+	def loadDx7Json(self, filename):
+	
+		with open(filename, 'r') as f:
+			patchDict = json.loads(f.read())
+		self.patchDict = patchDict
+		logger.debug("loading " + patchDict["Name"])
+		initDict = getInitDict(patchDict)
+		sounding0indexed = [s-1 for s in initDict["sounding"]]
 		
+		# ignoring pitch envelope generator for now
+	
+		for voice in self.voices:
+			for operator in voice.operators[:6]:
+				opDict = patchDict["Operator" + str(operator.index+1)]
+				operator.dx7setup(opDict, sounding0indexed)
+			
 		self.dt01_inst.initialize(initDict, voices = self.voices)
 		
 		return 0
@@ -159,6 +181,7 @@ class Patch():
 	def processIRQueue(self, voiceno, opnos):
 		
 		for opno in opnos:
+			
 			op = self.dt01_inst.voices[voiceno].operators[opno]
 			phase = (op.envelopePhase + 1) % self.phaseCount
 				
@@ -334,7 +357,7 @@ class Patch():
 		return True
 
 
-def startup(patchFilename = "dx7_patches/aaa/J__Rhodes_.json"):
+def startup(patchFilename = "patches/aaa/J__Rhodes_.json"):
 	
 	PID = os.getpid()
 	keyQueue = queue.Queue()
@@ -478,4 +501,4 @@ def startup(patchFilename = "dx7_patches/aaa/J__Rhodes_.json"):
 		midiin.close_port()
 		del midiin
 if __name__ == "__main__":
-	startup("/home/pi/dt01_gui/dx7_patches/aaa/J__Rhodes_.json")
+	startup("/home/pi/dt01_gui/patches/aaa/J__Rhodes_.json")
