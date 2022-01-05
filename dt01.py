@@ -8,7 +8,6 @@ import numpy as np
 import time
 import rtmidi
 from rtmidi.midiutil import *
-import mido
 import math
 import hjson as json
 import socket
@@ -169,7 +168,7 @@ class DT01():
 		# no way to avoid casting it seems
 		self.tosend = (self.baseIncrement   [lowestVoice.index:lowestVoice.index+polyphony] + \
 				 self.incrementScale  [lowestVoice.index:lowestVoice.index+polyphony] * \
-				 self.defaultIncrement[lowestVoice.index:lowestVoice.index+polyphony] * modifier).astype(np.int)
+				 self.defaultIncrement[lowestVoice.index:lowestVoice.index+polyphony] * modifier).astype(np.int, copy = False)
 		for op in lowestVoice.operators:
 			op.formatAndSend(cmd_increment, self.tosend[:, op.index], voicemode = True)
 	

@@ -102,7 +102,7 @@ class MainWindow(QWidget):
 		self.socket = context.socket(zmq.PUB)
 		self.socket.bind("tcp://*:5555")
 		
-		self.allPatchesDir = os.path.join(sys.path[0], 'dx7_patches/')
+		self.allPatchesDir = os.path.join(sys.path[0], 'patches/')
 		self.categories = sorted(os.listdir(self.allPatchesDir))
 		while len(self.categories) % FILES_PER_SCREEN:
 			self.categories += [""]

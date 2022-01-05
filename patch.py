@@ -17,6 +17,7 @@ import os
 import traceback
 import pickle
 import dt01
+import keyboard
 import logging
 import collections
 import math
@@ -24,8 +25,8 @@ import multiprocessing
 import RPi.GPIO as GPIO
 import zmq
 import algos
+import queue
 logger = logging.getLogger('DT01')
-import socket	
 
 	
 MIDINOTES      = 128
@@ -336,7 +337,34 @@ class Patch():
 def startup(patchFilename = "dx7_patches/aaa/J__Rhodes_.json"):
 	
 	PID = os.getpid()
-	
+	keyQueue = queue.Queue()
+	keyState = {}
+	def print_event_json(event):
+		keyDict = json.loads(event.to_json(ensure_ascii=sys.stdout.encoding != 'utf-8'))
+		# protect against repeat delay, for simplicity
+		# "xset r off" not working
+		if keyState.get(keyDict["name"]) != keyDict["event_type"]:
+			keyState[keyDict["name"]] = keyDict["event_type"]
+			#keyQueue.put(json.dumps(keyDict))
+			keyQueue.put(keyDict)
+		#sys.stdout.flush()
+	keyboard.hook(print_event_json)
+
+		
+	#def on_press(key):
+	#	print("Pressed")
+	#	print(key)
+	#
+	#def on_release(key):
+	#	print("Released")
+	#	print(key)
+	#
+	## Collect events until released
+	#with Listener(
+	#		on_press=on_press,
+	#		on_release=on_release) as listener:
+	#	listener.join()
+		
 	logger = logging.getLogger('DT01')
 	#formatter = logging.Formatter('{"debug": %(asctime)s {%(pathname)s:%(lineno)d} %(message)s}')
 	formatter = logging.Formatter('{{%(pathname)s:%(lineno)d %(message)s}')
@@ -366,10 +394,13 @@ def startup(patchFilename = "dx7_patches/aaa/J__Rhodes_.json"):
 		
 	# Socket to talk to server
 	context = zmq.Context()
-	socket = context.socket(zmq.SUB)
-
-	socket.connect ("tcp://localhost:%s" % "5555")
-	socket.setsockopt_string(zmq.SUBSCRIBE, "")
+	patchSocket = context.socket(zmq.SUB)
+	patchSocket.connect ("tcp://localhost:%s" % "5555")
+	patchSocket.setsockopt_string(zmq.SUBSCRIBE, "")
+	
+	qwerty2midi = {'a':48, 's':50, 'd':52, \
+		'f':53, 'g':55, 'h':57, 'j':59, 'k':60, 'l':62, \
+		'w':49, 'e':51, 't':54, 'y':56, 'u':58, 'o':61, 'p':63}
 
 	logger.debug("Entering main loop. Press Control-C to exit.")
 	loopstart = time.time()
@@ -391,12 +422,6 @@ def startup(patchFilename = "dx7_patches/aaa/J__Rhodes_.json"):
 						except (EOFError, KeyboardInterrupt):
 							sys.exit()
 			
-						# no longer doing callbacks
-						#logger.debug("Attaching MIDI input callback handler.")
-						##allMidiDevicesAndPatchesice_inst = allMidiDevicesAndPatchesice(i, GLOBAL_DEFAULT_PATCH, str(midi_portname))
-						#allMidiDevicesAndPatchesice_inst = allMidiDevicesAndPatchesice(i, GLOBAL_DEFAULT_PATCH, str(midi_portname))
-						#midiin.set_callback(allMidiDevicesAndPatchesice_inst)
-						#logger.debug("Handler: " + str(midiin))
 						midiDevAndPatches = (mididev, [GLOBAL_DEFAULT_PATCH])
 						allMidiDevicesAndPatches += [midiDevAndPatches]
 				midi_ports_last = midi_ports
@@ -407,14 +432,28 @@ def startup(patchFilename = "dx7_patches/aaa/J__Rhodes_.json"):
 			#	dt01_inst.dumpState()
 			for dev, patches in allMidiDevicesAndPatches:
 				msg = dev.get_message()
-				if msg != None:
+				if msg is not None:
 					msg, dtime = msg
 					msg = mido.Message.from_bytes(msg)
+				
+				# if no midi message, check for keypress
+				if msg is None:
+					if not keyQueue.empty():
+						keyDict = keyQueue.get()
+						key = keyDict["name"]
+						if key in qwerty2midi.keys():
+							if keyDict["event_type"] == "down":
+								msg = mido.Message('note_on',  note = qwerty2midi[key], velocity = 120)
+							else:
+								msg = mido.Message('note_off', note = qwerty2midi[key], velocity = 0)
+					
+				if msg is not None:
 					logger.debug(msg)
 					for patch in patches:
 						patch.midi2commands(msg)
 				
 					logger.warning(time.time() - loopstart)
+						
 			loopstart = time.time()
 			
 			# process the IRQUEUE
@@ -424,11 +463,13 @@ def startup(patchFilename = "dx7_patches/aaa/J__Rhodes_.json"):
 				
 			#check for patch change 
 			try:
-				string = socket.recv_string(flags=zmq.NOBLOCK)
+				string = patchSocket.recv_string(flags=zmq.NOBLOCK)
 				logger.debug(string)
 				GLOBAL_DEFAULT_PATCH.loadJson(string)
 			except zmq.Again as e:
 				pass
+			
+				
 				
 	except KeyboardInterrupt:
 		logger.debug('')
