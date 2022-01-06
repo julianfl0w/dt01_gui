@@ -33,4 +33,5 @@ if ![ -d "$DIR" ]; then
   conda install --file requirements.txt
 fi
 
-
+sudo cp random/cmdline.txt /boot/cmdline.txt
+sudo cp random/config.txt /boot/config.txt
