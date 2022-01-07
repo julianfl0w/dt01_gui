@@ -71,3 +71,8 @@ enable_uart=1
 dtoverlay=spi1-2cs,cs0_pin=16,cs1_pin=12
 #dtoverlay=spi1-2cs,cs1_pin=12
 dtoverlay=tft35a:rotate=270
+hdmi_group=2
+hdmi_mode=1
+hdmi_mode=87
+hdmi_cvt 480 320 60 6 0 0 0
+hdmi_drive=2

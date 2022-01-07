@@ -16,20 +16,22 @@ if [ ! -d "$DIR" ]; then
   sudo ./LCD35-show 180
 fi
 
-cd $DOWNLOADS
-if ! type conda &> /dev/null; then
-  # install anaconda
-  wget http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-armv7l.sh
-  sudo md5sum Miniconda3-latest-Linux-armv7l.sh # (optional) check md5
-  sudo chmod 777 /bin/bash Miniconda3-latest-Linux-armv7l.sh
-  /bin/bash Miniconda3-latest-Linux-armv7l.sh -b -f # -> change default directory to /home/pi/miniconda3
-  echo "export PATH=\"/home/pi/miniconda3/bin:$PATH\"" >> /home/pi/.bashrc # add to path
-  #sudo reboot -h now
-  conda install -y anaconda-client
-  
-fi
+#cd $DOWNLOADS
+#if ! type conda &> /dev/null; then
+#  # install anaconda
+#  wget http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-armv7l.sh
+#  sudo md5sum Miniconda3-latest-Linux-armv7l.sh # (optional) check md5
+#  sudo chmod 777 /bin/bash Miniconda3-latest-Linux-armv7l.sh
+#  /bin/bash Miniconda3-latest-Linux-armv7l.sh -b -f # -> change default directory to /home/pi/miniconda3
+#  echo "export PATH=\"/home/pi/miniconda3/bin:$PATH\"" >> /home/pi/.bashrc # add to path
+#  #sudo reboot -h now
+#  conda install -y anaconda-client
+#  
+#fi
 
 cd ..
+
+export DISPLAY=:0
 
 #DIR="/home/pi/dt_fm"
 #if [ ! -d "$DIR" ]; then
@@ -39,14 +41,14 @@ cd ..
 #fi
 #
 #cd $DIR
-conda install -y anaconda-client
-conda config --add channels rpi
-#conda install -y python=3.8
-conda create --name synth
-source activate synth
-conda install -y --file requirements.txt
-sudo apt-get install python3-venv 
-sudo apt-get install aptitude
+#conda install -y anaconda-client
+#conda config --add channels rpi
+##conda install -y python=3.8
+#conda create --name synth
+#source activate synth
+#conda install -y --file requirements.txt
+#sudo apt-get install python3-venv 
+#sudo apt-get install aptitude
 
 #cd ~
 #python3 -m venv dt_fm
@@ -67,11 +69,14 @@ sudo apt-get install aptitude
 
 
 # only do these copies here. boot info for RPI
-sudo cp $DIR/random/cmdline.txt /boot/cmdline.txt
-sudo cp $DIR/random/config.txt /boot/config.txt
+
+DIR="/home/pi/dt_fm"
+#sudo cp $DIR/random/cmdline.txt /boot/cmdline.txt
+#sudo cp $DIR/random/config.txt /boot/config.txt
 
 mkdir -p /home/pi/.config/autostart/
 sudo cp $DIR/random/dt01.desktop /home/pi/.config/autostart/
 sudo chmod +x /home/pi/.config/autostart/*
 
+chmod 777 $DIR/startscript.sh
 #pwd

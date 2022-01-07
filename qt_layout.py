@@ -169,7 +169,8 @@ class MainWindow(QWidget):
 if __name__ == '__main__':
 	app = QApplication(sys.argv)
 	main_window = MainWindow()
-	if "armv7l" in platform.platform():
+	print(platform.platform())
+	if "aarch64" in platform.platform():
 		main_window.showFullScreen()
 	else:
 		main_window.show()
