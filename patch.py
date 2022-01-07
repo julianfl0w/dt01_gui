@@ -1,3 +1,7 @@
+import os
+os.system("export XAUTHORITY=/home/pi/.Xauthority")
+os.system("export DISPLAY=:0")
+
 import struct
 from bitarray import bitarray
 import logging
@@ -12,11 +16,10 @@ import mido
 import math
 import hjson as json
 import socket
-import os
 import traceback
 import pickle
 import dt01
-import keyboard
+import keyboard, pyautogui
 import logging
 import collections
 import math
@@ -30,7 +33,7 @@ logger = logging.getLogger('DT01')
 	
 MIDINOTES      = 128
 CONTROLCOUNT   = 128
-maxIntArray    = np.array([2**30]*8, dtype=np.int)
+maxIntArray    = np.array([2**30]*8, dtype=np.int32)
 newInc         = maxIntArray.copy()
 
 def noteToFreq(note):
@@ -267,14 +270,6 @@ class Patch():
 			logger.debug("Setting op " + str(self.activeOperator) + " control: " + str(msg.control) + " value: " + str(msg.value/127.0))
 			
 			# forward some controls
-			# PUT THIS BACK
-			
-			#if msg.control == 0:
-			#	self.midi2commands(mido.Message('control_change', control= dt01.ctrl_opno      ], value = 6 ))
-			#	self.midi2commands(mido.Message('control_change', control= dt01.ctrl_env      ], value = msg.value ))
-			#if msg.control == 1:
-			#	self.midi2commands(mido.Message('control_change', control= dt01.ctrl_opno      ], value = 7 ))
-			#	self.midi2commands(mido.Message('control_change', control= dt01.ctrl_env      ], value = msg.value ))
 			
 			# route control3 to control 7 because sometimes 3 is volume control
 			if msg.control == 3:
@@ -288,6 +283,12 @@ class Patch():
 				
 			if msg.control == dt01.ctrl_shift:
 				self.formatAndSend(dt01.cmd_shift , self.controlNum2Val[dt01.ctrl_shift])
+				
+				
+			if msg.control == dt01.ctrl_vibrato_env:
+				dt01.formatAndSend(dt01.cmd_env_rate , self.lowestVoiceIndex, 7, [0] * self.polyphony)
+				dt01.formatAndSend(dt01.cmd_env , self.lowestVoiceIndex, 7, [(msg.value/127.0)*2**29] * self.polyphony)
+				dt01.formatAndSend(dt01.cmd_env_rate , self.lowestVoiceIndex, 7, [(msg.value/127.0)*2**29] * self.polyphony)
 				
 				
 			if msg.control == dt01.ctrl_tremolo_env:
@@ -427,6 +428,7 @@ def startup(patchFilename = "patches/aaa/J__Rhodes_.json"):
 	logger.debug("Entering main loop. Press Control-C to exit.")
 	loopstart = time.time()
 	lastCheck = 0
+	mousePosLast = 0
 	try:
 		maxLoop = 0
 		# Just wait for keyboard interrupt,
@@ -479,7 +481,7 @@ def startup(patchFilename = "patches/aaa/J__Rhodes_.json"):
 			loopstart = time.time()
 			
 			# process the IRQUEUE
-			if(GPIO.input(37)):
+			while(GPIO.input(37)):
 				voiceno, opnos = dt01.getIRQueue()
 				GLOBAL_DEFAULT_PATCH.processIRQueue(voiceno, opnos)
 				
@@ -491,6 +493,14 @@ def startup(patchFilename = "patches/aaa/J__Rhodes_.json"):
 			except zmq.Again as e:
 				pass
 			
+			mouseX, mouseY = pyautogui.position()
+			mouseX /= pyautogui.size()[0]
+			mouseY /= pyautogui.size()[1]
+			if (mouseX, mouseY) != mousePosLast:
+				mousePosLast = (mouseX, mouseY)
+				GLOBAL_DEFAULT_PATCH.midi2commands(mido.Message('control_change', control= dt01.ctrl_tremolo_env, value = int(mouseX*127)))
+				GLOBAL_DEFAULT_PATCH.midi2commands(mido.Message('control_change', control= dt01.ctrl_vibrato_env, value = int(mouseY*127)))
+				#logger.debug((mouseX, mouseY))
 				
 				
 	except KeyboardInterrupt:
