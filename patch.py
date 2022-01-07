@@ -2,7 +2,6 @@ import struct
 from bitarray import bitarray
 import logging
 import RPi.GPIO as GPIO
-from ilock import ILock
 import json
 import sys
 import numpy as np 
@@ -501,4 +500,4 @@ def startup(patchFilename = "patches/aaa/J__Rhodes_.json"):
 		midiin.close_port()
 		del midiin
 if __name__ == "__main__":
-	startup("/home/pi/dt01_gui/patches/aaa/J__Rhodes_.json")
+	startup("/home/pi/dt_fm/patches/aaa/J__Rhodes_.json")

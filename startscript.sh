@@ -1,7 +1,8 @@
 #!/bin/bash
-# run sudo cp dt01.desktop /home/pi/.config/autostart/
-# then 
-# run chmod +x /home/pi/.config/autostart/*
+# for autostart: 
+# sudo echo "@/home/pi/dt_fm/startscript.sh" > /etc/xdg/lxsession/LXDE-pi/autostart
+
+sudo killall python3
 
 export DISPLAY=:0
 

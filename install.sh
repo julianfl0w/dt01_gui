@@ -5,6 +5,10 @@ DOWNLOADS="/home/pi/Downloads"
 cd $DOWNLOADS
 DIR="/home/pi/Downloads/LCD-show"
 if [ ! -d "$DIR" ]; then
+  # add autostart
+  sudo echo "@/home/pi/dt_fm/startscript.sh" > /etc/xdg/lxsession/LXDE-pi/autostart
+
+
   sudo apt-get update
   sudo apt-get upgrade
   # Take action if $DIR not exists. #
@@ -67,16 +71,22 @@ export DISPLAY=:0
 #sudo apt-get install pyqt5-dev
 #python3 -m pip install --upgrade pip
 
-
+sudo apt-get install -y libasound2-dev
+sudo apt-get install -y libjack-dev
 # only do these copies here. boot info for RPI
 
 DIR="/home/pi/dt_fm"
 #sudo cp $DIR/random/cmdline.txt /boot/cmdline.txt
 #sudo cp $DIR/random/config.txt /boot/config.txt
 
+# configure autostart
 mkdir -p /home/pi/.config/autostart/
 sudo cp $DIR/random/dt01.desktop /home/pi/.config/autostart/
 sudo chmod +x /home/pi/.config/autostart/*
+
+
+# disable desktop wizard
+sudo rm /etc/xdg/autostart/piwiz.desktop
 
 chmod 777 $DIR/startscript.sh
 #pwd

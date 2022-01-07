@@ -2,7 +2,6 @@ import spi_interface
 import struct
 from bitarray import bitarray
 import logging
-from ilock import ILock
 import sys
 import numpy as np 
 import time
@@ -156,7 +155,7 @@ class DT01():
 		self.baseIncrement    = np.zeros((self.polyphony, OPERATORCOUNT))
 		self.incrementScale   = np.zeros((self.polyphony, OPERATORCOUNT))
 		self.defaultIncrement = np.zeros((self.polyphony, OPERATORCOUNT))
-		self.tosend           = np.zeros((self.polyphony, OPERATORCOUNT), dtype = np.int)
+		self.tosend           = np.zeros((self.polyphony, OPERATORCOUNT), dtype = np.int32)
 		
 		self.initialize(initDict)
 		
@@ -173,7 +172,7 @@ class DT01():
 		logger.debug(modifier)
 		self.tosend = (self.baseIncrement   [lowestVoice.index:lowestVoice.index+polyphony] + \
 				 self.incrementScale  [lowestVoice.index:lowestVoice.index+polyphony] * \
-				 self.defaultIncrement[lowestVoice.index:lowestVoice.index+polyphony] * modifier).astype(np.int, copy = False)
+				 self.defaultIncrement[lowestVoice.index:lowestVoice.index+polyphony] * modifier).astype(np.int32, copy = False)
 		for op in lowestVoice.operators:
 			op.formatAndSend(cmd_increment, self.tosend[:, op.index], voicemode = True)
 	
@@ -183,6 +182,8 @@ class DT01():
 		lowestVoiceIndex = min([v.index for v in voices])
 		initIRQueue()
 		
+		print(initDict["sounding"])
+		print([initDict["sounding"]]*len(voices))
 		formatAndSend(cmd_sounding     , lowestVoiceIndex, 0, [initDict["sounding"]]*len(voices))
 		formatAndSend(cmd_fm_algo      , lowestVoiceIndex, 0, [initDict["fm_algo" ]]*len(voices))
 		formatAndSend(cmd_am_algo      , lowestVoiceIndex, 0, [initDict["am_algo" ]]*len(voices))
@@ -221,7 +222,7 @@ class Voice():
 		self.defaultIncrement = 0
 		self.indexInCluster = 0
 		self.operators = []
-		self.opZeros = np.array([0]* OPERATORCOUNT, dtype=np.int)
+		self.opZeros = np.array([0]* OPERATORCOUNT, dtype=np.int32)
 
 		for opindex in range(OPERATORCOUNT):
 			self.operators += [Operator(self, opindex, dt01_inst)]
@@ -231,14 +232,14 @@ class Voice():
 		self.channels += [Channel(self, 1)]
 		
 		self.allChildren = self.channels + self.operators 
-		self.allIncrements = np.zeros((OPERATORCOUNT), dtype=np.int)
+		self.allIncrements = np.zeros((OPERATORCOUNT), dtype=np.int32)
 	
 		# state info
-		self.envelopeLevelAbsolute = np.zeros((self.dt01_inst.phaseCount, OPERATORCOUNT), dtype=np.int)
-		self.envRatePerSample      = np.zeros((self.dt01_inst.phaseCount, OPERATORCOUNT), dtype=np.int)
+		self.envelopeLevelAbsolute = np.zeros((self.dt01_inst.phaseCount, OPERATORCOUNT), dtype=np.int32)
+		self.envRatePerSample      = np.zeros((self.dt01_inst.phaseCount, OPERATORCOUNT), dtype=np.int32)
 		self.envTimeSeconds        = np.zeros((self.dt01_inst.phaseCount, OPERATORCOUNT), dtype=np.float)
-		self.envTimeSamples        = np.zeros((self.dt01_inst.phaseCount, OPERATORCOUNT), dtype=np.int)
-		self.envStepAbsolute       = np.zeros((self.dt01_inst.phaseCount, OPERATORCOUNT), dtype=np.int)
+		self.envTimeSamples        = np.zeros((self.dt01_inst.phaseCount, OPERATORCOUNT), dtype=np.int32)
+		self.envStepAbsolute       = np.zeros((self.dt01_inst.phaseCount, OPERATORCOUNT), dtype=np.int32)
 		
 	def setAllIncrements(self, modifier):
 		for op in self.operators:
@@ -258,7 +259,7 @@ class Voice():
 	def silenceAllOps(self):
 		self.formatAndSend(cmd_env_rate, self.opZeros[:6], voicemode=False)
 		self.formatAndSend(cmd_env,      self.opZeros[:6], voicemode=False)
-		self.formatAndSend(cmd_env_rate, np.maximum(np.ones((6), dtype = np.int), self.envStepAbsolute[3,:6]), voicemode=False)                               
+		self.formatAndSend(cmd_env_rate, np.maximum(np.ones((6), dtype = np.int32), self.envStepAbsolute[3,:6]), voicemode=False)                               
 		for op in self.operators:
 			op.envelopePhase = 3
 		
@@ -326,11 +327,11 @@ class Operator():
 		self.baseIncrement = 0
 		self.incrementScale = 1
 		
-		self.envelopeLevelAbsolute = np.zeros((dt01_inst.phaseCount), dtype=np.int)
-		self.envRatePerSample      = np.zeros((dt01_inst.phaseCount), dtype=np.int)
+		self.envelopeLevelAbsolute = np.zeros((dt01_inst.phaseCount), dtype=np.int32)
+		self.envRatePerSample      = np.zeros((dt01_inst.phaseCount), dtype=np.int32)
 		self.envTimeSeconds        = np.zeros((dt01_inst.phaseCount), dtype=np.float)
-		self.envTimeSamples        = np.zeros((dt01_inst.phaseCount), dtype=np.int)
-		self.envStepAbsolute       = np.zeros((dt01_inst.phaseCount), dtype=np.int)
+		self.envTimeSamples        = np.zeros((dt01_inst.phaseCount), dtype=np.int32)
+		self.envStepAbsolute       = np.zeros((dt01_inst.phaseCount), dtype=np.int32)
 		self.envelopePhase         = 3
 		
 	def formatAndSend(self, param, value, voicemode = False):
@@ -489,15 +490,15 @@ def getIRQueue():
 def formatAndSend(paramNum, voiceno, opno, payload, voicemode = 1):
 	if type(payload) == list:
 		logger.debug("preparing (" + "v"+str(voicemode) + " : " + str(voiceno) + ":" + str(opno) + ") " + cmdNum2Name[paramNum] + " len " + str(len(payload)) + " : "  + str(payload[0:8]))
-		payload = np.array(payload, dtype=np.int)
+		payload = np.array(payload, dtype=np.int32)
 		payload = payload.byteswap().tobytes()
 	elif type(payload) == np.ndarray:
 		logger.debug("preparing (" + "v"+str(voicemode) + " : " + str(voiceno) + ":" + str(opno) + ") " + cmdNum2Name[paramNum] + " len " + str(len(payload)) + " : "  + str(payload[0:8]))
-		if payload.dtype == np.int:
+		if payload.dtype == np.int32:
 			payload = payload.byteswap().tobytes()
 		else:
 			logger.warning("USE INT PAYLOADS! " + cmdNum2Name[paramNum])
-			payload = np.array(payload, dtype=np.int)
+			payload = np.array(payload, dtype=np.int32)
 			payload = payload.byteswap().tobytes()
 			
 	else:
@@ -505,7 +506,7 @@ def formatAndSend(paramNum, voiceno, opno, payload, voicemode = 1):
 			logger.debug("sending (" + str(voiceno) + ":" + str(opno) + ") " + cmdNum2Name[paramNum] + " " + str(payload))
 		payload = struct.pack(">I", int(payload))
 	payload_array = [paramNum, 1 << opno, (voicemode << 7) | (voiceno >> 8), voiceno] + [int(i) for i in payload] 
-	#logger.debug(str(payload_array[0]) + ": " + str([hex(p) for p in payload_array[:32]]))
+	logger.debug(str(payload_array[0]) + ": " + str([hex(p) for p in payload_array[:32]]))
 	ret = spi_interface.send(payload_array)
 	return ret
 	
