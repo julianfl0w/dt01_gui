@@ -29,6 +29,7 @@ html5lib==1.1
 idna==2.10
 isort==5.6.4
 itsdangerous==1.1.0
+iw-parse==0.0.3
 jedi==0.18.0
 Jinja2==2.11.3
 keyboard==0.13.5
@@ -49,6 +50,7 @@ mypy-extensions==0.4.3
 numpy==1.19.5
 oauthlib==3.1.0
 olefile==0.46
+onboard==1.4.1
 pantilthat==0.0.7
 parso==0.8.1
 pbr==5.5.0
