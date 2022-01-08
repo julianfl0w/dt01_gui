@@ -23,6 +23,8 @@ class ActionButton(QPushButton):
 		self.setStyleSheet(stylesheet)
 		self.pressed.connect(self.onPress)
 		
+		self.setMaximumSize(480,320);
+		
 	def onPress(self):
 		self.parentLayout.anyButtonPressed(self)
 			
@@ -35,13 +37,14 @@ class RadioLabelButton(QPushButton):
 		self.setFont(QFont('Arial', 30))
 		self.pressed.connect(self.select)
 		self.setStyleSheet("text-align: left; ")
+		self.setMaximumSize(480,320);
 				
 	def select(self):
 		# blank buttons are unselectable
 		if self.text() != "":
 			print('The button <%s> is being pressed' % self.text())
 			self.selected = True
-			self.setStyleSheet("text-align: left; background-color: blue")
+			self.setStyleSheet("text-align: left; background-color: lightblue")
 			self.parentLayout.anyButtonPressed(self)
 		
 	def deselect(self):
@@ -50,7 +53,7 @@ class RadioLabelButton(QPushButton):
 
 class HalfNav(QHBoxLayout):
 		
-	def __init__(self, parentLayout):
+	def __init__(self, parentLayout, size_hint=(0.333, 0.3)):
 		super().__init__()
 		self.parentLayout = parentLayout
 		button_scroll_folder_up   = ActionButton(text="▲", parentLayout = self, stylesheet = "")
@@ -66,7 +69,7 @@ class HalfNav(QHBoxLayout):
 		self.addWidget(button_scroll_folder_up  )
 		self.addWidget(button_scroll_folder_down)
 		self.addWidget(exit_button)
-		self.size_hint = (1, 0.3)
+		self.size_hint = size_hint
 	
 	def anyButtonPressed(self, instance):
 		pass
@@ -80,6 +83,8 @@ class NavBox(QHBoxLayout):
 		button_scroll_folder_up   = ActionButton(text="▲", parentLayout = self, stylesheet = "")
 		button_scroll_folder_down = ActionButton(text="▼", parentLayout = self, stylesheet = "")
 		settings_button           = ActionButton(text="⚙", parentLayout = self, stylesheet = "")
+		self.wifi_button          = ActionButton(text="◍", parentLayout = self, stylesheet = "")
+		#self.wifi_button          = ActionButton(text="W", parentLayout = self, stylesheet = "")
 		button_scroll_file_up     = ActionButton(text="▲", parentLayout = self, stylesheet = "")
 		button_scroll_file_down   = ActionButton(text="▼", parentLayout = self, stylesheet = "")
 		
@@ -93,11 +98,21 @@ class NavBox(QHBoxLayout):
 		button_scroll_folder_down.setFixedHeight(50)
 		button_scroll_file_up    .setFixedHeight(50)
 		button_scroll_file_down  .setFixedHeight(50)
+		
+		button_scroll_folder_up  .setMaximumSize(480/7, 50)
+		button_scroll_folder_down.setMaximumSize(480/7, 50)
+		button_scroll_file_up    .setMaximumSize(480/7, 50)
+		button_scroll_file_down  .setMaximumSize(480/7, 50)
+		settings_button          .setMaximumSize(480/7, 50)
+		self.wifi_button         .setMaximumSize(480/7, 50)
+		
 		self.addWidget(button_scroll_folder_up  )
 		self.addWidget(button_scroll_folder_down)
 		self.addWidget(settings_button)
+		self.addWidget(self.wifi_button)
 		self.addWidget(button_scroll_file_up    )
 		self.addWidget(button_scroll_file_down  )
+		#self.setMaximumSize(480,320);
 		self.size_hint = (1, 0.3)
 		
 	def anyButtonPressed(self, instance):
@@ -192,13 +207,13 @@ class SliceViewSelect(SliceViewBase):
 		self.parentLayout.anyButtonPressed(instance)
 
 class SelectItemFromList(QVBoxLayout):
-	def __init__(self, parentLayout, items, itemsInSlice = 4):
+	def __init__(self, parentLayout, items, itemsInSlice = 4, size_hint=(1.0, 1.0)):
 		super().__init__()
 		self.parentLayout = parentLayout
 		
 		self.slice = SliceViewAction(self, items, itemsInSlice)
-		self.slice.buttons[0].size_hint = (1.0, 1.0)
-		self.size_hint = (1.0, 1.0)
+		#self.slice.buttons[0].size_hint = size_hint
+		#self.size_hint = size_hint
 		
 		self.navbox = HalfNav(self)
 		self.addLayout(self.slice )

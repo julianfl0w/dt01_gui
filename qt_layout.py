@@ -11,6 +11,14 @@ import subprocess
 import json
 from qt_modules import *
 from rpiWifi import *
+import socket
+import git
+import datetime
+
+# git stuff
+repo = git.Repo("/home/pi/dt_fm")
+main = repo.head.reference
+commitDate = str(datetime.datetime.fromtimestamp(main.commit.committed_date))
 
 def conditionalShow(wind):
 	if "aarch64" in platform.platform():
@@ -32,7 +40,7 @@ class TextEntryWindow(QWidget):
 
 	def returnText(self):
 		self.callback(self.passwordEdit.text())
-		#os.system("killall onboard")
+		os.system("killall onboard")
 		#conditionalShow(self.parent)
 		self.close()
 		
@@ -74,7 +82,7 @@ class TextEntryWindow(QWidget):
 		#os.system("xdotool search \"onboard\" windowactivate --sync &")
 		
 		self.setFixedWidth(480)
-		self.setFixedHeight(150)
+		self.setFixedHeight(160)
 				
 		self.centerWindow()
 		
@@ -85,7 +93,9 @@ class TextEntryWindow(QWidget):
 class SSIDWindow(QWidget):
 	def connect(self, passwd):
 		ESSID = self.hostDict["ESSID"]
-		RPIConnectToWifi(ESSID, passwd)
+		while len(passwd) < 8:
+			passwd += "X"
+		connectToWifi(ESSID, passwd)
 		self.close()
 
 	def connectToHost(self, hostDict):
@@ -95,7 +105,7 @@ class SSIDWindow(QWidget):
 			self.tew = TextEntryWindow(parent = None, callback = self.connect, essid = hostDict.get("ESSID")) # a window cannot have another window as parent. this kills it
 			conditionalShow(self.tew )
 		else:
-			RPIConnectToWifi(ESSID, "")
+			connectToWifi(self.hostDict["ESSID"], "", blocking = False)
 		self.close()
 			
 	
@@ -114,7 +124,7 @@ class SSIDWindow(QWidget):
 			
 	def scanSSIDs(self):
 		
-		allHosts = RPIGetAvailableNetworks()
+		allHosts = getAvailableNetworks()
 		
 		SSIDs = [hostDict.get("ESSID").replace("\"","") for hostDict in allHosts]
 		FREQs = [hostDict.get("Frequency").split(" ")[0].replace("\"","") for hostDict in allHosts]
@@ -138,13 +148,16 @@ class SSIDWindow(QWidget):
 class SettingsWindow(QWidget):
 	def __init__(self, parent=None):
 		super().__init__(parent)
-		self.layout = SelectItemFromList(self, ["Wifi 📶", "Reboot"])
+		s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+		s.connect(("8.8.8.8", 80))
+		ipstring = s.getsockname()[0] 
+		self.layout = SelectItemFromList(self, ["WiFi", ipstring, commitDate, "Reboot"])
 		self.setLayout(self.layout)
 		
 	def anyButtonPressed(self, instance):
 		print(instance.text())
 		txt = instance.text()
-		if txt == "Wifi 📶":
+		if txt == "WiFi":
 			SSIDWindow_inst = SSIDWindow()
 			conditionalShow(SSIDWindow_inst)
 		if txt == "Reboot":
@@ -175,8 +188,10 @@ class MainWindow(QWidget):
 		self.allCategoriesDir = os.path.join(sys.path[0], 'patches/')
 		self.folderSlice = SliceViewSelect(self, [""]*4)
 		self.folderSlice.buttons[0].size_hint = (0.5, 1.0)
+		self.folderSlice.buttons[0].setMaximumSize = (220, 160)
 		self.folderSlice.setItemsFromDirectory(self.allCategoriesDir)
 		self.fileSlice   = SliceViewSelect(self, [""]*4) # start fileslice empty for now
+		self.fileSlice.buttons[0].setMaximumSize = (220, 160)
 		
 		self.folderSlice.buttons[0].select() #select the first one
 		self.fileSlice.buttons[0].select()  #select the first one
@@ -193,9 +208,15 @@ class MainWindow(QWidget):
 
 		self.setLayout(self.verticalBox)
 		
-		
 		return None
-
+	def checkWifi(self):
+		essid = getConnectedSSID()
+		if len(essid):
+			self.navbox.wifi_button.setStyleSheet("background-color: green")
+		else:
+			self.navbox.wifi_button.setStyleSheet("background-color: red")
+		
+		
 def CheckReturn(retval):
 	print(retval)
 	
@@ -206,6 +227,11 @@ if __name__ == '__main__':
 	#print(platform.platform())
 	conditionalShow(main_window)
 		
+	timer = QTimer()
+	#time = QTime(0, 0, 0)
+	timer.timeout.connect(main_window.checkWifi)
+	timer.start(2000)
+
 	sys.exit(app.exec_())
 
  
