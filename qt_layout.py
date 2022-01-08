@@ -11,6 +11,12 @@ import subprocess
 import json
 from qt_modules import *
 
+def conditionalShow(wind):
+	if "aarch64" in platform.platform():
+		wind.showFullScreen()
+	else:
+		wind.show()
+
 class TextEntryWindow(QWidget):
 	
 	def centerWindow(self):
@@ -19,45 +25,83 @@ class TextEntryWindow(QWidget):
 		y = centerPoint.y()
 		print("y:" + str(y))
 		y /= 2
-		centerPoint.setY(y)
+		centerPoint.setY(int(y))
 		qtRectangle.moveCenter(centerPoint)
 		self.move(qtRectangle.topLeft())
 
 	def returnText(self):
-		self.callback(self.lineEdit.text())
+		self.callback(self.passwordEdit.text())
+		#os.system("killall onboard")
+		conditionalShow(self.parent)
+		self.hide()
 		
-	def __init__(self, parent, callback = None):
-		
+	def btnstate(self,b):
+		if b.isChecked():
+			self.passwordEdit.setEchoMode(QLineEdit.Normal)
+		else:
+			self.passwordEdit.setEchoMode(QLineEdit.Password)
+			
+	def __init__(self, essid = "wifi", parent = None, callback = None):
+		print("Creating TEW")
 		super().__init__(parent)
-		self.lineEdit = QLineEdit(self)
+		self.parent = parent
 		self.callback = callback
-		self.lineEdit.returnPressed.connect(self.returnText)
-		self.bottomHalf = QFrame(self)
+		self.passwordEdit = QLineEdit(self)
+		self.passwordEdit.returnPressed.connect(self.returnText)
+		#self.bottomHalf = QFrame(self)
 		self.layout   = QVBoxLayout()
 		self.label    = QLabel(self)
-		self.label.setText("Enter Password")
+		self.label.setText("Enter Password for " + essid)
 		
-		self.layout.addWidget(self.label)
-		self.layout.addWidget(self.lineEdit)
-		self.layout.addWidget(self.bottomHalf)
+		self.showPassword = QCheckBox("Show Password")
+		self.showPassword.stateChanged.connect(lambda:self.btnstate(self.showPassword))
+		self.showPassword.setChecked(False)
+		self.btnstate(self.showPassword)
+		
+		self.label       .setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
+		self.passwordEdit.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
+		self.showPassword.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
+		
+		self.layout.addWidget(self.label       )
+		self.layout.addWidget(self.passwordEdit)
+		self.layout.addWidget(self.showPassword)
+		#self.layout.addWidget(self.bottomHalf)
+	
 	
 		self.setLayout(self.layout)
-		self.setFixedWidth(480)
-		self.setFixedHeight(160)
-				
 		os.system("onboard -s 480x160 -x 0 -y 160 &")
 		#os.system("xdotool search \"onboard\" windowactivate --sync &")
 		
+		self.setFixedWidth(480)
+		self.setFixedHeight(150)
+				
 		self.centerWindow()
+		
 		self.setWindowFlag(Qt.FramelessWindowHint)
+		print("Done Creating TEW")
 		return None
 	
 class SSIDWindow(QWidget):
+	def connect(self, passwd):
+		ESSID = self.hostDict["ESSID"]
+		print("connecting to " + ESSID)
+		command = "sudo nmcli dev wifi connect " + ESSID + " password \"" + passwd + "\""
+		print(command)
+		os.system(command)
+		self.close()
+	
 	def connectToHost(self, hostDict):
+		self.hostDict = hostDict
 		print(json.dumps(hostDict, indent = 4))
 		if hostDict.get("Authentication Suites (1)") == "PSK":
-			tew = TextEntryWindow(self)
-			tew.show()
+			self.tew = TextEntryWindow(parent = None, callback = self.connect, essid = hostDict.get("ESSID")) # a window cannot have another window as parent. this kills it
+			conditionalShow(self.tew )
+		else:
+			command = "sudo nmcli dev wifi connect " + ESSID
+			print(command)
+			os.system(command)
+		self.close()
+			
 	
 	def anyButtonPressed(self, instance):
 		print(instance.text())
@@ -142,7 +186,7 @@ class MainWindow(QWidget):
 			SSIDWindow_inst.showFullScreen()
 		else:
 			SSIDWindow_inst.show()
-		#sys.exit()
+		#self.hide()
 	
 	def __init__(self, parent=None):
 		super().__init__(parent)
@@ -180,14 +224,10 @@ def CheckReturn(retval):
 	
 if __name__ == '__main__':
 	app = QApplication(sys.argv)
-	#main_window = MainWindow()
-	main_window = TextEntryWindow(None, CheckReturn)
-	print(platform.platform())
-	if "aarch64" in platform.platform():
-		#main_window.showFullScreen()
-		main_window.show()
-	else:
-		main_window.show()
+	main_window = MainWindow()
+	#tew = TextEntryWindow(None, CheckReturn)
+	#print(platform.platform())
+	conditionalShow(main_window)
 		
 	sys.exit(app.exec_())
 
