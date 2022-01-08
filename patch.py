@@ -19,7 +19,9 @@ import socket
 import traceback
 import pickle
 import dt01
-import keyboard, pyautogui
+import keyboard
+import mouse
+#import pyautogui
 import logging
 import collections
 import math
@@ -151,9 +153,7 @@ class Patch():
 		# ignoring pitch envelope generator for now
 	
 		for voice in self.voices:
-			for operator in voice.operators[:6]:
-				opDict = patchDict["Operator" + str(operator.index+1)]
-				operator.setup(opDict, sounding0indexed)
+			voice.setupOps(patchDict, sounding0indexed)
 			
 		self.dt01_inst.initialize(initDict, voices = self.voices)
 		
@@ -171,7 +171,7 @@ class Patch():
 		# ignoring pitch envelope generator for now
 	
 		for voice in self.voices:
-			for operator in voice.operators[:6]:
+			for operator in voice.operators[:dt01.SOUNDINGOPS]:
 				opDict = patchDict["Operator" + str(operator.index+1)]
 				operator.dx7setup(opDict, sounding0indexed)
 			
@@ -185,13 +185,14 @@ class Patch():
 		for opno in opnos:
 			
 			op = self.dt01_inst.voices[voiceno].operators[opno]
-			phase = (op.envelopePhase + 1) % self.phaseCount
+			phase = (op.envelopePhase + 1) % op.phaseCount
 				
-			#logger.debug("\n\nproc IRQUEUE! voice:" + str(voiceno) + " op:"+ str(opno) + " phase:" + str(phase))
+			logger.debug("\n\nproc IRQUEUE! voice:" + str(voiceno) + " op:"+ str(opno) + " phase:" + str(phase))
 
 			if phase == 0:
-				pass
 				logger.debug("STOP PHASE")
+			elif phase == op.phaseCount - 2:
+				logger.debug("HOLD PHASE")
 			else:
 				op.formatAndSend(dt01.cmd_env_rate, 0)                               
 				op.formatAndSend(dt01.cmd_env,      op.envelopeLevelAbsolute[phase])
@@ -423,7 +424,8 @@ def startup(patchFilename = "patches/aaa/J__Rhodes_.json"):
 	
 	qwerty2midi = {'a':48, 's':50, 'd':52, \
 		'f':53, 'g':55, 'h':57, 'j':59, 'k':60, 'l':62, \
-		'w':49, 'e':51, 't':54, 'y':56, 'u':58, 'o':61, 'p':63}
+		'w':49, 'e':51, 't':54, 'y':56, 'u':58, 'o':61, \
+		'p':63, ';':65, "\'":67}
 
 	logger.debug("Entering main loop. Press Control-C to exit.")
 	loopstart = time.time()
@@ -493,9 +495,11 @@ def startup(patchFilename = "patches/aaa/J__Rhodes_.json"):
 			except zmq.Again as e:
 				pass
 			
-			mouseX, mouseY = pyautogui.position()
-			mouseX /= pyautogui.size()[0]
-			mouseY /= pyautogui.size()[1]
+			mouseX, mouseY = mouse.get_position()
+			#mouseX /= pyautogui.size()[0]
+			#mouseY /= pyautogui.size()[1]
+			mouseX /= 480
+			mouseY /= 360
 			if (mouseX, mouseY) != mousePosLast:
 				mousePosLast = (mouseX, mouseY)
 				GLOBAL_DEFAULT_PATCH.midi2commands(mido.Message('control_change', control= dt01.ctrl_tremolo_env, value = int(mouseX*127)))

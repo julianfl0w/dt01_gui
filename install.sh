@@ -71,6 +71,7 @@ export DISPLAY=:0
 #sudo apt-get install pyqt5-dev
 #python3 -m pip install --upgrade pip
 
+sudo apt-get install -y network-manager
 sudo apt-get install -y libasound2-dev
 sudo apt-get install -y libjack-dev
 # only do these copies here. boot info for RPI

@@ -1,9 +1,9 @@
 {
     "Filename": "sysex/rhodes1.syx",
     "Voice": 30,
-    "Name": "sine",
-    "Algorithm": 1,
-    "Feedback": 0,
+    "Name": "J. Rhodes ",
+    "Algorithm": 5,
+    "Feedback": 6,
     "LFO": {
         "Wave": "Sine",
         "Speed": 50,
@@ -29,7 +29,7 @@
         "AM Sensitivity": 2,
         "Oscillator Mode": "Frequency (Ratio)",
         "Frequency": 1,
-        "Detune": 0,
+        "Detune": 3,
         "Keyboard Level Scaling": {
             "Breakpoint": "A",
             "Left Curve": "-LIN",
@@ -41,15 +41,15 @@
         "Output Level": 99,
         "Key Velocity Sensitivity": 2,
         "Time (seconds)": [
-            1.0,
-            1.0,
-            1.0,
-            1.0
+            0.96,
+            0.25,
+            0.25,
+            0.67
         ],
         "Level (unit interval)": [
             0.99,
             0.75,
-            0.55,
+            0.0,
             0.0
         ]
     },
@@ -66,7 +66,7 @@
             "Right Depth": 0
         },
         "Keyboard Rate Scaling": 3,
-        "Output Level": 0,
+        "Output Level": 70,
         "Key Velocity Sensitivity": 7,
         "Time (seconds)": [
             0.95,
@@ -94,7 +94,7 @@
             "Right Depth": 0
         },
         "Keyboard Rate Scaling": 3,
-        "Output Level": 0,
+        "Output Level": 99,
         "Key Velocity Sensitivity": 2,
         "Time (seconds)": [
             0.95,
@@ -122,7 +122,7 @@
             "Right Depth": 0
         },
         "Keyboard Rate Scaling": 3,
-        "Output Level": 0,
+        "Output Level": 89,
         "Key Velocity Sensitivity": 6,
         "Time (seconds)": [
             0.95,
@@ -150,7 +150,7 @@
             "Right Depth": 0
         },
         "Keyboard Rate Scaling": 3,
-        "Output Level": 0,
+        "Output Level": 99,
         "Key Velocity Sensitivity": 0,
         "Time (seconds)": [
             0.95,
@@ -178,7 +178,7 @@
             "Right Depth": 19
         },
         "Keyboard Rate Scaling": 3,
-        "Output Level": 0,
+        "Output Level": 79,
         "Key Velocity Sensitivity": 6,
         "Time (seconds)": [
             0.95,

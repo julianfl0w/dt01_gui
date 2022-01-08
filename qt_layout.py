@@ -8,98 +8,230 @@ import os
 import sys
 import zmq
 import platform
+import subprocess
 
 # fullscreen only on RPI (i use Windows otherwise)
 #if platform.system() == 'Linux':
 #	Window.fullscreen = True
 
-FILES_PER_SCREEN = 4
-
-class jButton(QPushButton):
-	def __init__(self, text, app_inst):
+class ActionButton(QPushButton):
+	def __init__(self, text, parentLayout):
 		super().__init__(text = text)
-		selected = False
-		self.app_inst = app_inst
+		self.parentLayout = parentLayout
 		self.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
 		self.setFont(QFont('Arial', 30))
+		
+class RadioLabelButton(QPushButton):
+	def __init__(self, text, parentLayout):
+		super().__init__(text = text)
+		selected = False
+		self.parentLayout   = parentLayout
+		self.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
+		self.setFont(QFont('Arial', 30))
+		self.pressed.connect(self.select)
+				
+	def select(self):
+		# blank buttons are unselectable
+		if self.text() != "":
+			print('The button <%s> is being pressed' % self.text())
+			self.selected = True
+			self.setStyleSheet("background-color: blue")
+			self.parentLayout.anyButtonPressed(self)
+		
+	def deselect(self):
+		self.selected = False
+		self.setStyleSheet("background-color: white")
 
+class HalfNav(QHBoxLayout):
+		
+	def __init__(self, parentLayout):
+		super().__init__()
+		self.parentLayout = parentLayout
+		button_scroll_folder_up   = ActionButton(text="▲", parentLayout = self)
+		button_scroll_folder_down = ActionButton(text="▼", parentLayout = self)
+		exit_button           = ActionButton(text="✖", parentLayout = self)
+		
+		exit_button.pressed.connect          (parentLayout.exit)
+		button_scroll_folder_up.pressed.connect  (parentLayout.slice.up  )
+		button_scroll_folder_down.pressed.connect(parentLayout.slice.down)
+		
+		button_scroll_folder_up  .setFixedHeight(50)
+		button_scroll_folder_down.setFixedHeight(50)
+		self.addWidget(button_scroll_folder_up  )
+		self.addWidget(button_scroll_folder_down)
+		self.addWidget(exit_button)
+		self.size_hint = (1, 0.3)
+		
+class NavBox(QHBoxLayout):
+		
+	def __init__(self, parentLayout):
+		super().__init__()
+		self.parentLayout = parentLayout
+		button_scroll_folder_up   = ActionButton(text="▲", parentLayout = self)
+		button_scroll_folder_down = ActionButton(text="▼", parentLayout = self)
+		settings_button           = ActionButton(text="⚙", parentLayout = self)
+		button_scroll_file_up     = ActionButton(text="▲", parentLayout = self)
+		button_scroll_file_down   = ActionButton(text="▼", parentLayout = self)
+		
+		settings_button.pressed.connect          (parentLayout.settings)
+		button_scroll_folder_up.pressed.connect  (parentLayout.folderSlice.up  )
+		button_scroll_folder_down.pressed.connect(parentLayout.folderSlice.down)
+		button_scroll_file_up.pressed.connect    (parentLayout.fileSlice.up    )
+		button_scroll_file_down.pressed.connect  (parentLayout.fileSlice.down  )
+		
+		button_scroll_folder_up  .setFixedHeight(50)
+		button_scroll_folder_down.setFixedHeight(50)
+		button_scroll_file_up    .setFixedHeight(50)
+		button_scroll_file_down  .setFixedHeight(50)
+		self.addWidget(button_scroll_folder_up  )
+		self.addWidget(button_scroll_folder_down)
+		self.addWidget(settings_button)
+		self.addWidget(button_scroll_file_up    )
+		self.addWidget(button_scroll_file_down  )
+		self.size_hint = (1, 0.3)
+
+class SliceViewBase(QVBoxLayout):
+		
+	def __init__(self, parentLayout, items, itemsInSlice = 4):
+		super().__init__()
+		# make 4 buttons labelled with the first 4 items
+		self.items   = items
+		self.itemsInSlice = itemsInSlice
+		#make sure there are at least 4 items
+		while len(self.items) % itemsInSlice:
+			self.items += [""]
+			
+		self.selectedText = ""
+		self.parentLayout = parentLayout
+			
+	def up(self, instance = None):
+		self.items = self.items[-self.itemsInSlice:] + self.items[:-self.itemsInSlice]
+		self.updateButtons()
+				
+	def down(self, instance = None):
+		self.items = self.items[self.itemsInSlice:] + self.items[:self.itemsInSlice]
+		self.updateButtons()
+		
+	def setItems(self, items):
+		self.items = items
+		self.updateButtons()
+		
+	def setItemsFromDirectory(self, directory):
+		self.basePath = directory
+		self.items = [file for file in sorted(os.listdir(directory))] # if file.endswith(".json") 
+		self.items = [i.replace(".json","") for i in self.items]
+		#make sure there are at least 4 items
+		while len(self.items) % self.itemsInSlice:
+			self.items += [""]
+		self.updateButtons()
+		
+# view a slice (subwindow) of options as clickable buttons
+class SliceViewAction(SliceViewBase):
+		
+	def __init__(self, parentLayout, items, itemsInSlice = 4):
+		super().__init__(parentLayout, items, itemsInSlice)
+		
+		self.buttons = [ActionButton(text=t, parentLayout = self) for t in self.items[:itemsInSlice]]
+		for button in self.buttons:
+			self.addWidget(button )
+	
+	def updateButtons(self):
+		for i, button in enumerate(self.buttons):
+			button.setText(self.items[i])
+		
+	# gets called on button selection
+	def anyButtonPressed(self, instance):
+		self.selectedText = instance.text()
+		# call parent layout callback
+		self.parentLayout.anyButtonPressed(self)
+	
+		
+		
+# view a slice (subwindow) of options as clickable buttons
+class SliceViewSelect(SliceViewBase):
+		
+	def __init__(self, parentLayout, items, itemsInSlice = 4):
+		super().__init__(parentLayout, items, itemsInSlice)
+		
+		self.buttons = [RadioLabelButton(text=t, parentLayout = self) for t in self.items[:itemsInSlice]]
+		for button in self.buttons:
+			self.addWidget(button )
+	
+	def updateButtons(self):
+		for i, button in enumerate(self.buttons):
+			button.setText(self.items[i])
+			if button.text() == self.selectedText:
+				button.select()
+			else:
+				button.deselect()
+		
+	# gets called on button selection
+	def anyButtonPressed(self, instance):
+		self.selectedText = instance.text()
+		
+		# deselect all other buttons
+		for button in self.buttons:
+			if button != instance:
+				button.deselect()
+				
+		# call parent layout callback
+		self.parentLayout.anyButtonPressed(self)
+
+class SelectItemFromList(QVBoxLayout):
+	def __init__(self, parentLayout, items, itemsInSlice = 4):
+		super().__init__()
+		self.parentLayout = parentLayout
+		
+		self.slice = SliceViewAction(self, items, itemsInSlice)
+		self.slice.buttons[0].size_hint = (0.5, 1.0)
+		
+		self.navbox = HalfNav(self)
+		self.addLayout(self.slice )
+		self.addLayout(self.navbox )
+		
+	def exit(self, instance = None):
+		self.parentLayout.hide()
+		
+class SSIDWindow(QWidget):
+	def anyButtonPressed(self, instance):
+		print(instance.text())
+		pass
+		#if instance == self.folderSlice:
+		#	self.fileSlice.setItemsFromDirectory(os.path.join(self.folderSlice.basePath, self.folderSlice.selectedText))
+		#elif instance == self.fileSlice:
+		#	sendpath = os.path.join(instance.basePath, instance.selectedText) + ".json"
+		#	self.socket.send_string(sendpath)
+			
+			
+	
+	def __init__(self, parent=None):
+		super().__init__(parent)
+		
+		SSIDs = subprocess.check_output(["sudo iw dev wlan0 scan | grep 'SSID:'"], shell=True).decode(encoding='UTF-8')
+		SSIDs = SSIDs.split('\n')
+		SSIDs = [str(s.replace('\tSSID: ', '')) for s in SSIDs]
+		SSIDs = [s for s in SSIDs if s != '']
+		print(SSIDs)
+		self.setLayout(SelectItemFromList(self, SSIDs))
+		
+	
 class MainWindow(QWidget):
 
-	def filecallback(self, instance = None):
-		if instance == None: instance = self.sender()
-		if instance.text() == "":
-			return
-		print('The button <%s> is being pressed' % instance.text())
-		print(instance.app_inst)
-		for button in instance.app_inst.button_files:
-			button.selected = False
-			button.setStyleSheet("background-color: white")
-		instance.selected = True
-		#instance.setStyleSheet("background-color: lightblue")
-		instance.setStyleSheet("background-color: blue")
-		
-		sendpath = os.path.join(instance.app_inst.allPatchesDir, instance.app_inst.activeFolder, instance.text()) + ".json"
-		instance.app_inst.socket.send_string(sendpath)
-
-	def foldercallback(self, instance = None):
-		if instance == None: instance = self.sender()
-		if instance.text() == "":
-			return
-		print('The button <%s> is being pressed' % instance.text())
-		print(instance.app_inst)
-		for button in instance.app_inst.button_folders:
-			button.selected = False
-			button.setStyleSheet("background-color: white")
-		instance.selected = True
-		#instance.setStyleSheet("background-color: lightblue")
-		instance.setStyleSheet("background-color: blue")
-		instance.app_inst.activeFolder = instance.text()
-		instance.app_inst.filelist = [file for file in sorted(os.listdir(os.path.join(instance.app_inst.allPatchesDir, instance.text()))) if file.endswith(".json") ]
-		while len(instance.app_inst.filelist) % FILES_PER_SCREEN:
-			instance.app_inst.filelist += [""]
-		for i, button in enumerate(instance.app_inst.button_files):
-			button.setText(instance.app_inst.filelist[i].replace(".json",""))
-		
-	def filesUp(self, instance = None):
-		if instance == None: instance = self.sender()
-		instance.app_inst.filelist = instance.app_inst.filelist[-FILES_PER_SCREEN:] + instance.app_inst.filelist[:-FILES_PER_SCREEN]
-		for i, button in enumerate(instance.app_inst.button_files):
-			button.selected = False
-			button.setStyleSheet("background-color: white")
-			button.setText(instance.app_inst.filelist[i].replace(".json",""))
-		self.filecallback(instance.app_inst.button_files[0])
-
-	def filesDown(self, instance = None):
-		if instance == None: instance = self.sender()
-		instance.app_inst.filelist = instance.app_inst.filelist[FILES_PER_SCREEN:] + instance.app_inst.filelist[:FILES_PER_SCREEN]
-		for i, button in enumerate(instance.app_inst.button_files):
-			button.selected = False
-			button.setStyleSheet("background-color: white")
-			button.setText(instance.app_inst.filelist[i].replace(".json",""))
-		self.filecallback(instance.app_inst.button_files[0])
-
-	def foldersUp(self, instance = None):
-		if instance == None: instance = self.sender()
-		instance.app_inst.categories = instance.app_inst.categories[-FILES_PER_SCREEN:] + instance.app_inst.categories[:-FILES_PER_SCREEN]
-		for i, button in enumerate(instance.app_inst.button_folders):
-			button.selected = False
-			button.setStyleSheet("background-color: white")
-			button.setText(instance.app_inst.categories[i].replace(".json",""))
-		self.foldercallback(instance.app_inst.button_folders[0])
-
-	def foldersDown(self, instance = None):
-		if instance == None: instance = self.sender()
-		instance.app_inst.categories = instance.app_inst.categories[FILES_PER_SCREEN:] + instance.app_inst.categories[:FILES_PER_SCREEN]
-		for i, button in enumerate(instance.app_inst.button_folders):
-			button.selected = False
-			button.setStyleSheet("background-color: white")
-			button.setText(instance.app_inst.categories[i].replace(".json",""))
-		self.foldercallback(instance.app_inst.button_folders[0])
-
+	def anyButtonPressed(self, instance):
+		if instance == self.folderSlice:
+			self.fileSlice.setItemsFromDirectory(os.path.join(self.folderSlice.basePath, self.folderSlice.selectedText))
+		elif instance == self.fileSlice:
+			sendpath = os.path.join(instance.basePath, instance.selectedText) + ".json"
+			self.socket.send_string(sendpath)
+			
+			
 	def settings(self, instance = None):
-		sys.exit()
-
-
+		if "aarch64" in platform.platform():
+			self.SSIDWindow.showFullScreen()
+		else:
+			self.SSIDWindow.show()
+		#sys.exit()
+	
 	def __init__(self, parent=None):
 		super().__init__(parent)
 		
@@ -107,63 +239,29 @@ class MainWindow(QWidget):
 		self.socket = context.socket(zmq.PUB)
 		self.socket.bind("tcp://*:5555")
 		
-		self.allPatchesDir = os.path.join(sys.path[0], 'patches/')
-		self.categories = sorted(os.listdir(self.allPatchesDir))
-		while len(self.categories) % FILES_PER_SCREEN:
-			self.categories += [""]
-				
-		self.folderbox   = QVBoxLayout()
-		self.button_folders   = [jButton(text=self.categories[i], app_inst = self) for i in range(FILES_PER_SCREEN)]
-		for button in self.button_folders:
-			button.pressed.connect(self.foldercallback)
-			self.folderbox.addWidget(button )
-			
-		self.filebox   = QVBoxLayout()
-		self.button_files   = [jButton(text="File", app_inst = self) for i in range(FILES_PER_SCREEN)]
-		for button in self.button_files:
-			button.pressed.connect(self.filecallback)
-			self.filebox.addWidget(button )
-			
-		self.foldercallback(self.button_folders[0]) #select the first one
-		self.filecallback(self.button_files[0]) #select the first one
+		self.allCategoriesDir = os.path.join(sys.path[0], 'patches/')
+		self.folderSlice = SliceViewSelect(self, [""]*4)
+		self.folderSlice.buttons[0].size_hint = (0.5, 1.0)
+		self.folderSlice.setItemsFromDirectory(self.allCategoriesDir)
+		self.fileSlice   = SliceViewSelect(self, [""]*4) # start fileslice empty for now
 		
+		self.folderSlice.buttons[0].select() #select the first one
+		self.fileSlice.buttons[0].select()  #select the first one
 		
-		button_scroll_folder_up   = jButton(text="▲", app_inst = self)
-		button_scroll_folder_up.pressed.connect(self.foldersUp)
-		button_scroll_folder_down = jButton(text="▼", app_inst = self)
-		button_scroll_folder_down.pressed.connect(self.foldersDown)
-		
-		settings_button   = jButton(text="⚙", app_inst = self)
-		settings_button.pressed.connect(self.settings)
-		
-		button_scroll_file_up   = jButton(text="▲", app_inst = self)
-		button_scroll_file_up.pressed.connect(self.filesUp)
-		button_scroll_file_down = jButton(text="▼", app_inst = self)
-		button_scroll_file_down.pressed.connect(self.filesDown)
-		
-		self.navbox    = QHBoxLayout()
-		button_scroll_folder_up  .setFixedHeight(50)
-		button_scroll_folder_down.setFixedHeight(50)
-		button_scroll_file_up    .setFixedHeight(50)
-		button_scroll_file_down  .setFixedHeight(50)
-		self.navbox.addWidget(button_scroll_folder_up  )
-		self.navbox.addWidget(button_scroll_folder_down)
-		self.navbox.addWidget(settings_button)
-		self.navbox.addWidget(button_scroll_file_up    )
-		self.navbox.addWidget(button_scroll_file_down  )
-		self.navbox.size_hint = (1, 0.3)
-
+		self.navbox = NavBox(self)
    
-		self.filefolderbox   = QHBoxLayout()
-		self.filefolderbox.addLayout(self.folderbox )
-		self.filefolderbox.addLayout(self.filebox )
+		self.filefolderSlice   = QHBoxLayout()
+		self.filefolderSlice.addLayout(self.folderSlice )
+		self.filefolderSlice.addLayout(self.fileSlice )
 		
 		self.verticalBox	 = QVBoxLayout()
-		self.verticalBox.addLayout(self.filefolderbox )
+		self.verticalBox.addLayout(self.filefolderSlice )
 		self.verticalBox.addLayout(self.navbox )
 
 		self.setLayout(self.verticalBox)
-
+		
+		self.SSIDWindow = SSIDWindow()
+		
 		return None
 
 if __name__ == '__main__':

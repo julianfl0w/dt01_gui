@@ -22,6 +22,8 @@ logger = logging.getLogger('DT01')
 MIDINOTES      = 128
 CONTROLCOUNT   = 128
 OPERATORCOUNT  = 8
+SOUNDINGOPS    = 6
+SOUNDINGOPS    = 1
 
 controlNum2Name = [""]*CONTROLCOUNT
 
@@ -122,7 +124,7 @@ class DT01():
 		self.voices = []
 		self.voiceSets = []
 		self.loanTime = [0]*self.patchesPerDT01
-		self.phaseCount = 100 # we store in memory up to 100 phases
+		self.maxPhaseCount = 10 # we store in memory up to 100 phases
 		
 		index = 0
 		for i in range(self.patchesPerDT01):
@@ -235,33 +237,40 @@ class Voice():
 		self.allIncrements = np.zeros((OPERATORCOUNT), dtype=np.int32)
 	
 		# state info
-		self.envelopeLevelAbsolute = np.zeros((self.dt01_inst.phaseCount, OPERATORCOUNT), dtype=np.int32)
-		self.envRatePerSample      = np.zeros((self.dt01_inst.phaseCount, OPERATORCOUNT), dtype=np.int32)
-		self.envTimeSeconds        = np.zeros((self.dt01_inst.phaseCount, OPERATORCOUNT), dtype=np.float)
-		self.envTimeSamples        = np.zeros((self.dt01_inst.phaseCount, OPERATORCOUNT), dtype=np.int32)
-		self.envStepAbsolute       = np.zeros((self.dt01_inst.phaseCount, OPERATORCOUNT), dtype=np.int32)
-		
+		self.envLevelAbsolute = np.zeros((self.dt01_inst.maxPhaseCount, OPERATORCOUNT), dtype=np.int32)
+		self.envRatePerSample      = np.zeros((self.dt01_inst.maxPhaseCount, OPERATORCOUNT), dtype=np.int32)
+		self.envTimeSeconds        = np.zeros((self.dt01_inst.maxPhaseCount, OPERATORCOUNT), dtype=np.float)
+		self.envTimeSamples        = np.zeros((self.dt01_inst.maxPhaseCount, OPERATORCOUNT), dtype=np.int32)
+		self.envStepAbsolute       = np.zeros((self.dt01_inst.maxPhaseCount, OPERATORCOUNT), dtype=np.int32)
+	
+	def setupOps(self, patchDict, sounding0indexed):
+		for operator in self.operators:
+			opDict = patchDict["Operator" + str(operator.index+1)]
+			operator.setup(opDict, sounding0indexed)
+
 	def setAllIncrements(self, modifier):
 		for op in self.operators:
 			logger.debug(modifier)
 			self.allIncrements[op.index] = min(op.baseIncrement + op.incrementScale * op.voice.note.defaultIncrement * modifier, 2**30)
-		self.formatAndSend(cmd_increment, self.allIncrements[:6], voicemode = False)
+		self.formatAndSend(cmd_increment, self.allIncrements[:SOUNDINGOPS], voicemode = False)
 	
 	def setPhaseAllOps(self, phase):
-		self.formatAndSend(cmd_env_rate, self.opZeros[:6], voicemode=False)                               
-		self.formatAndSend(cmd_env,      self.envelopeLevelAbsolute[phase,:6], voicemode=False)
-		self.formatAndSend(cmd_env_rate, self.envRatePerSample[phase,:6], voicemode=False)                           
+		self.formatAndSend(cmd_env_rate, self.opZeros[:SOUNDINGOPS], voicemode=False)                               
+		self.formatAndSend(cmd_env,      self.envLevelAbsolute[phase,:SOUNDINGOPS], voicemode=False)
+		self.formatAndSend(cmd_env_rate, self.envRatePerSample[phase,:SOUNDINGOPS], voicemode=False)                           
 		for op in self.operators:
 			op.envelopePhase = phase
 		
 		return 0
 		
-	def silenceAllOps(self):
-		self.formatAndSend(cmd_env_rate, self.opZeros[:6], voicemode=False)
-		self.formatAndSend(cmd_env,      self.opZeros[:6], voicemode=False)
-		self.formatAndSend(cmd_env_rate, np.maximum(np.ones((6), dtype = np.int32), self.envStepAbsolute[3,:6]), voicemode=False)                               
+	def silenceAllOps(self):              
+		phases = []
 		for op in self.operators:
-			op.envelopePhase = 3
+			op.envelopePhase = op.phaseCount - 1
+			phases += [op.envelopePhase]
+		self.formatAndSend(cmd_env_rate, self.opZeros[:SOUNDINGOPS], voicemode=False)
+		self.formatAndSend(cmd_env,      self.opZeros[:SOUNDINGOPS], voicemode=False)
+		self.formatAndSend(cmd_env_rate, np.maximum(np.ones((6), dtype = np.int32), self.envStepAbsolute[phases[:SOUNDINGOPS],:SOUNDINGOPS]), voicemode=False)        
 		
 		return 0
 		
@@ -326,12 +335,13 @@ class Operator():
 		self.selected = False
 		self.baseIncrement = 0
 		self.incrementScale = 1
+		self.phaseCount     = 4
 		
-		self.envelopeLevelAbsolute = np.zeros((dt01_inst.phaseCount), dtype=np.int32)
-		self.envRatePerSample      = np.zeros((dt01_inst.phaseCount), dtype=np.int32)
-		self.envTimeSeconds        = np.zeros((dt01_inst.phaseCount), dtype=np.float)
-		self.envTimeSamples        = np.zeros((dt01_inst.phaseCount), dtype=np.int32)
-		self.envStepAbsolute       = np.zeros((dt01_inst.phaseCount), dtype=np.int32)
+		self.envLevelAbsolute      = np.zeros((dt01_inst.maxPhaseCount), dtype=np.int32)
+		self.envRatePerSample      = np.zeros((dt01_inst.maxPhaseCount), dtype=np.int32)
+		self.envTimeSeconds        = np.zeros((dt01_inst.maxPhaseCount), dtype=np.float)
+		self.envTimeSamples        = np.zeros((dt01_inst.maxPhaseCount), dtype=np.int32)
+		self.envStepAbsolute       = np.zeros((dt01_inst.maxPhaseCount), dtype=np.int32)
 		self.envelopePhase         = 3
 		
 	def formatAndSend(self, param, value, voicemode = False):
@@ -379,52 +389,56 @@ class Operator():
 	
 	def setEnvs2(self, phase):
 		
-		self.envTimeSamples[phase]   = self.envTimeSeconds[phase] * SamplesPerSecond
-		self.envStepAbsolute[phase]  = np.abs(self.envelopeLevelAbsolute[phase] - self.envelopeLevelAbsolute[(phase+self.dt01_inst.phaseCount-1) % self.dt01_inst.phaseCount])
+		self.envTimeSamples   = self.envTimeSeconds * SamplesPerSecond
+		self.envStepAbsolute  = np.abs(self.envLevelAbsolute - self.envLevelAbsolute[(phase+self.dt01_inst.phaseCount-1) % self.dt01_inst.phaseCount])
 		# if new level is too close to old level, set to the smallest increase that makes time
 		lastPhase = (phase + self.dt01_inst.phaseCount -1) % self.dt01_inst.phaseCount
-		if abs(self.envelopeLevelAbsolute[phase] - self.envelopeLevelAbsolute[lastPhase]) < self.envTimeSamples[phase]:
-			self.envelopeLevelAbsolute[phase] = self.envelopeLevelAbsolute[lastPhase] + self.envTimeSamples[phase]
-			self.envStepAbsolute[phase]  = np.abs(self.envelopeLevelAbsolute[phase] - self.envelopeLevelAbsolute[(phase+self.dt01_inst.phaseCount-1) % self.dt01_inst.phaseCount])
-			self.envRatePerSample[phase] = 1
+		if abs(self.envLevelAbsolute - self.envLevelAbsolute[lastPhase]) < self.envTimeSamples:
+			self.envLevelAbsolute = self.envLevelAbsolute[lastPhase] + self.envTimeSamples
+			self.envStepAbsolute  = np.abs(self.envLevelAbsolute - self.envLevelAbsolute[(phase+self.dt01_inst.phaseCount-1) % self.dt01_inst.phaseCount])
+			self.envRatePerSample = 1
 		else:
-			self.envRatePerSample[phase] = self.envStepAbsolute[phase] / self.envTimeSamples[phase] # scale the envelope rate to the difference between this step and the next
+			self.envRatePerSample = self.envStepAbsolute / self.envTimeSamples # scale the envelope rate to the difference between this step and the next
 		
 		# update dt01 array
-		self.voice.envelopeLevelAbsolute[phase, self.index] = self.envelopeLevelAbsolute[phase]
-		self.voice.envRatePerSample     [phase, self.index] = self.envRatePerSample     [phase]
-		self.voice.envTimeSeconds       [phase, self.index] = self.envTimeSeconds       [phase]
-		self.voice.envTimeSamples       [phase, self.index] = self.envTimeSamples       [phase]
-		self.voice.envStepAbsolute      [phase, self.index] = self.envStepAbsolute      [phase]
+		self.voice.envLevelAbsolute[self.index] = self.envLevelAbsolute
+		self.voice.envRatePerSample     [self.index] = self.envRatePerSample     
+		self.voice.envTimeSeconds       [self.index] = self.envTimeSeconds       
+		self.voice.envTimeSamples       [self.index] = self.envTimeSamples       
+		self.voice.envStepAbsolute      [self.index] = self.envStepAbsolute      
 		
 	
 	def setEnvs(self, opDict):
 		self.phaseCount = len(opDict["Time (seconds)"])
 		self.envTimeSeconds       [:self.phaseCount] = opDict["Time (seconds)"]
 		logger.debug(np.multiply(opDict["Level (unit interval)"], 2**29))
-		logger.debug(self.envelopeLevelAbsolute[:self.phaseCount])
-		self.envelopeLevelAbsolute[:self.phaseCount] = np.multiply(opDict["Level (unit interval)"], 2**29)
+		logger.debug(self.envLevelAbsolute[:self.phaseCount])
+		self.envLevelAbsolute[:self.phaseCount] = np.multiply(opDict["Level (unit interval)"], 2**29)
 		self.envelopePhase = self.phaseCount- 1
 		self.finalPhase = self.phaseCount- 1
 		
-		for phase in range(self.phaseCount):
-			self.envTimeSamples[phase]   = self.envTimeSeconds[phase] * SamplesPerSecond
-			self.envStepAbsolute[phase]  = np.abs(self.envelopeLevelAbsolute[phase] - self.envelopeLevelAbsolute[(phase+self.dt01_inst.phaseCount-1) % self.dt01_inst.phaseCount])
-			# if new level is too close to old level, set to the smallest increase that makes time
-			lastPhase = (phase + self.dt01_inst.phaseCount -1) % self.dt01_inst.phaseCount
-			if abs(self.envelopeLevelAbsolute[phase] - self.envelopeLevelAbsolute[lastPhase]) < self.envTimeSamples[phase]:
-				self.envelopeLevelAbsolute[phase] = self.envelopeLevelAbsolute[lastPhase] + self.envTimeSamples[phase]
-				self.envStepAbsolute[phase]  = np.abs(self.envelopeLevelAbsolute[phase] - self.envelopeLevelAbsolute[(phase+self.dt01_inst.phaseCount-1) % self.dt01_inst.phaseCount])
-				self.envRatePerSample[phase] = 1
-			else:
-				self.envRatePerSample[phase] = self.envStepAbsolute[phase] / self.envTimeSamples[phase] # scale the envelope rate to the difference between this step and the next
-			
-			# update dt01 array
-			self.voice.envelopeLevelAbsolute[phase, self.index] = self.envelopeLevelAbsolute[phase]
-			self.voice.envRatePerSample     [phase, self.index] = self.envRatePerSample     [phase]
-			self.voice.envTimeSeconds       [phase, self.index] = self.envTimeSeconds       [phase]
-			self.voice.envTimeSamples       [phase, self.index] = self.envTimeSamples       [phase]
-			self.voice.envStepAbsolute      [phase, self.index] = self.envStepAbsolute      [phase]
+		self.envTimeSamples   = self.envTimeSeconds * SamplesPerSecond
+		logger.debug(self.envLevelAbsolute)
+		logger.debug(np.roll(self.envLevelAbsolute, -1, axis = 0))
+		
+		# if new level is too close to old level, set to the smallest increase that makes time
+		while sum(abs(self.envStepAbsolute) >= self.envTimeSamples):
+			envPreviousLevel      = np.roll(self.envLevelAbsolute, -1, axis = 0)
+			self.envStepAbsolute  = np.abs(self.envLevelAbsolute - envPreviousLevel)
+			envMinimumLevelHigh           = envPreviousLevel + self.envTimeSamples
+			envMinimumLevelLow            = envPreviousLevel - self.envTimeSamples
+			tooCloseGoingUp   = self.envLevelAbsolute < envMinimumLevelHigh
+			tooCloseGoingDown = self.envLevelAbsolute > envMinimumLevelLow
+			self.envLevelAbsolute = np.where(tooCloseGoingUp,   envMinimumLevelHigh, self.envLevelAbsolute)
+			self.envLevelAbsolute = np.where(tooCloseGoingDown, envMinimumLevelLow , self.envLevelAbsolute)
+			self.envRatePerSample      = np.where(tooCloseGoingUp or tooCloseGoingDown, 1, self.envRatePerSample)
+
+		# update dt01 array
+		self.voice.envLevelAbsolute[self.index] = self.envLevelAbsolute
+		self.voice.envRatePerSample     [self.index] = self.envRatePerSample     
+		self.voice.envTimeSeconds       [self.index] = self.envTimeSeconds       
+		self.voice.envTimeSamples       [self.index] = self.envTimeSamples       
+		self.voice.envStepAbsolute      [self.index] = self.envStepAbsolute      
 		
 		
 		
@@ -444,16 +458,16 @@ class Operator():
 		opno = self.index
 		# sounding vs nonsounding difference?
 		if opno in sounding:
-			self.envelopeLevelAbsolute[phase] = levelReal*(2**31)
+			self.envLevelAbsolute = levelReal*(2**31)
 		else:
-			self.envelopeLevelAbsolute[phase] = levelReal*(2**31)
+			self.envLevelAbsolute = levelReal*(2**31)
 			
 		# Falling env is 4x slower than rising
-		if self.envelopeLevelAbsolute[phase] > self.envelopeLevelAbsolute[(phase+self.dt01_inst.phaseCount-1) % self.dt01_inst.phaseCount]:
+		if self.envLevelAbsolute > self.envLevelAbsolute[(phase+self.dt01_inst.phaseCount-1) % self.dt01_inst.phaseCount]:
 			timeSeconds *= 4
 			
 		#clip
-		self.envTimeSeconds[phase]   = max(0.005, timeSeconds)
+		self.envTimeSeconds   = max(0.005, timeSeconds)
 		self.setEnvs2()
 		
 	def __unicode__(self):
