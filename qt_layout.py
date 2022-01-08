@@ -1,4 +1,3 @@
-
 # imports
 from PyQt5.QtWidgets import * 
 from PyQt5.QtGui import * 
@@ -9,227 +8,140 @@ import sys
 import zmq
 import platform
 import subprocess
+import json
+from qt_modules import *
 
-# fullscreen only on RPI (i use Windows otherwise)
-#if platform.system() == 'Linux':
-#	Window.fullscreen = True
-
-class ActionButton(QPushButton):
-	def __init__(self, text, parentLayout):
-		super().__init__(text = text)
-		self.parentLayout = parentLayout
-		self.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
-		self.setFont(QFont('Arial', 30))
-		
-class RadioLabelButton(QPushButton):
-	def __init__(self, text, parentLayout):
-		super().__init__(text = text)
-		selected = False
-		self.parentLayout   = parentLayout
-		self.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
-		self.setFont(QFont('Arial', 30))
-		self.pressed.connect(self.select)
-				
-	def select(self):
-		# blank buttons are unselectable
-		if self.text() != "":
-			print('The button <%s> is being pressed' % self.text())
-			self.selected = True
-			self.setStyleSheet("background-color: blue")
-			self.parentLayout.anyButtonPressed(self)
-		
-	def deselect(self):
-		self.selected = False
-		self.setStyleSheet("background-color: white")
-
-class HalfNav(QHBoxLayout):
-		
-	def __init__(self, parentLayout):
-		super().__init__()
-		self.parentLayout = parentLayout
-		button_scroll_folder_up   = ActionButton(text="▲", parentLayout = self)
-		button_scroll_folder_down = ActionButton(text="▼", parentLayout = self)
-		exit_button           = ActionButton(text="✖", parentLayout = self)
-		
-		exit_button.pressed.connect          (parentLayout.exit)
-		button_scroll_folder_up.pressed.connect  (parentLayout.slice.up  )
-		button_scroll_folder_down.pressed.connect(parentLayout.slice.down)
-		
-		button_scroll_folder_up  .setFixedHeight(50)
-		button_scroll_folder_down.setFixedHeight(50)
-		self.addWidget(button_scroll_folder_up  )
-		self.addWidget(button_scroll_folder_down)
-		self.addWidget(exit_button)
-		self.size_hint = (1, 0.3)
-		
-class NavBox(QHBoxLayout):
-		
-	def __init__(self, parentLayout):
-		super().__init__()
-		self.parentLayout = parentLayout
-		button_scroll_folder_up   = ActionButton(text="▲", parentLayout = self)
-		button_scroll_folder_down = ActionButton(text="▼", parentLayout = self)
-		settings_button           = ActionButton(text="⚙", parentLayout = self)
-		button_scroll_file_up     = ActionButton(text="▲", parentLayout = self)
-		button_scroll_file_down   = ActionButton(text="▼", parentLayout = self)
-		
-		settings_button.pressed.connect          (parentLayout.settings)
-		button_scroll_folder_up.pressed.connect  (parentLayout.folderSlice.up  )
-		button_scroll_folder_down.pressed.connect(parentLayout.folderSlice.down)
-		button_scroll_file_up.pressed.connect    (parentLayout.fileSlice.up    )
-		button_scroll_file_down.pressed.connect  (parentLayout.fileSlice.down  )
-		
-		button_scroll_folder_up  .setFixedHeight(50)
-		button_scroll_folder_down.setFixedHeight(50)
-		button_scroll_file_up    .setFixedHeight(50)
-		button_scroll_file_down  .setFixedHeight(50)
-		self.addWidget(button_scroll_folder_up  )
-		self.addWidget(button_scroll_folder_down)
-		self.addWidget(settings_button)
-		self.addWidget(button_scroll_file_up    )
-		self.addWidget(button_scroll_file_down  )
-		self.size_hint = (1, 0.3)
-
-class SliceViewBase(QVBoxLayout):
-		
-	def __init__(self, parentLayout, items, itemsInSlice = 4):
-		super().__init__()
-		# make 4 buttons labelled with the first 4 items
-		self.items   = items
-		self.itemsInSlice = itemsInSlice
-		#make sure there are at least 4 items
-		while len(self.items) % itemsInSlice:
-			self.items += [""]
-			
-		self.selectedText = ""
-		self.parentLayout = parentLayout
-			
-	def up(self, instance = None):
-		self.items = self.items[-self.itemsInSlice:] + self.items[:-self.itemsInSlice]
-		self.updateButtons()
-				
-	def down(self, instance = None):
-		self.items = self.items[self.itemsInSlice:] + self.items[:self.itemsInSlice]
-		self.updateButtons()
-		
-	def setItems(self, items):
-		self.items = items
-		self.updateButtons()
-		
-	def setItemsFromDirectory(self, directory):
-		self.basePath = directory
-		self.items = [file for file in sorted(os.listdir(directory))] # if file.endswith(".json") 
-		self.items = [i.replace(".json","") for i in self.items]
-		#make sure there are at least 4 items
-		while len(self.items) % self.itemsInSlice:
-			self.items += [""]
-		self.updateButtons()
-		
-# view a slice (subwindow) of options as clickable buttons
-class SliceViewAction(SliceViewBase):
-		
-	def __init__(self, parentLayout, items, itemsInSlice = 4):
-		super().__init__(parentLayout, items, itemsInSlice)
-		
-		self.buttons = [ActionButton(text=t, parentLayout = self) for t in self.items[:itemsInSlice]]
-		for button in self.buttons:
-			self.addWidget(button )
+class TextEntryWindow(QWidget):
 	
-	def updateButtons(self):
-		for i, button in enumerate(self.buttons):
-			button.setText(self.items[i])
-		
-	# gets called on button selection
-	def anyButtonPressed(self, instance):
-		self.selectedText = instance.text()
-		# call parent layout callback
-		self.parentLayout.anyButtonPressed(self)
-	
-		
-		
-# view a slice (subwindow) of options as clickable buttons
-class SliceViewSelect(SliceViewBase):
-		
-	def __init__(self, parentLayout, items, itemsInSlice = 4):
-		super().__init__(parentLayout, items, itemsInSlice)
-		
-		self.buttons = [RadioLabelButton(text=t, parentLayout = self) for t in self.items[:itemsInSlice]]
-		for button in self.buttons:
-			self.addWidget(button )
-	
-	def updateButtons(self):
-		for i, button in enumerate(self.buttons):
-			button.setText(self.items[i])
-			if button.text() == self.selectedText:
-				button.select()
-			else:
-				button.deselect()
-		
-	# gets called on button selection
-	def anyButtonPressed(self, instance):
-		self.selectedText = instance.text()
-		
-		# deselect all other buttons
-		for button in self.buttons:
-			if button != instance:
-				button.deselect()
-				
-		# call parent layout callback
-		self.parentLayout.anyButtonPressed(self)
+	def centerWindow(self):
+		qtRectangle = self.frameGeometry()
+		centerPoint = QDesktopWidget().availableGeometry().center()
+		y = centerPoint.y()
+		print("y:" + str(y))
+		y /= 2
+		centerPoint.setY(y)
+		qtRectangle.moveCenter(centerPoint)
+		self.move(qtRectangle.topLeft())
 
-class SelectItemFromList(QVBoxLayout):
-	def __init__(self, parentLayout, items, itemsInSlice = 4):
-		super().__init__()
-		self.parentLayout = parentLayout
+	def returnText(self):
+		self.callback(self.lineEdit.text())
 		
-		self.slice = SliceViewAction(self, items, itemsInSlice)
-		self.slice.buttons[0].size_hint = (0.5, 1.0)
+	def __init__(self, parent, callback = None):
 		
-		self.navbox = HalfNav(self)
-		self.addLayout(self.slice )
-		self.addLayout(self.navbox )
+		super().__init__(parent)
+		self.lineEdit = QLineEdit(self)
+		self.callback = callback
+		self.lineEdit.returnPressed.connect(self.returnText)
+		self.bottomHalf = QFrame(self)
+		self.layout   = QVBoxLayout()
+		self.label    = QLabel(self)
+		self.label.setText("Enter Password")
 		
-	def exit(self, instance = None):
-		self.parentLayout.hide()
+		self.layout.addWidget(self.label)
+		self.layout.addWidget(self.lineEdit)
+		self.layout.addWidget(self.bottomHalf)
+	
+		self.setLayout(self.layout)
+		self.setFixedWidth(480)
+		self.setFixedHeight(160)
+				
+		os.system("onboard -s 480x160 -x 0 -y 160 &")
+		#os.system("xdotool search \"onboard\" windowactivate --sync &")
 		
+		self.centerWindow()
+		self.setWindowFlag(Qt.FramelessWindowHint)
+		return None
+	
 class SSIDWindow(QWidget):
+	def connectToHost(self, hostDict):
+		print(json.dumps(hostDict, indent = 4))
+		if hostDict.get("Authentication Suites (1)") == "PSK":
+			tew = TextEntryWindow(self)
+			tew.show()
+	
 	def anyButtonPressed(self, instance):
 		print(instance.text())
-		pass
+		ssid, freq, address = instance.text().split("✵")
+		for host in self.layout.slice.hosts:
+			if address == host.get("ADDRESS"):
+				self.connectToHost(host)
+				break
 		#if instance == self.folderSlice:
 		#	self.fileSlice.setItemsFromDirectory(os.path.join(self.folderSlice.basePath, self.folderSlice.selectedText))
 		#elif instance == self.fileSlice:
 		#	sendpath = os.path.join(instance.basePath, instance.selectedText) + ".json"
 		#	self.socket.send_string(sendpath)
 			
+	def scanSSIDs(self):
+		#SSIDs = subprocess.check_output(["sudo iw dev wlan0 scan | grep 'SSID:'"], shell=True).decode(encoding='UTF-8')
+		#SSIDs = SSIDs.split('\n')
+		#SSIDs = [str(s.replace('\tSSID: ', '')) for s in SSIDs]
+		#SSIDs = [s for s in SSIDs if s != '']
+		SSID_txt = runCommand("sudo iwlist wlan0 scan")
+		print(SSID_txt)
+		HOSTS = []
+		ssidDict = None
+		ssidLines = SSID_txt.split("\n")
+		for i, line in enumerate(ssidLines):
 			
-	
+			# add dict to master list if final line
+			if ssidDict != None:
+				if i+1 < len(ssidLines):
+					if ssidLines[i+1].startswith("          Cell"):
+						HOSTS += [ssidDict]
+				elif i+1 == len(ssidLines):
+					HOSTS += [ssidDict]
+				
+			# Cell marks beginning of interface
+			if line.startswith("          Cell"):
+				ssidDict = {}
+				ssidDict["ADDRESS"] = line.split("Address:")[1].strip()
+			else:
+				try:
+					key, value = [s.strip() for s in line.split(":")]
+					ssidDict[key] = value
+					ssidDict[key] = float(value)
+				except:
+					pass
+		print(json.dumps(HOSTS, indent = 4))
+		HOSTS = [hostDict for hostDict in HOSTS if hostDict.get("ESSID").replace("\"","").strip() != "" ] # remove empty string elements
+		HOSTS = sorted(HOSTS, key = lambda i: i['ESSID'])
+		SSIDs = [hostDict.get("ESSID").replace("\"","") for hostDict in HOSTS]
+		FREQs = [hostDict.get("Frequency").split(" ")[0].replace("\"","") for hostDict in HOSTS]
+		ADDRs = [hostDict.get("ADDRESS") for hostDict in HOSTS]
+		#SSIDs = [s for s in SSIDs if s != ""]
+		print(SSIDs)
+		ssid_freq = []
+		for s, f, a in zip(SSIDs, FREQs, ADDRs):
+			ssid_freq += [s + "✵" + f + "✵" + a]
+		self.layout.slice.setItems(ssid_freq)
+		self.layout.slice.hosts=HOSTS
+		
 	def __init__(self, parent=None):
 		super().__init__(parent)
+		self.layout = SelectItemFromList(self, [""])
+		self.setLayout(self.layout)
+		self.scanSSIDs()
 		
-		SSIDs = subprocess.check_output(["sudo iw dev wlan0 scan | grep 'SSID:'"], shell=True).decode(encoding='UTF-8')
-		SSIDs = SSIDs.split('\n')
-		SSIDs = [str(s.replace('\tSSID: ', '')) for s in SSIDs]
-		SSIDs = [s for s in SSIDs if s != '']
-		print(SSIDs)
-		self.setLayout(SelectItemFromList(self, SSIDs))
 		
 	
 class MainWindow(QWidget):
 
 	def anyButtonPressed(self, instance):
-		if instance == self.folderSlice:
+		layout = instance.parentLayout
+		if layout == self.folderSlice:
 			self.fileSlice.setItemsFromDirectory(os.path.join(self.folderSlice.basePath, self.folderSlice.selectedText))
-		elif instance == self.fileSlice:
-			sendpath = os.path.join(instance.basePath, instance.selectedText) + ".json"
+		elif layout == self.fileSlice:
+			sendpath = os.path.join(layout.basePath, layout.selectedText) + ".json"
 			self.socket.send_string(sendpath)
 			
 			
 	def settings(self, instance = None):
+		SSIDWindow_inst = SSIDWindow()
 		if "aarch64" in platform.platform():
-			self.SSIDWindow.showFullScreen()
+			SSIDWindow_inst.showFullScreen()
 		else:
-			self.SSIDWindow.show()
+			SSIDWindow_inst.show()
 		#sys.exit()
 	
 	def __init__(self, parent=None):
@@ -260,16 +172,20 @@ class MainWindow(QWidget):
 
 		self.setLayout(self.verticalBox)
 		
-		self.SSIDWindow = SSIDWindow()
 		
 		return None
 
+def CheckReturn(retval):
+	print(retval)
+	
 if __name__ == '__main__':
 	app = QApplication(sys.argv)
-	main_window = MainWindow()
+	#main_window = MainWindow()
+	main_window = TextEntryWindow(None, CheckReturn)
 	print(platform.platform())
 	if "aarch64" in platform.platform():
-		main_window.showFullScreen()
+		#main_window.showFullScreen()
+		main_window.show()
 	else:
 		main_window.show()
 		
