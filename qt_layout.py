@@ -151,7 +151,7 @@ class SettingsWindow(QWidget):
 		s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 		s.connect(("8.8.8.8", 80))
 		ipstring = s.getsockname()[0] 
-		self.layout = SelectItemFromList(self, ["WiFi", ipstring, commitDate, "Reboot"])
+		self.layout = SelectItemFromList(self, ["WiFi", ipstring, commitDate, "Reboot", "Quit"])
 		self.setLayout(self.layout)
 		
 	def anyButtonPressed(self, instance):
@@ -162,6 +162,8 @@ class SettingsWindow(QWidget):
 			conditionalShow(SSIDWindow_inst)
 		if txt == "Reboot":
 			os.system("sudo reboot")
+		if txt == "Quit":
+			sys.exit()
 		
 class MainWindow(QWidget):
 
