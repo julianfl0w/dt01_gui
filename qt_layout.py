@@ -10,6 +10,7 @@ import platform
 import subprocess
 import json
 from qt_modules import *
+from rpiWifi import *
 
 def conditionalShow(wind):
 	if "aarch64" in platform.platform():
@@ -32,8 +33,8 @@ class TextEntryWindow(QWidget):
 	def returnText(self):
 		self.callback(self.passwordEdit.text())
 		#os.system("killall onboard")
-		conditionalShow(self.parent)
-		self.hide()
+		#conditionalShow(self.parent)
+		self.close()
 		
 	def btnstate(self,b):
 		if b.isChecked():
@@ -80,16 +81,13 @@ class TextEntryWindow(QWidget):
 		self.setWindowFlag(Qt.FramelessWindowHint)
 		print("Done Creating TEW")
 		return None
-	
+
 class SSIDWindow(QWidget):
 	def connect(self, passwd):
 		ESSID = self.hostDict["ESSID"]
-		print("connecting to " + ESSID)
-		command = "sudo nmcli dev wifi connect " + ESSID + " password \"" + passwd + "\""
-		print(command)
-		os.system(command)
+		RPIConnectToWifi(ESSID, passwd)
 		self.close()
-	
+
 	def connectToHost(self, hostDict):
 		self.hostDict = hostDict
 		print(json.dumps(hostDict, indent = 4))
@@ -97,9 +95,7 @@ class SSIDWindow(QWidget):
 			self.tew = TextEntryWindow(parent = None, callback = self.connect, essid = hostDict.get("ESSID")) # a window cannot have another window as parent. this kills it
 			conditionalShow(self.tew )
 		else:
-			command = "sudo nmcli dev wifi connect " + ESSID
-			print(command)
-			os.system(command)
+			RPIConnectToWifi(ESSID, "")
 		self.close()
 			
 	
@@ -117,49 +113,19 @@ class SSIDWindow(QWidget):
 		#	self.socket.send_string(sendpath)
 			
 	def scanSSIDs(self):
-		#SSIDs = subprocess.check_output(["sudo iw dev wlan0 scan | grep 'SSID:'"], shell=True).decode(encoding='UTF-8')
-		#SSIDs = SSIDs.split('\n')
-		#SSIDs = [str(s.replace('\tSSID: ', '')) for s in SSIDs]
-		#SSIDs = [s for s in SSIDs if s != '']
-		SSID_txt = runCommand("sudo iwlist wlan0 scan")
-		print(SSID_txt)
-		HOSTS = []
-		ssidDict = None
-		ssidLines = SSID_txt.split("\n")
-		for i, line in enumerate(ssidLines):
-			
-			# add dict to master list if final line
-			if ssidDict != None:
-				if i+1 < len(ssidLines):
-					if ssidLines[i+1].startswith("          Cell"):
-						HOSTS += [ssidDict]
-				elif i+1 == len(ssidLines):
-					HOSTS += [ssidDict]
-				
-			# Cell marks beginning of interface
-			if line.startswith("          Cell"):
-				ssidDict = {}
-				ssidDict["ADDRESS"] = line.split("Address:")[1].strip()
-			else:
-				try:
-					key, value = [s.strip() for s in line.split(":")]
-					ssidDict[key] = value
-					ssidDict[key] = float(value)
-				except:
-					pass
-		print(json.dumps(HOSTS, indent = 4))
-		HOSTS = [hostDict for hostDict in HOSTS if hostDict.get("ESSID").replace("\"","").strip() != "" ] # remove empty string elements
-		HOSTS = sorted(HOSTS, key = lambda i: i['ESSID'])
-		SSIDs = [hostDict.get("ESSID").replace("\"","") for hostDict in HOSTS]
-		FREQs = [hostDict.get("Frequency").split(" ")[0].replace("\"","") for hostDict in HOSTS]
-		ADDRs = [hostDict.get("ADDRESS") for hostDict in HOSTS]
+		
+		allHosts = RPIGetAvailableNetworks()
+		
+		SSIDs = [hostDict.get("ESSID").replace("\"","") for hostDict in allHosts]
+		FREQs = [hostDict.get("Frequency").split(" ")[0].replace("\"","") for hostDict in allHosts]
+		ADDRs = [hostDict.get("ADDRESS") for hostDict in allHosts]
 		#SSIDs = [s for s in SSIDs if s != ""]
 		print(SSIDs)
 		ssid_freq = []
 		for s, f, a in zip(SSIDs, FREQs, ADDRs):
 			ssid_freq += [s + "✵" + f + "✵" + a]
 		self.layout.slice.setItems(ssid_freq)
-		self.layout.slice.hosts=HOSTS
+		self.layout.slice.hosts=allHosts
 		
 	def __init__(self, parent=None):
 		super().__init__(parent)
@@ -167,8 +133,23 @@ class SSIDWindow(QWidget):
 		self.setLayout(self.layout)
 		self.scanSSIDs()
 		
+			
 		
-	
+class SettingsWindow(QWidget):
+	def __init__(self, parent=None):
+		super().__init__(parent)
+		self.layout = SelectItemFromList(self, ["Wifi 📶", "Reboot"])
+		self.setLayout(self.layout)
+		
+	def anyButtonPressed(self, instance):
+		print(instance.text())
+		txt = instance.text()
+		if txt == "Wifi 📶":
+			SSIDWindow_inst = SSIDWindow()
+			conditionalShow(SSIDWindow_inst)
+		if txt == "Reboot":
+			os.system("sudo reboot")
+		
 class MainWindow(QWidget):
 
 	def anyButtonPressed(self, instance):
@@ -181,11 +162,7 @@ class MainWindow(QWidget):
 			
 			
 	def settings(self, instance = None):
-		SSIDWindow_inst = SSIDWindow()
-		if "aarch64" in platform.platform():
-			SSIDWindow_inst.showFullScreen()
-		else:
-			SSIDWindow_inst.show()
+		conditionalShow(SettingsWindow())
 		#self.hide()
 	
 	def __init__(self, parent=None):

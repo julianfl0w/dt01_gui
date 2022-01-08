@@ -1,0 +1,8 @@
+ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
+  update_config=1
+  country=US
+  
+network={
+	ssid="new646_Xfi"
+	psk=a362ab1c722413a80e0ca56e6b0984040ff129fdc5455bc2ccb72ad1986bff1f
+}

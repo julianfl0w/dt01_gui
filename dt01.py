@@ -420,9 +420,11 @@ class Operator():
 		self.envTimeSamples   = self.envTimeSeconds * SamplesPerSecond
 		logger.debug(self.envLevelAbsolute)
 		logger.debug(np.roll(self.envLevelAbsolute, -1, axis = 0))
-		
+		j = 0
 		# if new level is too close to old level, set to the smallest increase that makes time
 		while sum(abs(self.envStepAbsolute) >= self.envTimeSamples):
+			logger.debug("Adj " + str(j))
+			j+=1
 			envPreviousLevel      = np.roll(self.envLevelAbsolute, -1, axis = 0)
 			self.envStepAbsolute  = np.abs(self.envLevelAbsolute - envPreviousLevel)
 			envMinimumLevelHigh           = envPreviousLevel + self.envTimeSamples
@@ -431,8 +433,11 @@ class Operator():
 			tooCloseGoingDown = self.envLevelAbsolute > envMinimumLevelLow
 			self.envLevelAbsolute = np.where(tooCloseGoingUp,   envMinimumLevelHigh, self.envLevelAbsolute)
 			self.envLevelAbsolute = np.where(tooCloseGoingDown, envMinimumLevelLow , self.envLevelAbsolute)
-			self.envRatePerSample      = np.where(tooCloseGoingUp or tooCloseGoingDown, 1, self.envRatePerSample)
+			self.envRatePerSample = np.where(tooCloseGoingUp,    1, self.envRatePerSample)
+			self.envRatePerSample = np.where(tooCloseGoingDown, -1, self.envRatePerSample)
 
+		logger.debug("Finished adjustments")
+		
 		# update dt01 array
 		self.voice.envLevelAbsolute[self.index] = self.envLevelAbsolute
 		self.voice.envRatePerSample     [self.index] = self.envRatePerSample     
