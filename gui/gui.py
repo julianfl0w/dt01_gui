@@ -40,16 +40,20 @@ class TextEntryWindow(QWidget):
 
 	def returnText(self):
 		self.callback(self.passwordEdit.text())
-		os.system("killall onboard")
-		#conditionalShow(self.parent)
-		self.close()
+		self.exit()
 		
 	def btnstate(self,b):
 		if b.isChecked():
 			self.passwordEdit.setEchoMode(QLineEdit.Normal)
 		else:
 			self.passwordEdit.setEchoMode(QLineEdit.Password)
-			
+	
+	def exit(self):
+		os.system("killall onboard")
+		#conditionalShow(self.parent)
+		self.close()
+		
+	
 	def __init__(self, essid = "wifi", parent = None, callback = None):
 		print("Creating TEW")
 		super().__init__(parent)
@@ -62,24 +66,37 @@ class TextEntryWindow(QWidget):
 		self.label    = QLabel(self)
 		self.label.setText("Enter Password for " + essid)
 		
-		self.showPassword = QCheckBox("Show Password")
-		self.showPassword.stateChanged.connect(lambda:self.btnstate(self.showPassword))
-		self.showPassword.setChecked(False)
-		self.btnstate(self.showPassword)
+		self.showPasswordCheckBox = QCheckBox("Show Password")
+		self.showPasswordCheckBox.stateChanged.connect(lambda:self.btnstate(self.showPasswordCheckBox))
+		self.showPasswordCheckBox.setChecked(False)
+		self.btnstate(self.showPasswordCheckBox)
+		self.cancelButton = QPushButton(text="✖")
 		
-		self.label       .setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
-		self.passwordEdit.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
-		self.showPassword.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
+		self.label               .setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
+		self.passwordEdit        .setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
+		self.showPasswordCheckBox.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
+		self.cancelButton        .setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
+		
+		self.showWithCancelLayout   = QHBoxLayout()
+		self.cancelButton.pressed.connect(self.exit)
+		self.showWithCancelLayout.addWidget(self.showPasswordCheckBox)
+		self.showWithCancelLayout.addWidget(self.cancelButton)
 		
 		self.layout.addWidget(self.label       )
 		self.layout.addWidget(self.passwordEdit)
-		self.layout.addWidget(self.showPassword)
+		self.layout.addLayout(self.showWithCancelLayout)
 		#self.layout.addWidget(self.bottomHalf)
 	
-	
-		self.setLayout(self.layout)
-		os.system("onboard -s 480x160 -x 0 -y 160 &")
+		onboardPath  = "/home/pi/dt_fm/gui/onboard/"
+		layoutsPath  = os.path.join(onboardPath, "layouts")
+		themePath    = os.path.join(onboardPath, "themes")
+		layoutOption = " -l " + os.path.join(layoutsPath,"Phone")
+		themeOption  = " -t " + os.path.join(themePath,"ModelM.theme")
+		onboardStartCommand = "onboard " + layoutOption + themeOption + " -s 480x160 -x 0 -y 160 &"
+		print(onboardStartCommand)
+		os.system(onboardStartCommand)
 		#os.system("xdotool search \"onboard\" windowactivate --sync &")
+		self.setLayout(self.layout)
 		
 		self.setFixedWidth(480)
 		self.setFixedHeight(160)
@@ -187,7 +204,7 @@ class MainWindow(QWidget):
 		self.socket = context.socket(zmq.PUB)
 		self.socket.bind("tcp://*:5555")
 		
-		self.allCategoriesDir = os.path.join(sys.path[0], 'patches/')
+		self.allCategoriesDir = os.path.join(sys.path[0], '..', 'patches/')
 		self.folderSlice = SliceViewSelect(self, [""]*4)
 		self.folderSlice.buttons[0].size_hint = (0.5, 1.0)
 		self.folderSlice.buttons[0].setMaximumSize = (220, 160)
