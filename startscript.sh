@@ -12,5 +12,5 @@ export XAUTHORITY=/home/pi/.Xauthority
 sudo python3 /home/pi/dt_fm/clearspi.py # start over the spi
 export XAUTHORITY=/home/pi/.Xauthority
 sudo taskset 0x00000004 sudo python3 /home/pi/dt_fm/patch.py &
-python3 /home/pi/dt_fm/qt_layout.py &
+python3 /home/pi/dt_fm/gui/gui.py &
 export STARTED=1

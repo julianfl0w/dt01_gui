@@ -78,6 +78,11 @@ sudo apt-get install -y libjack-dev
 sudo apt-get install -y xdotool 
 # only do these copies here. boot info for RPI
 
+#to change hostname:
+#sudo vim /etc/hosts
+#sudo vim /etc/hostname
+
+
 DIR="/home/pi/dt_fm"
 #sudo cp $DIR/random/cmdline.txt /boot/cmdline.txt
 #sudo cp $DIR/random/config.txt /boot/config.txt
