@@ -14,8 +14,9 @@ import os
 import traceback
 import pickle
 import RPi.GPIO as GPIO
-
+from goto import with_goto
 import logging
+import faulthandler; faulthandler.enable()
 
 logger = logging.getLogger('DT01')
 
@@ -108,8 +109,13 @@ import inspect
 def DT01_fromFile(filename):
 	with open(filename, 'rb') as f:
 		return pickle.load(f)
+	
+class JObject():
+	def __str__(self):
+		return (str(type(self)) + " #" + str(self.index))
 
-class DT01():
+	
+class DT01(JObject):
 
 	def toFile(self, filename):
 		with open(filename, 'wb+') as f:
@@ -212,7 +218,7 @@ class DT01():
 		return formatAndSend(param, 0, 0, value, voicemode = voicemode)
 	
 		
-class Voice():
+class Voice(JObject):
 		
 	def __init__(self, index, dt01_inst):
 		self.dt01_inst = dt01_inst
@@ -237,14 +243,15 @@ class Voice():
 		self.allIncrements = np.zeros((OPERATORCOUNT), dtype=np.int32)
 	
 		# state info
-		self.envLevelAbsolute = np.zeros((self.dt01_inst.maxPhaseCount, OPERATORCOUNT), dtype=np.int32)
+		self.envLevelAbsolute      = np.zeros((self.dt01_inst.maxPhaseCount, OPERATORCOUNT), dtype=np.int32)
 		self.envRatePerSample      = np.zeros((self.dt01_inst.maxPhaseCount, OPERATORCOUNT), dtype=np.int32)
 		self.envTimeSeconds        = np.zeros((self.dt01_inst.maxPhaseCount, OPERATORCOUNT), dtype=np.float)
 		self.envTimeSamples        = np.zeros((self.dt01_inst.maxPhaseCount, OPERATORCOUNT), dtype=np.int32)
 		self.envStepAbsolute       = np.zeros((self.dt01_inst.maxPhaseCount, OPERATORCOUNT), dtype=np.int32)
 	
 	def setupOps(self, patchDict, sounding0indexed):
-		for operator in self.operators:
+		for operator in self.operators[:6]:
+			logger.debug(operator)
 			opDict = patchDict["Operator" + str(operator.index+1)]
 			operator.setup(opDict, sounding0indexed)
 
@@ -313,7 +320,7 @@ class Voice():
 		return formatAndSend(param, self.index, 0, value, voicemode)
 
 
-class Channel():
+class Channel(JObject):
 	def __init__(self, voice, index):
 		self.index = index
 		self.voice = voice
@@ -323,7 +330,7 @@ class Channel():
 		return formatAndSend(param, self.voice.index, self.index, value)
 		
 # OPERATOR DESCRIPTIONS
-class Operator():
+class Operator(JObject):
 	def __init__(self, voice, index, dt01_inst):
 		self.dt01_inst = dt01_inst
 		self.index = index
@@ -401,13 +408,38 @@ class Operator():
 			self.envRatePerSample = self.envStepAbsolute / self.envTimeSamples # scale the envelope rate to the difference between this step and the next
 		
 		# update dt01 array
-		self.voice.envLevelAbsolute[self.index] = self.envLevelAbsolute
-		self.voice.envRatePerSample     [self.index] = self.envRatePerSample     
-		self.voice.envTimeSeconds       [self.index] = self.envTimeSeconds       
-		self.voice.envTimeSamples       [self.index] = self.envTimeSamples       
-		self.voice.envStepAbsolute      [self.index] = self.envStepAbsolute      
-		
+		self.voice.envLevelAbsolute[:][self.index] = self.envLevelAbsolute
+		self.voice.envRatePerSample[:][self.index] = self.envRatePerSample     
+		self.voice.envTimeSeconds  [:][self.index] = self.envTimeSeconds       
+		self.voice.envTimeSamples  [:][self.index] = self.envTimeSamples       
+		self.voice.envStepAbsolute [:][self.index] = self.envStepAbsolute      
 	
+	def setMinimumRiseTime(self):
+		j = 0
+		# if new level is too close to old level, set to the smallest increase that makes time
+		protoRange = [r+1 for r in range(self.phaseCount-1)]
+		tooClose       = self.envLevelAbsolute.copy()
+		logger.debug(protoRange)
+		for phase in protoRange + [0]: # do the zeroth one last
+			j+=1
+
+			envPreviousLevel      = np.roll(self.envLevelAbsolute[:self.phaseCount], -1, axis = 0)
+			self.envStepAbsolute[phase]  = np.abs(self.envLevelAbsolute[phase] - envPreviousLevel[phase])
+
+			envMinimumLevelHigh   = envPreviousLevel[phase] + self.envTimeSamples[phase]
+			envMinimumLevelLow    = envPreviousLevel[phase] - self.envTimeSamples[phase]
+			goingUp = self.envLevelAbsolute[phase] > envPreviousLevel[phase]
+			tooClose [phase] = self.envLevelAbsolute[phase] < envMinimumLevelHigh and self.envLevelAbsolute[phase] > envMinimumLevelLow 
+
+			self.envLevelAbsolute[phase] = envMinimumLevelHigh if tooClose[phase] and goingUp     else self.envLevelAbsolute[phase]
+			self.envLevelAbsolute[phase] = envMinimumLevelLow  if tooClose[phase] and not goingUp else self.envLevelAbsolute[phase]
+			self.envRatePerSample[phase] =                   1 if tooClose[phase] and goingUp     else self.envRatePerSample[phase]
+			self.envRatePerSample[phase] =                  -1 if tooClose[phase] and not goingUp else self.envRatePerSample[phase]
+		
+		
+		return any(tooClose)
+	
+	# THe MAIN setEnvs FN
 	def setEnvs(self, opDict):
 		self.phaseCount = len(opDict["Time (seconds)"])
 		self.envTimeSeconds       [:self.phaseCount] = opDict["Time (seconds)"]
@@ -417,38 +449,18 @@ class Operator():
 		self.envelopePhase = self.phaseCount- 1
 		self.finalPhase = self.phaseCount- 1
 		
-		envPreviousLevel      = np.roll(self.envLevelAbsolute, -1, axis = 0)
-		self.envStepAbsolute  = np.abs(self.envLevelAbsolute - envPreviousLevel)
-		
 		self.envTimeSamples   = self.envTimeSeconds * SamplesPerSecond
-		logger.debug(self.envLevelAbsolute)
-		logger.debug(np.roll(self.envLevelAbsolute, -1, axis = 0))
-		j = 0
-		# if new level is too close to old level, set to the smallest increase that makes time
-		while sum(abs(self.envStepAbsolute) >= self.envTimeSamples):
-			for phase in [1:
-			logger.debug("Adj " + str(j))
-			j+=1
-			envPreviousLevel      = np.roll(self.envLevelAbsolute, -1, axis = 0)
-			envMinimumLevelHigh   = envPreviousLevel + self.envTimeSamples
-			envMinimumLevelLow    = envPreviousLevel - self.envTimeSamples
-			tooCloseGoingUp   = self.envLevelAbsolute < envMinimumLevelHigh
-			tooCloseGoingDown = self.envLevelAbsolute > envMinimumLevelLow
-			self.envLevelAbsolute = np.where(tooCloseGoingUp,   envMinimumLevelHigh, self.envLevelAbsolute)
-			self.envLevelAbsolute = np.where(tooCloseGoingDown, envMinimumLevelLow , self.envLevelAbsolute)
-			self.envRatePerSample = np.where(tooCloseGoingUp,    1, self.envRatePerSample)
-			self.envRatePerSample = np.where(tooCloseGoingDown, -1, self.envRatePerSample)
-			envPreviousLevel      = np.roll(self.envLevelAbsolute, -1, axis = 0)
-			self.envStepAbsolute  = np.abs(self.envLevelAbsolute - envPreviousLevel)
-
+		while(self.setMinimumRiseTime()):
+			pass
 		logger.debug("Finished adjustments")
 		
 		# update dt01 array
-		self.voice.envLevelAbsolute [self.index] = self.envLevelAbsolute
-		self.voice.envRatePerSample [self.index] = self.envRatePerSample     
-		self.voice.envTimeSeconds   [self.index] = self.envTimeSeconds       
-		self.voice.envTimeSamples   [self.index] = self.envTimeSamples       
-		self.voice.envStepAbsolute  [self.index] = self.envStepAbsolute      
+		logger.debug(np.shape(self.voice.envLevelAbsolute))
+		self.voice.envLevelAbsolute [:,self.index] = self.envLevelAbsolute
+		self.voice.envRatePerSample [:,self.index] = self.envRatePerSample     
+		self.voice.envTimeSeconds   [:,self.index] = self.envTimeSeconds       
+		self.voice.envTimeSamples   [:,self.index] = self.envTimeSamples       
+		self.voice.envStepAbsolute  [:,self.index] = self.envStepAbsolute      
 		
 		
 		

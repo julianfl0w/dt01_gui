@@ -20,7 +20,7 @@ import traceback
 import pickle
 import dt01
 import keyboard
-import mouse
+#import mouse
 #import pyautogui
 import logging
 import collections
@@ -31,6 +31,7 @@ import zmq
 import algos
 import queue
 logger = logging.getLogger('DT01')
+import faulthandler; faulthandler.enable()
 
 	
 MIDINOTES      = 128
@@ -495,16 +496,16 @@ def startup(patchFilename = "patches/aaa/J__Rhodes_.json"):
 			except zmq.Again as e:
 				pass
 			
-			mouseX, mouseY = mouse.get_position()
-			#mouseX /= pyautogui.size()[0]
-			#mouseY /= pyautogui.size()[1]
-			mouseX /= 480
-			mouseY /= 360
-			if (mouseX, mouseY) != mousePosLast:
-				mousePosLast = (mouseX, mouseY)
-				GLOBAL_DEFAULT_PATCH.midi2commands(mido.Message('control_change', control= dt01.ctrl_tremolo_env, value = int(mouseX*127)))
-				GLOBAL_DEFAULT_PATCH.midi2commands(mido.Message('control_change', control= dt01.ctrl_vibrato_env, value = int(mouseY*127)))
-				#logger.debug((mouseX, mouseY))
+			#mouseX, mouseY = mouse.get_position()
+			##mouseX /= pyautogui.size()[0]
+			##mouseY /= pyautogui.size()[1]
+			#mouseX /= 480
+			#mouseY /= 360
+			#if (mouseX, mouseY) != mousePosLast:
+			#	mousePosLast = (mouseX, mouseY)
+			#	GLOBAL_DEFAULT_PATCH.midi2commands(mido.Message('control_change', control= dt01.ctrl_tremolo_env, value = int(mouseX*127)))
+			#	GLOBAL_DEFAULT_PATCH.midi2commands(mido.Message('control_change', control= dt01.ctrl_vibrato_env, value = int(mouseY*127)))
+			#	#logger.debug((mouseX, mouseY))
 				
 				
 	except KeyboardInterrupt:
