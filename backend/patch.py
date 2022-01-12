@@ -142,7 +142,19 @@ class Patch():
 		# initDict["am_algo" ] = am_algo_payload
 		
 		return initDict, sounding0indexed
-		
+	
+	def setAllIncrements(self, modifier, polyphony):
+		# no way to avoid casting it seems
+		logger.debug(self.baseIncrement   )
+		logger.debug(self.incrementScale  )
+		logger.debug(self.defaultIncrement)
+		logger.debug(modifier)
+		self.tosend = (self.baseIncrement   + \
+				 self.incrementScale  * \
+				 self.defaultIncrement* modifier).astype(np.int32, copy = False)
+		for op in lowestVoice.operators:
+			op.formatAndSend(cmd_increment, self.tosend[:, op.index], voicemode = True)
+	
 	def loadJson(self, filename):
 	
 		with open(filename, 'r') as f:
@@ -151,11 +163,36 @@ class Patch():
 		logger.debug("loading " + patchDict["Name"])
 		initDict, sounding0indexed = self.getInitDict(patchDict)
 		
+		soundingops = 6
+		
 		# ignoring pitch envelope generator for now
-	
-		for voice in self.voices:
-			voice.setupOps(patchDict, sounding0indexed)
+		self.phaseCount       = np.zeros((soundingops), dtype=np.int32)
+		self.envRatePerSample = np.zeros((soundingops, 100), dtype=np.int32)
+		self.envLevelAbsolute = np.zeros((soundingops, 100), dtype=np.int32)
+		self.baseIncrement    = np.zeros((self.polyphony, soundingops))
+		self.incrementScale   = np.zeros((self.polyphony, soundingops))
+		self.sounding         = np.zeros((self.polyphony, soundingops), dtype=np.int32)
 			
+		# setup env vals
+		for opno in range(soundingops):
+			logger.debug(opno)
+			opDict = patchDict["Operator" + str(opno+1)]
+			self.phaseCount[opno] = len(opDict["Time (seconds)"])
+			eps, ela = dt01.getRateAndLevel(opDict)
+			self.envRatePerSample[opno,:self.phaseCount[opno]] = eps
+			self.envLevelAbsolute[opno,:self.phaseCount[opno]] = ela
+			
+			# setup the frequencies
+			if opDict["Oscillator Mode"] == "Frequency (Ratio)":
+				self.baseIncrement [:, opno] = 0
+				self.incrementScale[:, opno] = opDict["Frequency"] * (1 + (opDict["Detune"] / 7.0) / 80)
+
+			else:
+				self.baseIncrement [:, opno] = (2**32)*opDict["Frequency"] / SamplesPerSecond
+				self.incrementScale[:, opno] = 0
+			
+			self.sounding[:, opno] = 1 if opno in sounding0indexed else 0
+
 		self.dt01_inst.initialize(initDict, voices = self.voices)
 		
 		return 0
@@ -196,8 +233,8 @@ class Patch():
 				logger.debug("HOLD PHASE")
 			else:
 				op.formatAndSend(dt01.cmd_env_rate, 0)                               
-				op.formatAndSend(dt01.cmd_env,      op.envelopeLevelAbsolute[phase])
-				op.formatAndSend(dt01.cmd_env_rate, op.envRatePerSample[phase])                           
+				op.formatAndSend(dt01.cmd_env,      self.envLevelAbsolute[phase])
+				op.formatAndSend(dt01.cmd_env_rate, self.envRatePerSample[phase])                           
 				#logger.debug("sending rate " + str(self.envRatePerSample[opno,phase]))
 				#logger.debug("envRatePerSample:\n" + str(self.envRatePerSample))
 	
@@ -256,7 +293,7 @@ class Patch():
 			amountchange = self.pitchwheel / 8192.0
 			self.pitchwheelReal = pow(2, amountchange)
 			logger.debug("PWREAL " + str(self.pitchwheelReal))
-			self.dt01_inst.setAllIncrements(self.pitchwheelReal * (1 + self.aftertouchReal), self.lowestVoice, self.polyphony)
+			self.setAllIncrements(self.pitchwheelReal * (1 + self.aftertouchReal), self.lowestVoice, self.polyphony)
 			
 		elif msg.type == 'control_change':
 						
@@ -343,7 +380,7 @@ class Patch():
 			self.aftertouch = msg.value
 			self.aftertouchReal = msg.value/127.0
 			
-			self.dt01_inst.setAllIncrements(self.pitchwheelReal * (1 + self.aftertouchReal), self.lowestVoice, self.polyphony)
+			self.setAllIncrements(self.pitchwheelReal * (1 + self.aftertouchReal), self.polyphony)
 			#for voice in self.voices:
 			#	if time.time() - voice.note.releaseTime > max(voice.envTimeSeconds[3,:]):
 			#		voice.setAllIncrements(self.pitchwheelReal * (1 + self.aftertouchReal))
@@ -359,7 +396,7 @@ class Patch():
 		return True
 
 
-def startup(patchFilename = "patches/aaa/J__Rhodes_.json"):
+def startup(patchFilename = "patches/aaa/sine.json"):
 	
 	PID = os.getpid()
 	keyQueue = queue.Queue()
@@ -515,4 +552,4 @@ def startup(patchFilename = "patches/aaa/J__Rhodes_.json"):
 		midiin.close_port()
 		del midiin
 if __name__ == "__main__":
-	startup("/home/pi/dt_fm/patches/aaa/J__Rhodes_.json")
+	startup("/home/pi/dt_fm/patches/aaa/sine.json")
