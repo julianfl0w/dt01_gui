@@ -117,49 +117,42 @@ class JObject():
 def getRateAndLevel(opDict):
 	phaseCount = len(opDict["Time (seconds)"])
 	envTimeSeconds = opDict["Time (seconds)"]
-	envLevelAbsolute = np.multiply(opDict["Level (unit interval)"], 2**29)
+	envThisLevel = np.multiply(opDict["Level (unit interval)"], 2**29)
 	envelopePhase = phaseCount- 1
 	finalPhase = phaseCount- 1
 
 	envTimeSamples   = np.multiply(envTimeSeconds, SamplesPerSecond)
 	j = 0
 	# if new level is too close to old level, set to the smallest increase that makes time
-	tooClose         = envLevelAbsolute.copy()
-	envRatePerSample = envLevelAbsolute.copy()
+	tooClose         = envThisLevel.copy()
+	envRatePerSample = envThisLevel.copy()
 	# last level always 0
-	envLevelAbsolute[phaseCount-1] = 0
+	envThisLevel[phaseCount-1] = 0
 
 	finished = False
 	while not finished:
 		for phase in range(phaseCount-2):
-			envPreviousLevel        = np.roll(envLevelAbsolute[:phaseCount], -1, axis = 0)
-			envTotalStep            = envLevelAbsolute[:phaseCount] - envPreviousLevel[:phaseCount]
-			envMinimumLevelHigh   = envPreviousLevel[phase] + envTimeSamples[phase]
-			envMinimumLevelLow    = envPreviousLevel[phase] - envTimeSamples[phase]
-			goingUp = envLevelAbsolute[phase] > envPreviousLevel[phase]
-			tooClose [phase] = envLevelAbsolute[phase] < envMinimumLevelHigh and envLevelAbsolute[phase] > envMinimumLevelLow 
-
-			envLevelAbsolute[phase] = envMinimumLevelHigh if tooClose[phase] and goingUp     else envLevelAbsolute[phase]
-			envLevelAbsolute[phase] = envMinimumLevelLow  if tooClose[phase] and not goingUp else envLevelAbsolute[phase]
-			envRatePerSample[phase] =                   1 if tooClose[phase] and goingUp     else envTotalStep[phase] / envTimeSamples[phase]
-			envRatePerSample[phase] =                  -1 if tooClose[phase] and not goingUp else envTotalStep[phase] / envTimeSamples[phase]
+			envNextLevel            = np.roll(envThisLevel[:phaseCount], -1, axis = 0)
+			envStepFromThisOne      = envNextLevel[:phaseCount] - envThisLevel[:phaseCount]
+			envMinimumLevelHigh     = envThisLevel[phase] + envTimeSamples[phase]
+			envMinimumLevelLow      = envThisLevel[phase] - envTimeSamples[phase]
+			goingUp = envNextLevel[phase] >= envThisLevel[phase]
+			tooClose [phase] = envThisLevel[phase] < envMinimumLevelHigh and envThisLevel[phase] > envMinimumLevelLow 
 			
-		for phase in reversed(range(phaseCount-2)):
-			envPreviousLevel        = np.roll(envLevelAbsolute[:phaseCount], 1, axis = 0)
-			envTotalStep            = envLevelAbsolute[:phaseCount] - envPreviousLevel[:phaseCount]
-			envMinimumLevelHigh   = envPreviousLevel[phase] + envTimeSamples[phase]
-			envMinimumLevelLow    = envPreviousLevel[phase] - envTimeSamples[phase]
-			goingUp = envLevelAbsolute[phase] > envPreviousLevel[phase]
-			tooClose [phase] = envLevelAbsolute[phase] < envMinimumLevelHigh and envLevelAbsolute[phase] > envMinimumLevelLow 
+			envRatePerSample[phase] = envStepFromThisOne[phase] / envTimeSamples[phase]
+			# change the next env
+			if tooClose[phase]:
+				if goingUp:
+					envThisLevel[phase+1] = envMinimumLevelHigh 
+					envRatePerSample[phase] =  1 
+				else:
+					envThisLevel[phase+1] = envMinimumLevelLow 
+					envRatePerSample[phase] =  -1 
+					
 
-			envLevelAbsolute[phase] = envMinimumLevelHigh if tooClose[phase] and goingUp     else envLevelAbsolute[phase]
-			envLevelAbsolute[phase] = envMinimumLevelLow  if tooClose[phase] and not goingUp else envLevelAbsolute[phase]
-			envRatePerSample[phase] =                   1 if tooClose[phase] and goingUp     else envTotalStep[phase] / envTimeSamples[phase]
-			envRatePerSample[phase] =                  -1 if tooClose[phase] and not goingUp else envTotalStep[phase] / envTimeSamples[phase]
-			
 		finished = not any(tooClose)
 
-	return envRatePerSample, envLevelAbsolute
+	return envRatePerSample, envThisLevel
 	
 class DT01(JObject):
 
@@ -283,7 +276,7 @@ class Voice(JObject):
 	
 	def setPhaseAllOps(self, phase):
 		self.formatAndSend(cmd_env_rate, self.opZeros[:SOUNDINGOPS], voicemode=False)                               
-		self.formatAndSend(cmd_env,      self.patch.envLevelAbsolute[phase,:SOUNDINGOPS], voicemode=False)
+		self.formatAndSend(cmd_env,      self.patch.envThisLevel[phase,:SOUNDINGOPS], voicemode=False)
 		self.formatAndSend(cmd_env_rate, self.patch.envRatePerSample[phase,:SOUNDINGOPS], voicemode=False)                           
 		for op in self.operators:
 			op.envelopePhase = phase

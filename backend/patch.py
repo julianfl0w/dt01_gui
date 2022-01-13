@@ -173,6 +173,7 @@ class Patch():
 		self.incrementScale   = np.zeros((self.polyphony, soundingops))
 		self.sounding         = np.zeros((self.polyphony, soundingops), dtype=np.int32)
 			
+		logger.debug("Kosherizing env vals")
 		# setup env vals
 		for opno in range(soundingops):
 			logger.debug(opno)
@@ -192,6 +193,7 @@ class Patch():
 				self.incrementScale[:, opno] = 0
 			
 			self.sounding[:, opno] = 1 if opno in sounding0indexed else 0
+		logger.debug("Done kosherizing")
 
 		self.dt01_inst.initialize(initDict, voices = self.voices)
 		
