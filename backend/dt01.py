@@ -24,7 +24,7 @@ MIDINOTES      = 128
 CONTROLCOUNT   = 128
 OPERATORCOUNT  = 8
 SOUNDINGOPS    = 6
-SOUNDINGOPS    = 1
+#SOUNDINGOPS    = 1
 
 controlNum2Name = [""]*CONTROLCOUNT
 
@@ -115,42 +115,72 @@ class JObject():
 		return (str(type(self)) + " #" + str(self.index))
 
 def getRateAndLevel(opDict):
-	phaseCount = len(opDict["Time (seconds)"])
+	phaseCount     = len(opDict["Time (seconds)"])
 	envTimeSeconds = opDict["Time (seconds)"]
-	envThisLevel = np.multiply(opDict["Level (unit interval)"], 2**29)
-	envelopePhase = phaseCount- 1
-	finalPhase = phaseCount- 1
+	envThisLevel   = np.multiply(opDict["Level (unit interval)"], 2**29)
+	envelopePhase  = phaseCount- 1
+	finalPhase     = phaseCount- 1
 
 	envTimeSamples   = np.multiply(envTimeSeconds, SamplesPerSecond)
 	j = 0
 	# if new level is too close to old level, set to the smallest increase that makes time
-	tooClose         = envThisLevel.copy()
-	envRatePerSample = envThisLevel.copy()
+	tooClose         = np.zeros((phaseCount))
+	envRatePerSample = np.zeros((phaseCount))
 	# last level always 0
 	envThisLevel[phaseCount-1] = 0
 
 	finished = False
 	while not finished:
-		for phase in range(phaseCount-2):
-			envNextLevel            = np.roll(envThisLevel[:phaseCount], -1, axis = 0)
-			envStepFromThisOne      = envNextLevel[:phaseCount] - envThisLevel[:phaseCount]
-			envMinimumLevelHigh     = envThisLevel[phase] + envTimeSamples[phase]
-			envMinimumLevelLow      = envThisLevel[phase] - envTimeSamples[phase]
-			goingUp = envNextLevel[phase] >= envThisLevel[phase]
-			tooClose [phase] = envThisLevel[phase] < envMinimumLevelHigh and envThisLevel[phase] > envMinimumLevelLow 
-			
-			envRatePerSample[phase] = envStepFromThisOne[phase] / envTimeSamples[phase]
-			# change the next env
-			if tooClose[phase]:
-				if goingUp:
-					envThisLevel[phase+1] = envMinimumLevelHigh 
-					envRatePerSample[phase] =  1 
-				else:
-					envThisLevel[phase+1] = envMinimumLevelLow 
-					envRatePerSample[phase] =  -1 
-					
+		
+		#     L0
+		#     /\
+		#    /  \R1
+		#   /    \________L2 (hodl)
+		#  /R0    L1  R2  \               
+		# /                \R3
+		#/                  \L3 = 0
+		for roll in [1,-1]:
+			for phase in range(phaseCount-1):
+				envPrevLevel            = np.roll(envThisLevel[:phaseCount], roll, axis = 0)
+				envStepToThisOne        = envThisLevel[:phaseCount] - envPrevLevel[:phaseCount]
+
+				goingUp  = envThisLevel[phase] >= envPrevLevel[phase]
+				tooClose [phase] = envPrevLevel[phase] + envTimeSamples[phase] > envThisLevel[phase] > envPrevLevel[phase] - envTimeSamples[phase] 
+
+				logger.debug("envThisLevel        : " + str(envThisLevel       ))
+				logger.debug("envStepToThisOne    : " + str(envStepToThisOne ))
+				logger.debug("envPrevLevel        : " + str(envPrevLevel       ))
+				logger.debug("goingUp             : " + str(goingUp  ))
+				logger.debug("tooClose            : " + str(tooClose ))
+
+				# change previous env if this is the final one (always 0) 
+				# otherwise change this env 
+				if tooClose[phase]:
+					if phase == phaseCount-1:
+						envThisLevel[phase-1] = envPrevLevel[phase-1] + envTimeSamples[phase] 
+					else:
+						if goingUp:
+							envThisLevel[phase] = envPrevLevel[phase] + envTimeSamples[phase] 
+						else:
+							envThisLevel[phase] = envPrevLevel[phase] - envTimeSamples[phase] 
+
+				envThisLevel[0] = max(envThisLevel[0], envRatePerSample[0])
+				
+				if roll == 1:
+					envRatePerSample= envStepToThisOne / envTimeSamples
+
+				logger.debug("envThisLevel     : " + str(envThisLevel    ))
+				logger.debug("envRatePerSample : " + str(envRatePerSample))
+				logger.debug("tooClose         : " + str(tooClose        ))
+				#input()
+				
+		envPrevLevel            = np.roll(envThisLevel[:phaseCount], roll, axis = 0)
+		minup  = (envPrevLevel + envTimeSamples)
+		mindown= (envPrevLevel - envTimeSamples)
+		tooClose = np.logical_and(np.less(envThisLevel[:phaseCount], minup),  np.greater(envThisLevel[:phaseCount],mindown))
 
 		finished = not any(tooClose)
+
 
 	return envRatePerSample, envThisLevel
 	
@@ -270,27 +300,34 @@ class Voice(JObject):
 		self.allIncrements = np.zeros((OPERATORCOUNT), dtype=np.int32)
 	
 	def setAllIncrements(self, modifier):
-		for op in self.operators:
-			self.allIncrements[op.index] = min(op.baseIncrement + op.incrementScale * op.voice.note.defaultIncrement * modifier, 2**30)
+		logger.debug("setting all increments")
+		for op in self.operators[:6]:
+			val = min(op.baseIncrement + op.incrementScale * op.voice.note.defaultIncrement * modifier, 2**30)
+			self.allIncrements[op.index] = val
+			self.patch.defaultIncrement[self.index, op.index] = val
 		self.formatAndSend(cmd_increment, self.allIncrements[:SOUNDINGOPS], voicemode = False)
 	
 	def setPhaseAllOps(self, phase):
+		logger.debug("setPhaseAllOps")
 		self.formatAndSend(cmd_env_rate, self.opZeros[:SOUNDINGOPS], voicemode=False)                               
-		self.formatAndSend(cmd_env,      self.patch.envThisLevel[phase,:SOUNDINGOPS], voicemode=False)
-		self.formatAndSend(cmd_env_rate, self.patch.envRatePerSample[phase,:SOUNDINGOPS], voicemode=False)                           
+		self.formatAndSend(cmd_env,      self.patch.envThisLevel[:SOUNDINGOPS, phase], voicemode=False)
+		self.formatAndSend(cmd_env_rate, self.patch.envRatePerSample[:SOUNDINGOPS, phase], voicemode=False)                           
 		for op in self.operators:
 			op.envelopePhase = phase
 		
 		return 0
 		
-	def silenceAllOps(self):              
+	def silenceAllOps(self):
 		phases = []
-		for op in self.operators:
+		rates  = []
+		for op in self.operators[:6]:
 			op.envelopePhase = op.phaseCount - 1
 			phases += [op.envelopePhase]
+			rates  += [self.patch.envRatePerSample[op.index, op.envelopePhase]]
+			
 		self.formatAndSend(cmd_env_rate, self.opZeros[:SOUNDINGOPS], voicemode=False)
 		self.formatAndSend(cmd_env,      self.opZeros[:SOUNDINGOPS], voicemode=False)
-		self.formatAndSend(cmd_env_rate, np.maximum(np.ones((6), dtype = np.int32), self.patch.envRatePerSample[phases[:SOUNDINGOPS],:SOUNDINGOPS]), voicemode=False)        
+		self.formatAndSend(cmd_env_rate, rates, voicemode=False)        
 		
 		return 0
 		
@@ -443,9 +480,9 @@ def formatAndSend(paramNum, voiceno, opno, payload, voicemode = 1):
 	else:
 		if paramNum != cmd_readirqueue and paramNum != 0: 
 			logger.debug("sending (" + str(voiceno) + ":" + str(opno) + ") " + cmdNum2Name[paramNum] + " " + str(payload))
-		payload = struct.pack(">I", int(payload))
+		payload = struct.pack(">i", np.int32(payload))
 	payload_array = [paramNum, 1 << opno, (voicemode << 7) | (voiceno >> 8), voiceno] + [int(i) for i in payload] 
-	logger.debug(str(payload_array[0]) + ": " + str([hex(p) for p in payload_array[:32]]))
+	#logger.debug(str(payload_array[0]) + ": " + str([hex(p) for p in payload_array[:32]]))
 	ret = spi_interface.send(payload_array)
 	return ret
 	

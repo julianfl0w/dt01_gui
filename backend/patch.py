@@ -19,9 +19,13 @@ import socket
 import traceback
 import pickle
 import dt01
-import keyboard
-#import mouse
-#import pyautogui
+
+useKeyboard = False
+if useKeyboard:
+	import keyboard
+	#import mouse
+	#import pyautogui
+
 import logging
 import collections
 import math
@@ -31,6 +35,12 @@ import zmq
 import algos
 import queue
 logger = logging.getLogger('DT01')
+#formatter = logging.Formatter('{"debug": %(asctime)s {%(pathname)s:%(lineno)d} %(message)s}')
+formatter = logging.Formatter('{{%(pathname)s:%(lineno)d %(message)s}')
+ch = logging.StreamHandler()
+ch.setFormatter(formatter)
+logger.addHandler(ch)
+
 import faulthandler; faulthandler.enable()
 
 	
@@ -143,17 +153,15 @@ class Patch():
 		
 		return initDict, sounding0indexed
 	
-	def setAllIncrements(self, modifier, polyphony):
+	def setAllIncrements(self, modifier):
 		# no way to avoid casting it seems
-		logger.debug(self.baseIncrement   )
-		logger.debug(self.incrementScale  )
-		logger.debug(self.defaultIncrement)
-		logger.debug(modifier)
-		self.tosend = (self.baseIncrement   + \
-				 self.incrementScale  * \
-				 self.defaultIncrement* modifier).astype(np.int32, copy = False)
-		for op in lowestVoice.operators:
-			op.formatAndSend(cmd_increment, self.tosend[:, op.index], voicemode = True)
+		#logger.debug(self.baseIncrement   )
+		#logger.debug(self.incrementScale  )
+		#logger.debug(self.defaultIncrement)
+		#logger.debug(modifier)
+		self.tosend = np.add(self.baseIncrement, modifier * np.multiply(self.incrementScale, self.defaultIncrement)).astype(np.int32)
+		for op in self.lowestVoice.operators[:6]:
+			op.formatAndSend(dt01.cmd_increment, self.tosend[:, op.index], voicemode = True)
 	
 	def loadJson(self, filename):
 	
@@ -168,9 +176,10 @@ class Patch():
 		# ignoring pitch envelope generator for now
 		self.phaseCount       = np.zeros((soundingops), dtype=np.int32)
 		self.envRatePerSample = np.zeros((soundingops, 100), dtype=np.int32)
-		self.envLevelAbsolute = np.zeros((soundingops, 100), dtype=np.int32)
+		self.envThisLevel     = np.zeros((soundingops, 100), dtype=np.int32)
 		self.baseIncrement    = np.zeros((self.polyphony, soundingops))
 		self.incrementScale   = np.zeros((self.polyphony, soundingops))
+		self.defaultIncrement = np.zeros((self.polyphony, soundingops))
 		self.sounding         = np.zeros((self.polyphony, soundingops), dtype=np.int32)
 			
 		logger.debug("Kosherizing env vals")
@@ -180,8 +189,8 @@ class Patch():
 			opDict = patchDict["Operator" + str(opno+1)]
 			self.phaseCount[opno] = len(opDict["Time (seconds)"])
 			eps, ela = dt01.getRateAndLevel(opDict)
-			self.envRatePerSample[opno,:self.phaseCount[opno]] = eps
-			self.envLevelAbsolute[opno,:self.phaseCount[opno]] = ela
+			self.envRatePerSample[opno,:self.phaseCount[opno]] = np.abs(eps*(opDict["Output Level"] / 100.0))
+			self.envThisLevel    [opno,:self.phaseCount[opno]] = ela*(opDict["Output Level"] / 100.0)
 			
 			# setup the frequencies
 			if opDict["Oscillator Mode"] == "Frequency (Ratio)":
@@ -223,26 +232,27 @@ class Patch():
 	def processIRQueue(self, voiceno, opnos):
 		
 		for opno in opnos:
-			
-			op = self.dt01_inst.voices[voiceno].operators[opno]
-			phase = (op.envelopePhase + 1) % op.phaseCount
-				
-			logger.debug("\n\nproc IRQUEUE! voice:" + str(voiceno) + " op:"+ str(opno) + " phase:" + str(phase))
+			if opno < 6:
+				op = self.dt01_inst.voices[voiceno].operators[opno]
+				phase = (op.envelopePhase + 1) % op.phaseCount
 
-			if phase == 0:
-				logger.debug("STOP PHASE")
-			elif phase == op.phaseCount - 2:
-				logger.debug("HOLD PHASE")
-			else:
-				op.formatAndSend(dt01.cmd_env_rate, 0)                               
-				op.formatAndSend(dt01.cmd_env,      self.envLevelAbsolute[phase])
-				op.formatAndSend(dt01.cmd_env_rate, self.envRatePerSample[phase])                           
-				#logger.debug("sending rate " + str(self.envRatePerSample[opno,phase]))
-				#logger.debug("envRatePerSample:\n" + str(self.envRatePerSample))
-	
-			op.envelopePhase = phase
+				logger.debug("\n\nproc IRQUEUE! voice:" + str(voiceno) + " op:"+ str(opno) + " phase:" + str(phase))
+
+				if phase == 0:
+					logger.debug("STOP PHASE")
+				elif phase == op.phaseCount - 1:
+					logger.debug("HOLD PHASE")
+				else:
+					op.formatAndSend(dt01.cmd_env_rate, 0)                               
+					op.formatAndSend(dt01.cmd_env,      self.envThisLevel[opno, phase])
+					op.formatAndSend(dt01.cmd_env_rate, self.envRatePerSample[opno, phase])                           
+					#logger.debug("sending rate " + str(self.envRatePerSample[opno,phase]))
+					#logger.debug("envRatePerSample:\n" + str(self.envRatePerSample))
+
+				op.envelopePhase = phase
 		
 	def midi2commands(self, msg):
+		loopstart = time.time()
 	
 		logger.debug("\n\nProcessing " + str(msg))
 			
@@ -295,7 +305,7 @@ class Patch():
 			amountchange = self.pitchwheel / 8192.0
 			self.pitchwheelReal = pow(2, amountchange)
 			logger.debug("PWREAL " + str(self.pitchwheelReal))
-			self.setAllIncrements(self.pitchwheelReal * (1 + self.aftertouchReal), self.lowestVoice, self.polyphony)
+			self.setAllIncrements(self.pitchwheelReal * (1 + self.aftertouchReal))
 			
 		elif msg.type == 'control_change':
 						
@@ -382,7 +392,7 @@ class Patch():
 			self.aftertouch = msg.value
 			self.aftertouchReal = msg.value/127.0
 			
-			self.setAllIncrements(self.pitchwheelReal * (1 + self.aftertouchReal), self.polyphony)
+			self.setAllIncrements(self.pitchwheelReal * (1 + self.aftertouchReal))
 			#for voice in self.voices:
 			#	if time.time() - voice.note.releaseTime > max(voice.envTimeSeconds[3,:]):
 			#		voice.setAllIncrements(self.pitchwheelReal * (1 + self.aftertouchReal))
@@ -395,163 +405,173 @@ class Patch():
 					self.midi2commands(heldnote.msg)
 					break
 		
+		logger.warning(time.time() - loopstart)
 		return True
 
+useMouse = False
+class PatchManager():
 
-def startup(patchFilename = "patches/aaa/sine.json"):
+	def checkForPatchChange(self):
+		#check for patch change 
+		try:
+			string = self.patchSocket.recv_string(flags=zmq.NOBLOCK)
+			logger.debug(string)
+			self.GLOBAL_DEFAULT_PATCH.loadJson(string)
+		except zmq.Again as e:
+			pass
 	
-	PID = os.getpid()
-	keyQueue = queue.Queue()
-	keyState = {}
-	def print_event_json(event):
-		keyDict = json.loads(event.to_json(ensure_ascii=sys.stdout.encoding != 'utf-8'))
-		# protect against repeat delay, for simplicity
-		# "xset r off" not working
-		if keyState.get(keyDict["name"]) != keyDict["event_type"]:
-			keyState[keyDict["name"]] = keyDict["event_type"]
-			#keyQueue.put(json.dumps(keyDict))
-			keyQueue.put(keyDict)
-		#sys.stdout.flush()
-	keyboard.hook(print_event_json)
+	def checkForNewDevices(self):
+		midi_ports  = self.midiin.get_ports()
+		for i, midi_portname in enumerate(midi_ports):
+			if midi_portname not in self.midi_ports_last:
+				logger.debug("adding " + midi_portname)
+				try:
+					mididev, midi_portno = open_midiinput(midi_portname)
+				except (EOFError, KeyboardInterrupt):
+					sys.exit()
+	
+				midiDevAndPatches = (mididev, [self.GLOBAL_DEFAULT_PATCH])
+				self.allMidiDevicesAndPatches += [midiDevAndPatches]
+		self.midi_ports_last = midi_ports
 
-		
-	#def on_press(key):
-	#	print("Pressed")
-	#	print(key)
-	#
-	#def on_release(key):
-	#	print("Released")
-	#	print(key)
-	#
-	## Collect events until released
-	#with Listener(
-	#		on_press=on_press,
-	#		on_release=on_release) as listener:
-	#	listener.join()
-		
-	logger = logging.getLogger('DT01')
-	#formatter = logging.Formatter('{"debug": %(asctime)s {%(pathname)s:%(lineno)d} %(message)s}')
-	formatter = logging.Formatter('{{%(pathname)s:%(lineno)d %(message)s}')
-	ch = logging.StreamHandler()
-	ch.setFormatter(formatter)
-	logger.addHandler(ch)
+	def checkKeyboard(self):
+		if not keyQueue.empty():
+			keyDict = keyQueue.get()
+			key = keyDict["name"]
+			if key in qwerty2midi.keys():
+				if keyDict["event_type"] == "down":
+					msg = mido.Message('note_on',  note = qwerty2midi[key], velocity = 120)
+				else:
+					msg = mido.Message('note_off', note = qwerty2midi[key], velocity = 0)
+					
+				for dev, patches in self.allMidiDevicesAndPatches:
+					for patch in patches:
+						patch.midi2commands(msg)
 
-	logger.setLevel(0)
-	if len(sys.argv) > 1:
-		logger.setLevel(1)
-		
-	logger.debug("Instantiating DT01")
-	polyphony = 512
-	
-	logger.debug("initializing from scratch")
-	dt01_inst = dt01.DT01(polyphony = polyphony)
-		
-	GLOBAL_DEFAULT_PATCH = Patch(dt01_inst, patchFilename)
-	
-	api=rtmidi.API_UNSPECIFIED
-	allMidiDevicesAndPatches = []
-	midiin = rtmidi.MidiIn(get_api_from_environment(api))
-	
-	midi_ports_last = []
-	
-	dt01.initIRQueue()
-		
-	# Socket to talk to server
-	context = zmq.Context()
-	patchSocket = context.socket(zmq.SUB)
-	patchSocket.connect ("tcp://localhost:%s" % "5555")
-	patchSocket.setsockopt_string(zmq.SUBSCRIBE, "")
-	
-	qwerty2midi = {'a':48, 's':50, 'd':52, \
-		'f':53, 'g':55, 'h':57, 'j':59, 'k':60, 'l':62, \
-		'w':49, 'e':51, 't':54, 'y':56, 'u':58, 'o':61, \
-		'p':63, ';':65, "\'":67}
 
-	logger.debug("Entering main loop. Press Control-C to exit.")
-	loopstart = time.time()
-	lastCheck = 0
-	mousePosLast = 0
-	try:
-		maxLoop = 0
-		# Just wait for keyboard interrupt,
-		# everything else is handled via the input callback.
-		while True:
-			# check for new devices
-			if time.time()-lastCheck > 1:
-				lastCheck = time.time()
-				midi_ports  = midiin.get_ports()
-				for i, midi_portname in enumerate(midi_ports):
-					if midi_portname not in midi_ports_last:
-						logger.debug("adding " + midi_portname)
-						try:
-							mididev, midi_portno = open_midiinput(midi_portname)
-						except (EOFError, KeyboardInterrupt):
-							sys.exit()
+
+	def checkMidi(self):
+		
+		for dev, patches in self.allMidiDevicesAndPatches:
+			msg = dev.get_message()
+			if msg is not None:
+				msg, dtime = msg
+				msg = mido.Message.from_bytes(msg)
 			
-						midiDevAndPatches = (mididev, [GLOBAL_DEFAULT_PATCH])
-						allMidiDevicesAndPatches += [midiDevAndPatches]
-				midi_ports_last = midi_ports
+				logger.debug(msg)
+				for patch in patches:
+					patch.midi2commands(msg)
 				
+	
+	def eventLoop(self):
+	
+		# loop related variables
+		lastDevCheck    = 0
+		lastPatchCheck    = 0
+		mousePosLast = 0
+		maxLoop = 0
+		self.midi_ports_last = []
+		self.allMidiDevicesAndPatches = []
+		
+		
+		while(1):
+			
+			
+			# check for new devices once a second
+			if time.time()-lastDevCheck > 1:
+				lastDevCheck = time.time()
+				self.checkForNewDevices()
 		
 			#c = sys.stdin.read(1)
 			#if c == 'd':
 			#	dt01_inst.dumpState()
-			for dev, patches in allMidiDevicesAndPatches:
-				msg = dev.get_message()
-				if msg is not None:
-					msg, dtime = msg
-					msg = mido.Message.from_bytes(msg)
+			self.checkMidi()
+			
+			if useKeyboard:
+				self.checkKeyboard()
 				
-				# if no midi message, check for keypress
-				if msg is None:
-					if not keyQueue.empty():
-						keyDict = keyQueue.get()
-						key = keyDict["name"]
-						if key in qwerty2midi.keys():
-							if keyDict["event_type"] == "down":
-								msg = mido.Message('note_on',  note = qwerty2midi[key], velocity = 120)
-							else:
-								msg = mido.Message('note_off', note = qwerty2midi[key], velocity = 0)
-					
-				if msg is not None:
-					logger.debug(msg)
-					for patch in patches:
-						patch.midi2commands(msg)
-				
-					logger.warning(time.time() - loopstart)
-						
-			loopstart = time.time()
 			
 			# process the IRQUEUE
 			while(GPIO.input(37)):
 				voiceno, opnos = dt01.getIRQueue()
-				GLOBAL_DEFAULT_PATCH.processIRQueue(voiceno, opnos)
+				self.GLOBAL_DEFAULT_PATCH.processIRQueue(voiceno, opnos)
 				
-			#check for patch change 
-			try:
-				string = patchSocket.recv_string(flags=zmq.NOBLOCK)
-				logger.debug(string)
-				GLOBAL_DEFAULT_PATCH.loadJson(string)
-			except zmq.Again as e:
-				pass
+			if time.time()-lastPatchCheck > 0.02:
+				lastPatchCheck = time.time()
+				self.checkForPatchChange()
 			
-			#mouseX, mouseY = mouse.get_position()
-			##mouseX /= pyautogui.size()[0]
-			##mouseY /= pyautogui.size()[1]
-			#mouseX /= 480
-			#mouseY /= 360
-			#if (mouseX, mouseY) != mousePosLast:
-			#	mousePosLast = (mouseX, mouseY)
-			#	GLOBAL_DEFAULT_PATCH.midi2commands(mido.Message('control_change', control= dt01.ctrl_tremolo_env, value = int(mouseX*127)))
-			#	GLOBAL_DEFAULT_PATCH.midi2commands(mido.Message('control_change', control= dt01.ctrl_vibrato_env, value = int(mouseY*127)))
-			#	#logger.debug((mouseX, mouseY))
-				
-				
-	except KeyboardInterrupt:
-		logger.debug('')
-	finally:
-		logger.debug("Exit.")
-		midiin.close_port()
-		del midiin
+			if useMouse:
+				mouseX, mouseY = mouse.get_position()
+				#mouseX /= pyautogui.size()[0]
+				#mouseY /= pyautogui.size()[1]
+				mouseX /= 480
+				mouseY /= 360
+				if (mouseX, mouseY) != mousePosLast:
+					mousePosLast = (mouseX, mouseY)
+					self.GLOBAL_DEFAULT_PATCH.midi2commands(mido.Message('control_change', control= dt01.ctrl_tremolo_env, value = int(mouseX*127)))
+					self.GLOBAL_DEFAULT_PATCH.midi2commands(mido.Message('control_change', control= dt01.ctrl_vibrato_env, value = int(mouseY*127)))
+					#logger.debug((mouseX, mouseY))
+						
+
+			
+	def startup(self, patchFilename = "patches/aaa/sine.json"):
+		
+		PID = os.getpid()
+		if useKeyboard:
+			logger.debug("setting up keyboard")
+			keyQueue = queue.Queue()
+			keyState = {}
+			def print_event_json(event):
+				keyDict = json.loads(event.to_json(ensure_ascii=sys.stdout.encoding != 'utf-8'))
+				# protect against repeat delay, for simplicity
+				# "xset r off" not working
+				if keyState.get(keyDict["name"]) != keyDict["event_type"]:
+					keyState[keyDict["name"]] = keyDict["event_type"]
+					#keyQueue.put(json.dumps(keyDict))
+					keyQueue.put(keyDict)
+				#sys.stdout.flush()
+			keyboard.hook(print_event_json)
+
+		logger.setLevel(0)
+		if len(sys.argv) > 1:
+			logger.setLevel(1)
+			
+		logger.debug("Instantiating DT01")
+		self.polyphony = 512
+		
+		logger.debug("initializing from scratch")
+		self.dt01_inst = dt01.DT01(polyphony = self.polyphony)
+			
+		self.GLOBAL_DEFAULT_PATCH = Patch(self.dt01_inst, patchFilename)
+		
+		api=rtmidi.API_UNSPECIFIED
+		self.midiin = rtmidi.MidiIn(get_api_from_environment(api))
+		
+		dt01.initIRQueue()
+			
+		# Socket to talk to server
+		context = zmq.Context()
+		self.patchSocket = context.socket(zmq.SUB)
+		self.patchSocket.connect ("tcp://localhost:%s" % "5555")
+		self.patchSocket.setsockopt_string(zmq.SUBSCRIBE, "")
+		
+		self.qwerty2midi = {'a':48, 's':50, 'd':52, \
+			'f':53, 'g':55, 'h':57, 'j':59, 'k':60, 'l':62, \
+			'w':49, 'e':51, 't':54, 'y':56, 'u':58, 'o':61, \
+			'p':63, ';':65, "\'":67}
+
+		logger.debug("Entering main loop. Press Control-C to exit.")
+		try:
+			# Just wait for keyboard interrupt,
+			# everything else is handled via the input callback.
+			self.eventLoop()
+					
+		except KeyboardInterrupt:
+			logger.debug('')
+		finally:
+			logger.debug("Exit.")
+			self.midiin.close_port()
+			del self.midiin
 if __name__ == "__main__":
-	startup("/home/pi/dt_fm/patches/aaa/sine.json")
+	P = PatchManager()
+	P.startup("/home/pi/dt_fm/patches/aaa/sine.json")
