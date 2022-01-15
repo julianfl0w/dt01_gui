@@ -198,7 +198,7 @@ class Patch():
 				self.incrementScale[:, opno] = opDict["Frequency"] * (1 + (opDict["Detune"] / 7.0) / 80)
 
 			else:
-				self.baseIncrement [:, opno] = (2**32)*opDict["Frequency"] / SamplesPerSecond
+				self.baseIncrement [:, opno] = (2**32)*opDict["Frequency"] / dt01.SamplesPerSecond
 				self.incrementScale[:, opno] = 0
 			
 			self.sounding[:, opno] = 1 if opno in sounding0indexed else 0

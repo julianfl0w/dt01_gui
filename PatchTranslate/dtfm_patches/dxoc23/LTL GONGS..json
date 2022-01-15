@@ -1,0 +1,196 @@
+{
+    "Filename": "sysex/dxoc23.syx",
+    "Voice": 27,
+    "Name": "LTL GONGS.",
+    "Algorithm": 28,
+    "Feedback": 7,
+    "LFO": {
+        "Wave": "Sawtooth Down",
+        "Speed": 35,
+        "Delay": 0,
+        "Pitch Mod Depth": 0,
+        "AM Depth": 0,
+        "Sync": "Off",
+        "Pitch Modulation Sensitivity": 1
+    },
+    "Oscillator Key Sync": "Off",
+    "Pitch Envelope Generator": {
+        "Rate 1": 97,
+        "Rate 2": 57,
+        "Rate 3": 38,
+        "Rate 4": 66,
+        "Level 1": 50,
+        "Level 2": 51,
+        "Level 3": 50,
+        "Level 4": 50
+    },
+    "Transpose": "C",
+    "Operator1": {
+        "AM Sensitivity": 0,
+        "Oscillator Mode": "Frequency (Ratio)",
+        "Frequency": 1,
+        "Detune": 2,
+        "Keyboard Level Scaling": {
+            "Breakpoint": "A",
+            "Left Curve": "-LIN",
+            "Right Curve": "-LIN",
+            "Left Depth": 0,
+            "Right Depth": 0
+        },
+        "Keyboard Rate Scaling": 2,
+        "Output Level": 85,
+        "Key Velocity Sensitivity": 0,
+        "Time (seconds)": [
+            0.94,
+            0.44,
+            0.35,
+            0.39
+        ],
+        "Level (unit interval)": [
+            0.99,
+            0.0,
+            0.38,
+            0.0
+        ]
+    },
+    "Operator2": {
+        "AM Sensitivity": 0,
+        "Oscillator Mode": "Frequency (Ratio)",
+        "Frequency": 3.5,
+        "Detune": 3,
+        "Keyboard Level Scaling": {
+            "Breakpoint": "C",
+            "Left Curve": "+EXP",
+            "Right Curve": "-LIN",
+            "Left Depth": 17,
+            "Right Depth": 0
+        },
+        "Keyboard Rate Scaling": 2,
+        "Output Level": 72,
+        "Key Velocity Sensitivity": 0,
+        "Time (seconds)": [
+            0.96,
+            0.12,
+            0.71,
+            0.33
+        ],
+        "Level (unit interval)": [
+            0.99,
+            0.0,
+            0.32,
+            0.0
+        ]
+    },
+    "Operator3": {
+        "AM Sensitivity": 0,
+        "Oscillator Mode": "Frequency (Ratio)",
+        "Frequency": 1,
+        "Detune": -5,
+        "Keyboard Level Scaling": {
+            "Breakpoint": "A",
+            "Left Curve": "-LIN",
+            "Right Curve": "-LIN",
+            "Left Depth": 0,
+            "Right Depth": 0
+        },
+        "Keyboard Rate Scaling": 2,
+        "Output Level": 94,
+        "Key Velocity Sensitivity": 0,
+        "Time (seconds)": [
+            0.97,
+            0.46,
+            0.71,
+            0.48
+        ],
+        "Level (unit interval)": [
+            0.99,
+            0.0,
+            0.4,
+            0.0
+        ]
+    },
+    "Operator4": {
+        "AM Sensitivity": 0,
+        "Oscillator Mode": "Frequency (Ratio)",
+        "Frequency": 3.5,
+        "Detune": -2,
+        "Keyboard Level Scaling": {
+            "Breakpoint": "A",
+            "Left Curve": "-LIN",
+            "Right Curve": "-LIN",
+            "Left Depth": 0,
+            "Right Depth": 0
+        },
+        "Keyboard Rate Scaling": 2,
+        "Output Level": 77,
+        "Key Velocity Sensitivity": 0,
+        "Time (seconds)": [
+            0.96,
+            0.12,
+            0.71,
+            0.32
+        ],
+        "Level (unit interval)": [
+            0.99,
+            0.0,
+            0.34,
+            0.0
+        ]
+    },
+    "Operator5": {
+        "AM Sensitivity": 0,
+        "Oscillator Mode": "Frequency (Ratio)",
+        "Frequency": 3.02,
+        "Detune": 0,
+        "Keyboard Level Scaling": {
+            "Breakpoint": "A",
+            "Left Curve": "-LIN",
+            "Right Curve": "-LIN",
+            "Left Depth": 0,
+            "Right Depth": 0
+        },
+        "Keyboard Rate Scaling": 2,
+        "Output Level": 89,
+        "Key Velocity Sensitivity": 5,
+        "Time (seconds)": [
+            0.95,
+            0.62,
+            0.68,
+            0.35
+        ],
+        "Level (unit interval)": [
+            0.99,
+            0.0,
+            0.24,
+            0.0
+        ]
+    },
+    "Operator6": {
+        "AM Sensitivity": 0,
+        "Oscillator Mode": "Fixed Frequency (Hz)",
+        "Frequency": 1000,
+        "Detune": -7,
+        "Keyboard Level Scaling": {
+            "Breakpoint": "A",
+            "Left Curve": "-LIN",
+            "Right Curve": "-LIN",
+            "Left Depth": 0,
+            "Right Depth": 0
+        },
+        "Keyboard Rate Scaling": 2,
+        "Output Level": 92,
+        "Key Velocity Sensitivity": 0,
+        "Time (seconds)": [
+            0.96,
+            0.91,
+            0.0,
+            0.28
+        ],
+        "Level (unit interval)": [
+            0.99,
+            0.0,
+            0.5,
+            0.0
+        ]
+    }
+}
