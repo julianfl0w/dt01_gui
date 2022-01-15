@@ -33,38 +33,14 @@ controlNum2Name = [""]*CONTROLCOUNT
 # begin voice parameters
 controlNum2Name[0 ] = "ctrl_vibrato_env"  # modwheel. tie it to vibrato (Pitch LFO)
 controlNum2Name[1 ] = "ctrl_tremolo_env"  # breath control
-controlNum2Name[4 ] = "ctrl_fbgain"         
-controlNum2Name[5 ] = "ctrl_fbsrc"          
-
-controlNum2Name[7 ] = "ctrl_voicegain"       # common midi control
-controlNum2Name[10] = "ctrl_pan"             # common midi control
 controlNum2Name[11] = "ctrl_expression"      # common midi control
+controlNum2Name[33] = "ctrl_silence"      # common midi control
 
-
-OPBASE = [0]*8
-# begin operator parameters
-controlNum2Name[13] = "ctrl_opno"            
-OPBASE[0]  = 14
-controlNum2Name[14] = "ctrl_env"            
-controlNum2Name[15] = "ctrl_env_rate"      
-controlNum2Name[17] = "ctrl_increment"      
-controlNum2Name[18] = "ctrl_increment_rate"
-controlNum2Name[20] = "ctrl_fmsrc"         
-controlNum2Name[21] = "ctrl_amsrc"         
-controlNum2Name[23] = "ctrl_sounding"         
    
 
 # common midi controls
 controlNum2Name[64] = "ctrl_sustain"         # common midi control
-controlNum2Name[65] = "ctrl_ratemento"      # common midi control
-controlNum2Name[71] = "ctrl_filter_resonance"# common midi control
-controlNum2Name[74] = "ctrl_filter_cutoff"   # common midi control
 
-
-# begin global params
-controlNum2Name[111] = "ctrl_flushspi"       
-controlNum2Name[112] = "ctrl_passthrough"    
-controlNum2Name[113] = "ctrl_shift"          
 
 controlName2Num = {}
 for i, name in enumerate(controlNum2Name):
@@ -115,10 +91,17 @@ class JObject():
 		return (str(type(self)) + " #" + str(self.index))
 
 def getRateAndLevel(opDict):
-	phaseCount     = len(opDict["Time (seconds)"])
-	envTimeSeconds = opDict["Time (seconds)"]
-	envThisLevel   = np.multiply(opDict["Level (unit interval)"], 2**29)
-	envelopePhase  = phaseCount- 1
+	TIMEARRAY      = opDict["Time (seconds)"]
+	LEVELARRAY     = opDict["Level (unit interval)"]
+	while(LEVELARRAY[-2] == 0 and LEVELARRAY[-1] == 0):
+		TIMEARRAY = TIMEARRAY[:-1]
+		LEVELARRAY= LEVELARRAY[:-1]
+	logger.debug("TIMEARRAY " + str(TIMEARRAY))
+	logger.debug("LEVELARRAY " + str(LEVELARRAY))
+	phaseCount     = len(TIMEARRAY)
+	envTimeSeconds = TIMEARRAY
+	envThisLevel   = np.multiply(LEVELARRAY, 2**29)
+	phase  = phaseCount- 1
 	finalPhase     = phaseCount- 1
 
 	envTimeSamples   = np.multiply(envTimeSeconds, SamplesPerSecond)
@@ -147,11 +130,11 @@ def getRateAndLevel(opDict):
 				goingUp  = envThisLevel[phase] >= envPrevLevel[phase]
 				tooClose [phase] = envPrevLevel[phase] + envTimeSamples[phase] > envThisLevel[phase] > envPrevLevel[phase] - envTimeSamples[phase] 
 
-				logger.debug("envThisLevel        : " + str(envThisLevel       ))
-				logger.debug("envStepToThisOne    : " + str(envStepToThisOne ))
-				logger.debug("envPrevLevel        : " + str(envPrevLevel       ))
-				logger.debug("goingUp             : " + str(goingUp  ))
-				logger.debug("tooClose            : " + str(tooClose ))
+				#logger.debug("envThisLevel        : " + str(envThisLevel       ))
+				#logger.debug("envStepToThisOne    : " + str(envStepToThisOne ))
+				#logger.debug("envPrevLevel        : " + str(envPrevLevel       ))
+				#logger.debug("goingUp             : " + str(goingUp  ))
+				#logger.debug("tooClose            : " + str(tooClose ))
 
 				# change previous env if this is the final one (always 0) 
 				# otherwise change this env 
@@ -169,9 +152,9 @@ def getRateAndLevel(opDict):
 				if roll == 1:
 					envRatePerSample= envStepToThisOne / envTimeSamples
 
-				logger.debug("envThisLevel     : " + str(envThisLevel    ))
-				logger.debug("envRatePerSample : " + str(envRatePerSample))
-				logger.debug("tooClose         : " + str(tooClose        ))
+				#logger.debug("envThisLevel     : " + str(envThisLevel    ))
+				#logger.debug("envRatePerSample : " + str(envRatePerSample))
+				#logger.debug("tooClose         : " + str(tooClose        ))
 				#input()
 				
 		envPrevLevel            = np.roll(envThisLevel[:phaseCount], roll, axis = 0)
@@ -181,7 +164,8 @@ def getRateAndLevel(opDict):
 
 		finished = not any(tooClose)
 
-
+	logger.debug("envRatePerSample " + str(envRatePerSample))
+	logger.debug("envThisLevel " + str(envThisLevel))
 	return envRatePerSample, envThisLevel
 	
 class DT01(JObject):
@@ -313,18 +297,17 @@ class Voice(JObject):
 		self.formatAndSend(cmd_env,      self.patch.envThisLevel[:SOUNDINGOPS, phase], voicemode=False)
 		self.formatAndSend(cmd_env_rate, self.patch.envRatePerSample[:SOUNDINGOPS, phase], voicemode=False)                           
 		for op in self.operators:
-			op.envelopePhase = phase
+			op.phase = phase
 		
 		return 0
 		
 	def silenceAllOps(self):
-		phases = []
 		rates  = []
 		for op in self.operators[:6]:
-			op.envelopePhase = op.phaseCount - 1
-			phases += [op.envelopePhase]
-			rates  += [self.patch.envRatePerSample[op.index, op.envelopePhase]]
-			
+			logger.debug("phaseCount " + str(self.patch.phaseCount[op.index]))
+			rates  += [self.patch.envRatePerSample[op.index, self.patch.phaseCount[op.index] - 1]]
+			op.phase = self.patch.phaseCount[op.index] - 1
+		logger.debug(rates)
 		self.formatAndSend(cmd_env_rate, self.opZeros[:SOUNDINGOPS], voicemode=False)
 		self.formatAndSend(cmd_env,      self.opZeros[:SOUNDINGOPS], voicemode=False)
 		self.formatAndSend(cmd_env_rate, rates, voicemode=False)        
@@ -385,49 +368,18 @@ class Operator(JObject):
 		self.dt01_inst = dt01_inst
 		self.index = index
 		self.voice = voice
-		self.base  = OPBASE[self.index]
 		self.sounding = 1
 		self.fmsrc    = 7
 		self.amsrc    = 0
 		self.selected = False
 		self.baseIncrement = 0
 		self.incrementScale = 1
-		self.phaseCount     = 4
 		
-		self.envelopePhase         = 3
+		self.phase         = 3
 		
 	def formatAndSend(self, param, value, voicemode = False):
 		return formatAndSend(param, self.voice.index, self.index, value, voicemode=voicemode)
 	
-	
-	def dx7setup(self, opDict, sounding0indexed):
-	
-		self.dt01_inst.phaseCount = 4 # always 4 phases with DX7 Patches
-		self.freqSetup(opDict)
-		
-		self.envelopePhase = 3
-		self.sounding = 1 if self.index in sounding0indexed else 0
-			
-		#https://github.com/google/music-synthesizer-for-android/blob/f67d41d313b7dc85f6fb99e79e515cc9d208cfff/app/src/main/jni/env.cc
-		levellut = [0, 5, 9, 13, 17, 20, 23, 25, 27, 29, 31, 33, 35, 37, 39, 41, 42, 43, 45, 46]
-		outlevel = opDict["Output Level"]
-		if outlevel >= 20:
-			self.outputLevelReal = 28 + outlevel
-		else:
-			self.outputLevelReal = levellut[outlevel];
-		self.outputLevelReal /= 128.0
-		
-		maxSeconds = 10 # gets multiplied again by 4 if its a release (as opposed to attack)
-		gamma = 4
-		
-		envDict = opDict["Envelope Generator"]
-		if envDict["Rate 4"] == 0:
-			envDict["Rate 4"] = 1
-		
-		for phase in range(4):
-			self.setDx7EnvTimeSecondsAndLevelReal(sounding0indexed, phase, maxSeconds*pow(1-(envDict["Rate " + str(1+phase)]/127.0), gamma), self.outputLevelReal * (envDict["Level " + str(1+phase)]/127.0))
-	
-
 	def setSounding(self, sounding):
 		self.sounding = isSounding
 		self.voice.applySounding() # need to update by voice because of memory layout in FPGA

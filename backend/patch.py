@@ -187,8 +187,8 @@ class Patch():
 		for opno in range(soundingops):
 			logger.debug(opno)
 			opDict = patchDict["Operator" + str(opno+1)]
-			self.phaseCount[opno] = len(opDict["Time (seconds)"])
 			eps, ela = dt01.getRateAndLevel(opDict)
+			self.phaseCount[opno] = len(ela)
 			self.envRatePerSample[opno,:self.phaseCount[opno]] = np.abs(eps*(opDict["Output Level"] / 100.0))
 			self.envThisLevel    [opno,:self.phaseCount[opno]] = ela*(opDict["Output Level"] / 100.0)
 			
@@ -208,48 +208,28 @@ class Patch():
 		
 		return 0
 		
-	def loadDx7Json(self, filename):
-	
-		with open(filename, 'r') as f:
-			patchDict = json.loads(f.read())
-		self.patchDict = patchDict
-		logger.debug("loading " + patchDict["Name"])
-		initDict = getInitDict(patchDict)
-		sounding0indexed = [s-1 for s in initDict["sounding"]]
-		
-		# ignoring pitch envelope generator for now
-	
-		for voice in self.voices:
-			for operator in voice.operators[:dt01.SOUNDINGOPS]:
-				opDict = patchDict["Operator" + str(operator.index+1)]
-				operator.dx7setup(opDict, sounding0indexed)
-			
-		self.dt01_inst.initialize(initDict, voices = self.voices)
-		
-		return 0
-	
 	
 	def processIRQueue(self, voiceno, opnos):
 		
 		for opno in opnos:
 			if opno < 6:
 				op = self.dt01_inst.voices[voiceno].operators[opno]
-				phase = (op.envelopePhase + 1) % op.phaseCount
+				phase = (op.phase + 1) % self.phaseCount[opno]
 
 				logger.debug("\n\nproc IRQUEUE! voice:" + str(voiceno) + " op:"+ str(opno) + " phase:" + str(phase))
 
 				if phase == 0:
 					logger.debug("STOP PHASE")
-				elif phase == op.phaseCount - 1:
-					logger.debug("HOLD PHASE")
+				elif phase == self.phaseCount[opno] - 1:
+					logger.debug("FALL PHASE, CAN ONLY BE RESTARTED BY NOTE-ON")
 				else:
+					op.phase = phase
 					op.formatAndSend(dt01.cmd_env_rate, 0)                               
 					op.formatAndSend(dt01.cmd_env,      self.envThisLevel[opno, phase])
 					op.formatAndSend(dt01.cmd_env_rate, self.envRatePerSample[opno, phase])                           
 					#logger.debug("sending rate " + str(self.envRatePerSample[opno,phase]))
 					#logger.debug("envRatePerSample:\n" + str(self.envRatePerSample))
 
-				op.envelopePhase = phase
 		
 	def midi2commands(self, msg):
 		loopstart = time.time()
@@ -264,7 +244,6 @@ class Patch():
 			note = self.allNotes[msg.note] 
 			note.velocity = 0 
 			note.velocityReal = 0 
-			voicesToUpdate = note.voices.copy()
 			for voice in note.voices:
 				#voice.spawntime = 0
 				voice.silenceAllOps()
@@ -313,74 +292,36 @@ class Patch():
 
 			event = "control[" + str(msg.control) + "]"
 			
-			# selection
-			if msg.control == dt01.ctrl_opno:
-				self.activeOperator = min(msg.value, 7)
-				#logger.debug(self.activeOperator)
-				
-			logger.debug("Setting op " + str(self.activeOperator) + " control: " + str(msg.control) + " value: " + str(msg.value/127.0))
-			
 			# forward some controls
 			
 			# route control3 to control 7 because sometimes 3 is volume control
 			if msg.control == 3:
 				self.midi2commands(mido.Message('control_change', control= 7, value = msg.value ))
 				
-			if msg.control == dt01.ctrl_flushspi:
-				self.formatAndSend(dt01.cmd_flushspi, self.controlNum2Val[dt01.ctrl_flushspi])
-				
-			if msg.control == dt01.ctrl_passthrough:
-				self.formatAndSend(dt01.cmd_passthrough, self.controlNum2Val[dt01.ctrl_passthrough])
-				
-			if msg.control == dt01.ctrl_shift:
-				self.formatAndSend(dt01.cmd_shift , self.controlNum2Val[dt01.ctrl_shift])
-				
-				
 			if msg.control == dt01.ctrl_vibrato_env:
 				dt01.formatAndSend(dt01.cmd_env_rate , self.lowestVoiceIndex, 7, [0] * self.polyphony)
 				dt01.formatAndSend(dt01.cmd_env , self.lowestVoiceIndex, 7, [(msg.value/127.0)*2**29] * self.polyphony)
 				dt01.formatAndSend(dt01.cmd_env_rate , self.lowestVoiceIndex, 7, [(msg.value/127.0)*2**29] * self.polyphony)
-				
 				
 			if msg.control == dt01.ctrl_tremolo_env:
 				dt01.formatAndSend(dt01.cmd_env_rate , self.lowestVoiceIndex, 6, [0] * self.polyphony)
 				dt01.formatAndSend(dt01.cmd_env , self.lowestVoiceIndex, 6, [(msg.value/127.0)*2**29] * self.polyphony)
 				dt01.formatAndSend(dt01.cmd_env_rate , self.lowestVoiceIndex, 6, [(msg.value/127.0)*2**29] * self.polyphony)
 				
+			if msg.control == dt01.ctrl_silence:
+				for op in range(6):
+					dt01.formatAndSend(dt01.cmd_env , self.lowestVoiceIndex,      op, [0] * self.polyphony)
+					dt01.formatAndSend(dt01.cmd_env_rate , self.lowestVoiceIndex, op, [0] * self.polyphony)
 				
-			for voice in self.voices:
-			
-				# OPERATOR CONCERNS
-				# get active operator
-				if self.activeOperator < 2:
-					channel  = voice.channels[self.activeOperator]
-				activeOperator = voice.operators[self.activeOperator]
 				
-				if msg.control == dt01.ctrl_voicegain or msg.control == dt01.ctrl_pan : 
-					baseVolume = 2**16*(msg.value/127.0)
-					if self.activeOperator == 0:
-						channel.formatAndSend(dt01.cmd_channelgain, baseVolume*(msg.value/127.0)) # assume 2 channels]
-					else:
-						channel.formatAndSend(dt01.cmd_channelgain, baseVolume*(1 - (msg.value/127.0))) # assume 2 channels]
-	
-										
-				if msg.control == dt01.ctrl_env_rate: 
-					activeOperator.formatAndSend(dt01.cmd_env_rate      , 2**10 * (1 - (msg.value/127.0)) * (1 - (msg.value/127.0)) )
-		# static oscillators do not have velocity-dependant env
-					
-				if msg.control == dt01.ctrl_increment:
-					voice.setAllIncrements(self.pitchwheelReal * (1 + self.aftertouchReal))
-					
-				if msg.control == dt01.ctrl_increment_rate: 
-					activeOperator.formatAndSend(dt01.cmd_increment_rate, 2**8 * (1 - (msg.value/127.0)) * (1 - (msg.value/127.0)))
-					
-				if msg.control == dt01.ctrl_sustain: 
-					self.sustain  = msg.value
-					if not self.sustain:
-						for note, release in enumerate(self.toRelease):
-							if release:
-								self.midi2commands(mido.Message('note_off', note = note, velocity = 0))
-						self.toRelease = [False]*MIDINOTES
+			# OPERATOR CONCERNS
+			if msg.control == dt01.ctrl_sustain: 
+				self.sustain  = msg.value
+				if not self.sustain:
+					for note, release in enumerate(self.toRelease):
+						if release:
+							self.midi2commands(mido.Message('note_off', note = note, velocity = 0))
+					self.toRelease = [False]*MIDINOTES
 					
 				
 			
@@ -514,7 +455,7 @@ class PatchManager():
 						
 
 			
-	def startup(self, patchFilename = "patches/aaa/sine.json"):
+	def startup(self, patchFilename):
 		
 		PID = os.getpid()
 		if useKeyboard:
@@ -574,4 +515,4 @@ class PatchManager():
 			del self.midiin
 if __name__ == "__main__":
 	P = PatchManager()
-	P.startup("/home/pi/dt_fm/patches/aaa/sine.json")
+	P.startup("/home/pi/dt_fm/patches/aaa/fm.json")
