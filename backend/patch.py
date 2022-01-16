@@ -79,7 +79,7 @@ class Patch():
 		self.dt01_inst = dt01_inst
 		self.polyphony = 64
 		self.active = True
-		self.voicesPerNote = 1
+		self.voicesPerNote = 5
 		self.voices = []
 		self.currvoiceno = 0
 		self.currVoice = 0
@@ -126,7 +126,7 @@ class Patch():
 		initDict["env_rate" ] = [2**27, 2**27, 2**27, 2**27, 2**27, 2**27, 2**26*LFODict["Delay"] / 127.0, 2**26*LFODict["Delay"] / 127.0]
 		
 		initDict["increment"      ] = [0    , 0    , 0    , 0    , 0    , 0    , 2**20*pow(LFODict["Speed"] / 127.0, 2), 2**18*LFODict["Speed"] / 127.0]
-		initDict["increment_rate" ] = [2**29, 2**29, 2**29, 2**29, 2**29, 2**29, 2**28, 2**28]
+		initDict["increment_rate" ] = [2**25] * 8 
 		
 		initDict["flushspi"    ] = 0
 		initDict["passthrough" ] = 0
@@ -153,13 +153,13 @@ class Patch():
 		
 		return initDict, sounding0indexed
 	
-	def setAllIncrements(self, modifier):
+	def setAllIncrements(self):
 		# no way to avoid casting it seems
 		#logger.debug(self.baseIncrement   )
 		#logger.debug(self.incrementScale  )
-		#logger.debug(self.defaultIncrement)
+		#logger.debug(self.strikeIncrement)
 		#logger.debug(modifier)
-		self.tosend = np.add(self.baseIncrement, modifier * np.multiply(self.incrementScale, self.defaultIncrement)).astype(np.int32)
+		self.tosend = np.add(self.baseIncrement, self.pitchwheelReal * (1 + self.aftertouchReal) * self.strikeIncrement).astype(np.int32)
 		for op in self.lowestVoice.operators[:6]:
 			op.formatAndSend(dt01.cmd_increment, self.tosend[:, op.index], voicemode = True)
 	
@@ -178,30 +178,31 @@ class Patch():
 		self.envRatePerSample = np.zeros((soundingops, 100), dtype=np.int32)
 		self.envThisLevel     = np.zeros((soundingops, 100), dtype=np.int32)
 		self.baseIncrement    = np.zeros((self.polyphony, soundingops))
-		self.incrementScale   = np.zeros((self.polyphony, soundingops))
-		self.defaultIncrement = np.zeros((self.polyphony, soundingops))
-		self.sounding         = np.zeros((self.polyphony, soundingops), dtype=np.int32)
+		self.incrementScale   = np.zeros((soundingops))
+		self.strikeIncrement  = np.zeros((self.polyphony, soundingops), dtype=np.int32)
+		self.sounding         = np.zeros((soundingops), dtype=np.int32)
 			
 		logger.debug("Kosherizing env vals")
 		# setup env vals
 		for opno in range(soundingops):
 			logger.debug(opno)
 			opDict = patchDict["Operator" + str(opno+1)]
-			eps, ela = dt01.getRateAndLevel(opDict)
+			eps, ela = dt01.getRateAndLevel(opDict, (opDict["Output Level"]))
 			self.phaseCount[opno] = len(ela)
-			self.envRatePerSample[opno,:self.phaseCount[opno]] = np.abs(eps*(opDict["Output Level"] / 100.0))
-			self.envThisLevel    [opno,:self.phaseCount[opno]] = ela*(opDict["Output Level"] / 100.0)
+			self.envRatePerSample[opno,:self.phaseCount[opno]] = np.abs(eps)
+			self.envThisLevel    [opno,:self.phaseCount[opno]] = ela
 			
 			# setup the frequencies
 			if opDict["Oscillator Mode"] == "Frequency (Ratio)":
 				self.baseIncrement [:, opno] = 0
-				self.incrementScale[:, opno] = opDict["Frequency"] * (1 + (opDict["Detune"] / 7.0) / 80)
+				self.incrementScale[opno] = opDict["Frequency"] * (1 + (opDict["Detune"] / 7.0) / 80)
+				self.incrementScale[opno] = opDict["Frequency"] * (1 + (opDict["Detune"] / 7.0) / 40)
 
 			else:
 				self.baseIncrement [:, opno] = (2**32)*opDict["Frequency"] / dt01.SamplesPerSecond
-				self.incrementScale[:, opno] = 0
+				self.incrementScale[opno] = 0
 			
-			self.sounding[:, opno] = 1 if opno in sounding0indexed else 0
+			self.sounding[opno] = 1 if opno in sounding0indexed else 0
 		logger.debug("Done kosherizing")
 
 		self.dt01_inst.initialize(initDict, voices = self.voices)
@@ -229,7 +230,9 @@ class Patch():
 					op.formatAndSend(dt01.cmd_env_rate, self.envRatePerSample[opno, phase])                           
 					#logger.debug("sending rate " + str(self.envRatePerSample[opno,phase]))
 					#logger.debug("envRatePerSample:\n" + str(self.envRatePerSample))
-
+					
+	def getPitchMod(self):
+		return self.pitchwheelReal * (1 + self.aftertouchReal)
 		
 	def midi2commands(self, msg):
 		loopstart = time.time()
@@ -267,10 +270,18 @@ class Patch():
 				voice.spawntime = time.time()
 				voice.indexInCluser = voiceNoInCluster
 				voice.note = note
+				#¢ or c = 1200 × log2 (f2 / f1)
+				# c = 1200 × log2 (fratio)
+				# c / 1200 = log2 (fratio)
+				# 2 ^ ( c / 1200) = fratio
+				voiceposUnit = (voiceNoInCluster / self.voicesPerNote) * 2 - 1
+				centsDetune = 30
+				clusterDetune = pow(2, centsDetune*voiceposUnit/1200)
 				note.voices += [voice]
-				logger.debug("modifier " + str(self.pitchwheelReal * (1 + self.aftertouchReal)))
-				voice.setAllIncrements(self.pitchwheelReal * (1 + self.aftertouchReal))
-				self.dt01_inst.defaultIncrement[voice.index].fill(note.defaultIncrement)
+				logger.debug("modifier " + str(self.getPitchMod()))
+				self.strikeIncrement[voice.index] = note.defaultIncrement * clusterDetune * self.incrementScale
+				voice.setAllIncrements(self.getPitchMod())
+				logger.debug("self.strikeIncrement[voice.index] " + str(self.strikeIncrement[voice.index]))
 				voice.setPhaseAllOps(0)
 						
 				dt01.formatAndSend(dt01.cmd_channelgain, voice.index, 0, [2**16*note.velocityReal]*2, voicemode = False)
@@ -284,7 +295,7 @@ class Patch():
 			amountchange = self.pitchwheel / 8192.0
 			self.pitchwheelReal = pow(2, amountchange)
 			logger.debug("PWREAL " + str(self.pitchwheelReal))
-			self.setAllIncrements(self.pitchwheelReal * (1 + self.aftertouchReal))
+			self.setAllIncrements()
 			
 		elif msg.type == 'control_change':
 						
@@ -333,7 +344,7 @@ class Patch():
 			self.aftertouch = msg.value
 			self.aftertouchReal = msg.value/127.0
 			
-			self.setAllIncrements(self.pitchwheelReal * (1 + self.aftertouchReal))
+			self.setAllIncrements()
 			#for voice in self.voices:
 			#	if time.time() - voice.note.releaseTime > max(voice.envTimeSeconds[3,:]):
 			#		voice.setAllIncrements(self.pitchwheelReal * (1 + self.aftertouchReal))
@@ -394,11 +405,30 @@ class PatchManager():
 	def checkMidi(self):
 		
 		for dev, patches in self.allMidiDevicesAndPatches:
-			msg = dev.get_message()
-			if msg is not None:
+			msg  = dev.get_message()
+			msgs = []
+			while msg is not None:
+				msgs += [msg]
+				msg  = dev.get_message()
+				
+			processedPW = False
+			processedAT = False
+			for msg in reversed(msgs): # most recent first
+				
 				msg, dtime = msg
 				msg = mido.Message.from_bytes(msg)
-			
+				if msg.type == 'pitchwheel':
+					if processedPW:
+						continue
+					else:
+						processedPW = True
+						
+				if msg.type == 'aftertouch':
+					if processedAT:
+						continue
+					else:
+						processedAT = True
+						
 				logger.debug(msg)
 				for patch in patches:
 					patch.midi2commands(msg)
@@ -515,4 +545,4 @@ class PatchManager():
 			del self.midiin
 if __name__ == "__main__":
 	P = PatchManager()
-	P.startup("/home/pi/dt_fm/patches/aaa/fm.json")
+	P.startup('/home/pi/dt_fm/patches/aaa/B3 P2 8888.json')
