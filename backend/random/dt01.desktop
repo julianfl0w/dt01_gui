@@ -2,4 +2,4 @@
 Name=Your Application Name
 Type=Application
 Comment=Some Comments about your program
-Exec=/home/pi/dt_fm/startscript.sh
+Exec=/home/pi/dtfm/startscript.sh

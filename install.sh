@@ -6,7 +6,7 @@ cd $DOWNLOADS
 DIR="/home/pi/Downloads/LCD-show"
 if [ ! -d "$DIR" ]; then
   # add autostart
-  sudo echo "@/home/pi/dt_fm/startscript.sh" > /etc/xdg/lxsession/LXDE-pi/autostart
+  sudo echo "@/home/pi/dtfm/startscript.sh" > /etc/xdg/lxsession/LXDE-pi/autostart
 
 
   sudo apt-get update
@@ -37,7 +37,7 @@ cd ..
 
 export DISPLAY=:0
 
-#DIR="/home/pi/dt_fm"
+#DIR="/home/pi/dtfm"
 #if [ ! -d "$DIR" ]; then
 #  # Take action if $DIR not exists. #
 #  echo "Downloading synth code..."
@@ -55,8 +55,8 @@ export DISPLAY=:0
 #sudo apt-get install aptitude
 
 #cd ~
-#python3 -m venv dt_fm
-#cd dt_fm
+#python3 -m venv dtfm
+#cd dtfm
 #source bin/activate
 #cd $DOWNLOADS
 #git clone https://github.com/tranter/raspberry-pi-qt-builds
@@ -83,7 +83,7 @@ sudo apt-get install -y xdotool
 #sudo vim /etc/hostname
 
 
-DIR="/home/pi/dt_fm"
+DIR="/home/pi/dtfm"
 #sudo cp $DIR/random/cmdline.txt /boot/cmdline.txt
 #sudo cp $DIR/random/config.txt /boot/config.txt
 

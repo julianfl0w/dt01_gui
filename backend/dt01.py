@@ -92,7 +92,11 @@ class JObject():
 
 def getRateAndLevel(opDict, output_level, maxout = 2**29):
 	TIMEARRAY      = opDict["Time (seconds)"]
-	LEVELARRAY     = opDict["Level (unit interval)"]
+	LEVELARRAY     = [o * output_level / 100 for o in opDict["Level (unit interval)"]]
+	logger.debug(LEVELARRAY)
+	if sum(LEVELARRAY) == 0:
+		return [0], [0]
+	
 	while(LEVELARRAY[-2] == 0 and LEVELARRAY[-1] == 0):
 		TIMEARRAY = TIMEARRAY[:-1]
 		LEVELARRAY= LEVELARRAY[:-1]
@@ -100,7 +104,7 @@ def getRateAndLevel(opDict, output_level, maxout = 2**29):
 	logger.debug("LEVELARRAY " + str(LEVELARRAY))
 	phaseCount     = len(TIMEARRAY)
 	envTimeSeconds = TIMEARRAY
-	envThisLevel   = np.multiply(LEVELARRAY, maxout * output_level / 100)
+	envThisLevel   = np.multiply(LEVELARRAY, maxout)
 	phase  = phaseCount- 1
 	finalPhase     = phaseCount- 1
 
@@ -124,7 +128,7 @@ def getRateAndLevel(opDict, output_level, maxout = 2**29):
 		#/                  \L3 = 0
 		roll = 1
 		for phase in range(phaseCount):
-			logger.debug("\n\nphase " + str(phase))
+			#logger.debug("\n\nphase " + str(phase))
 			envPrevLevel            = np.roll(envThisLevel[:phaseCount], roll, axis = 0)
 			envStepToThisOne        = envThisLevel[:phaseCount] - envPrevLevel[:phaseCount]
 
@@ -135,7 +139,7 @@ def getRateAndLevel(opDict, output_level, maxout = 2**29):
 			# otherwise change this env 
 			if tooClose[phase]:
 				if phase == 0:
-					logger.debug("adjusting first")
+					#logger.debug("adjusting first")
 					envThisLevel[0] = envThisLevel[phase-1] + envTimeSamples[0] 
 
 				else:
@@ -151,16 +155,16 @@ def getRateAndLevel(opDict, output_level, maxout = 2**29):
 				
 		envPrevLevel            = np.roll(envThisLevel[:phaseCount], roll, axis = 0)
 		
-		logger.debug("envThisLevel     : " + str(envThisLevel    ))
-		logger.debug("envTimeSamples     : " + str(envTimeSamples       ))
-		logger.debug("envPrevLevel        : " + str(envPrevLevel       ))
-		logger.debug("goingUp             : " + str(goingUp  ))
-		logger.debug("envRatePerSample : " + str(envRatePerSample))
-		logger.debug("tooClose         : " + str(tooClose        ))
 		minup  = (envPrevLevel + envTimeSamples)
 		mindown= (envPrevLevel - envTimeSamples)
-		logger.debug("minup : " + str(minup))
-		logger.debug("mindown         : " + str(mindown        ))
+		#logger.debug("envThisLevel     : " + str(envThisLevel    ))
+		#logger.debug("envTimeSamples     : " + str(envTimeSamples       ))
+		#logger.debug("envPrevLevel        : " + str(envPrevLevel       ))
+		#logger.debug("goingUp             : " + str(goingUp  ))
+		#logger.debug("envRatePerSample : " + str(envRatePerSample))
+		#logger.debug("tooClose         : " + str(tooClose        ))
+		#logger.debug("minup : " + str(minup))
+		#logger.debug("mindown         : " + str(mindown        ))
 		tooClose = np.logical_and(np.less(envThisLevel[:phaseCount], minup),  np.greater(envThisLevel[:phaseCount],mindown))
 
 		finished = not any(tooClose)
@@ -285,7 +289,7 @@ class Voice(JObject):
 	
 	def setAllIncrements(self, modifier):
 		logger.debug("setting all increments")
-		val = np.minimum(self.patch.baseIncrement[self.index] + self.patch.strikeIncrement[self.index] * modifier, 2**30).astype(np.int32)
+		val = np.minimum(self.patch.baseIncrement[self.index] + self.cluster.strikeIncrement[self.index] * modifier, 2**30).astype(np.int32)
 		self.formatAndSend(cmd_increment, val[:SOUNDINGOPS], voicemode = False)
 	
 	
@@ -302,10 +306,9 @@ class Voice(JObject):
 	def silenceAllOps(self):
 		rates  = []
 		for op in self.operators[:6]:
-			logger.debug("phaseCount " + str(self.patch.phaseCount[op.index]))
 			rates  += [self.patch.envRatePerSample[op.index, self.patch.phaseCount[op.index] - 1]]
 			op.phase = self.patch.phaseCount[op.index] - 1
-		logger.debug(rates)
+		#logger.debug(rates)
 		self.formatAndSend(cmd_env_rate, self.opZeros[:SOUNDINGOPS], voicemode=False)
 		self.formatAndSend(cmd_env,      self.opZeros[:SOUNDINGOPS], voicemode=False)
 		self.formatAndSend(cmd_env_rate, rates, voicemode=False)        

@@ -65,6 +65,78 @@ class Note:
 		self.defaultIncrement = 2**32 * (noteToFreq(index) / 96000.0)
 		self.releaseTime = 0
 		
+pentaSingle = [1/1, 32.0/27, 4.0/3, 3.0/2, 16.0/9]
+penta = []
+for i in range(10):
+	for ps in pentaSingle:
+		penta += [ps*(2**i)]
+
+class Cluster():
+	def __init__(self, voices, patch):
+		self.voices = voices
+		self.vIndexes = [v.index for v in voices]
+		self.patch  = patch
+		for v in voices:
+			v.cluster = self
+		self.spawntime = time.time()
+		voiceNoInCluster = np.arange(len(self.voices))
+		
+		#¢ or c = 1200 × log2 (f2 / f1)
+		# c = 1200 × log2 (fratio)
+		# c / 1200 = log2 (fratio)
+		# 2 ^ ( c / 1200) = fratio
+		self.voiceposUnit = (voiceNoInCluster / len(voices)) * 2 - 1
+		self.centsDetune = 15
+		self.clusterDetune = pow(2, self.centsDetune*self.voiceposUnit/1200)
+		np.set_printoptions(threshold=sys.maxsize)
+	
+	def startEnvs(self):
+		logger.debug("startEnvs cluster " + str(self.index))
+		self.formatAndSend(dt01.cmd_env_rate, self.opZeros,  voicemode=False)                               
+		self.formatAndSend(dt01.cmd_env,      self.env0,     voicemode=False)
+		self.formatAndSend(dt01.cmd_env_rate, self.envRate0, voicemode=False) 
+		for voice in self.voices:
+			for op in voice.operators:
+				op.phase = 0
+		
+		return 0
+	
+	def spawn(self, note):
+		#logger.debug("clusterDetune "  + str(self.clusterDetune))
+		#logger.debug("incrementScale " + str(self.patch.incrementScale))
+		#logger.debug("freqScales " + str(self.freqScales[:]))
+		self.strikeIncrement = note.defaultIncrement * self.freqScales
+		logger.debug(self.strikeIncrement)
+		for voice in self.voices:
+			voice.note = note
+			note.voices += [voice]
+			
+		#logger.debug("modifier " + str(self.patch.getPitchMod()))
+		self.setAllIncrements()
+		self.startEnvs()
+		dt01.formatAndSend(dt01.cmd_channelgain, self.vIndexes[0], 0, [2**16*note.velocityReal]*len(self.voices), voicemode = True)
+		dt01.formatAndSend(dt01.cmd_channelgain, self.vIndexes[0], 1, [2**16*note.velocityReal]*len(self.voices), voicemode = True)
+				
+	
+	def setAllIncrements(self):
+		logger.debug("setting all increments")
+		val = np.minimum(self.patch.baseIncrement + self.strikeIncrement * self.patch.getPitchMod(), 2**30).astype(np.int32)
+		val = val.flatten()
+		logger.debug("val " + str( val))
+		self.voices[0].formatAndSend(dt01.cmd_increment, val[:], voicemode = False)
+	
+	def update(self):
+		self.opZeros = np.zeros((8 * len(self.voices)), dtype=np.int32)
+		self.env0     = np.repeat(self.patch.envThisLevel    [:,0].reshape((1, dt01.OPERATORCOUNT)), len(self.voices), axis=0).astype(np.int32).flatten()    
+		self.envRate0 = np.repeat(self.patch.envRatePerSample[:,0].reshape((1, dt01.OPERATORCOUNT)), len(self.voices), axis=0).astype(np.int32).flatten()
+		self.freqScales = (np.rot90(self.clusterDetune.reshape(1,len(self.voices)), 3) * self.patch.incrementScale)
+		
+		np.set_printoptions(threshold=sys.maxsize)
+		#logger.debug(str(self.env0 ))
+	
+	def formatAndSend(self, param, value, voicemode):
+		dt01.formatAndSend(param, self.vIndexes[0], 0, value, voicemode)
+		
 # patch holds all state, including note and control state
 class Patch():
 					
@@ -79,7 +151,7 @@ class Patch():
 		self.dt01_inst = dt01_inst
 		self.polyphony = 64
 		self.active = True
-		self.voicesPerNote = 5
+		self.voicesPerCluster = 5
 		self.voices = []
 		self.currvoiceno = 0
 		self.currVoice = 0
@@ -96,6 +168,16 @@ class Patch():
 			
 		self.activeOperator = 0
 		self.voices = dt01_inst.getVoices()
+		self.clusterCount = int(len(self.voices) / self.voicesPerCluster)
+		
+		remainingVoices = self.voices.copy()
+		self.clusters = []
+		for i in range(self.clusterCount):
+			newCluster = Cluster(remainingVoices[:self.voicesPerCluster], self)
+			newCluster.index = i
+			self.clusters += [newCluster]
+			remainingVoices = remainingVoices[self.voicesPerCluster:]
+		
 		self.lowestVoice = sorted(self.voices, key=lambda x: x.index)[0]
 		self.lowestVoiceIndex = self.lowestVoice.index
 		self.voiceCount = len(self.voices)
@@ -126,7 +208,7 @@ class Patch():
 		initDict["env_rate" ] = [2**27, 2**27, 2**27, 2**27, 2**27, 2**27, 2**26*LFODict["Delay"] / 127.0, 2**26*LFODict["Delay"] / 127.0]
 		
 		initDict["increment"      ] = [0    , 0    , 0    , 0    , 0    , 0    , 2**20*pow(LFODict["Speed"] / 127.0, 2), 2**18*LFODict["Speed"] / 127.0]
-		initDict["increment_rate" ] = [2**25] * 8 
+		initDict["increment_rate" ] = [2**22] * 8 
 		
 		initDict["flushspi"    ] = 0
 		initDict["passthrough" ] = 0
@@ -159,7 +241,7 @@ class Patch():
 		#logger.debug(self.incrementScale  )
 		#logger.debug(self.strikeIncrement)
 		#logger.debug(modifier)
-		self.tosend = np.add(self.baseIncrement, self.pitchwheelReal * (1 + self.aftertouchReal) * self.strikeIncrement).astype(np.int32)
+		self.tosend = np.add(self.baseIncrement, self.getPitchMod() * self.strikeIncrement).astype(np.int32)
 		for op in self.lowestVoice.operators[:6]:
 			op.formatAndSend(dt01.cmd_increment, self.tosend[:, op.index], voicemode = True)
 	
@@ -171,21 +253,20 @@ class Patch():
 		logger.debug("loading " + patchDict["Name"])
 		initDict, sounding0indexed = self.getInitDict(patchDict)
 		
-		soundingops = 6
-		
 		# ignoring pitch envelope generator for now
-		self.phaseCount       = np.zeros((soundingops), dtype=np.int32)
-		self.envRatePerSample = np.zeros((soundingops, 100), dtype=np.int32)
-		self.envThisLevel     = np.zeros((soundingops, 100), dtype=np.int32)
-		self.baseIncrement    = np.zeros((self.polyphony, soundingops))
-		self.incrementScale   = np.zeros((soundingops))
-		self.strikeIncrement  = np.zeros((self.polyphony, soundingops), dtype=np.int32)
-		self.sounding         = np.zeros((soundingops), dtype=np.int32)
+		self.phaseCount       = np.zeros((dt01.OPERATORCOUNT), dtype=np.int32)
+		self.envRatePerSample = np.zeros((dt01.OPERATORCOUNT, 100), dtype=np.int32)
+		self.envThisLevel     = np.zeros((dt01.OPERATORCOUNT, 100), dtype=np.int32)
+		self.incrementScale   = np.zeros((dt01.OPERATORCOUNT))
+		self.baseIncrement    = np.zeros((dt01.OPERATORCOUNT))
+		self.strikeIncrement  = np.zeros((self.polyphony, dt01.OPERATORCOUNT), dtype=np.int32)
+		self.sounding         = np.zeros((dt01.OPERATORCOUNT), dtype=np.int32)
 			
 		logger.debug("Kosherizing env vals")
 		# setup env vals
+		soundingops = 6
 		for opno in range(soundingops):
-			logger.debug(opno)
+			logger.debug("Operator" + str(opno+1))
 			opDict = patchDict["Operator" + str(opno+1)]
 			eps, ela = dt01.getRateAndLevel(opDict, (opDict["Output Level"]))
 			self.phaseCount[opno] = len(ela)
@@ -194,22 +275,22 @@ class Patch():
 			
 			# setup the frequencies
 			if opDict["Oscillator Mode"] == "Frequency (Ratio)":
-				self.baseIncrement [:, opno] = 0
-				self.incrementScale[opno] = opDict["Frequency"] * (1 + (opDict["Detune"] / 7.0) / 80)
-				self.incrementScale[opno] = opDict["Frequency"] * (1 + (opDict["Detune"] / 7.0) / 40)
+				self.baseIncrement [opno] = 0
+				#self.incrementScale[opno] = opDict["Frequency"] * (1 + (opDict["Detune"] / 7.0) / 80)
+				self.incrementScale[opno] = opDict["Frequency"] * (1 + (opDict["Detune"] / 7.0) / 30)
 
 			else:
-				self.baseIncrement [:, opno] = (2**32)*opDict["Frequency"] / dt01.SamplesPerSecond
+				self.baseIncrement [opno] = (2**32)*opDict["Frequency"] / dt01.SamplesPerSecond
 				self.incrementScale[opno] = 0
 			
 			self.sounding[opno] = 1 if opno in sounding0indexed else 0
 		logger.debug("Done kosherizing")
 
 		self.dt01_inst.initialize(initDict, voices = self.voices)
-		
+		for cluster in self.clusters:
+			cluster.update()
 		return 0
 		
-	
 	def processIRQueue(self, voiceno, opnos):
 		
 		for opno in opnos:
@@ -217,12 +298,14 @@ class Patch():
 				op = self.dt01_inst.voices[voiceno].operators[opno]
 				phase = (op.phase + 1) % self.phaseCount[opno]
 
-				logger.debug("\n\nproc IRQUEUE! voice:" + str(voiceno) + " op:"+ str(opno) + " phase:" + str(phase))
+				#logger.debug("\n\nproc IRQUEUE! voice:" + str(voiceno) + " op:"+ str(opno) + " phase:" + str(phase))
 
 				if phase == 0:
-					logger.debug("STOP PHASE")
+					#logger.debug("STOP PHASE")
+					pass
 				elif phase == self.phaseCount[opno] - 1:
-					logger.debug("FALL PHASE, CAN ONLY BE RESTARTED BY NOTE-ON")
+					#logger.debug("FALL PHASE, CAN ONLY BE RESTARTED BY NOTE-ON")
+					pass
 				else:
 					op.phase = phase
 					op.formatAndSend(dt01.cmd_env_rate, 0)                               
@@ -232,7 +315,10 @@ class Patch():
 					#logger.debug("envRatePerSample:\n" + str(self.envRatePerSample))
 					
 	def getPitchMod(self):
-		return self.pitchwheelReal * (1 + self.aftertouchReal)
+		quantized = penta[int(self.aftertouchReal * 10)]
+		
+		return self.pitchwheelReal * quantized
+		#return self.pitchwheelReal * (1 + self.aftertouchReal)
 		
 	def midi2commands(self, msg):
 		loopstart = time.time()
@@ -261,31 +347,12 @@ class Patch():
 			note.velocityReal = (msg.velocity/127.0)**2
 			note.held = True
 			note.msg = msg
+			
 			# spawn some voices!
-			for voiceNoInCluster in range(self.voicesPerNote):
-				
-				#self.currvoiceno = (self.currvoiceno + 1) % self.polyphony
-				#logger.debug([s.spawntime for s in self.voices])
-				voice = sorted(self.voices, key=lambda x: x.spawntime)[0]
-				voice.spawntime = time.time()
-				voice.indexInCluser = voiceNoInCluster
-				voice.note = note
-				#¢ or c = 1200 × log2 (f2 / f1)
-				# c = 1200 × log2 (fratio)
-				# c / 1200 = log2 (fratio)
-				# 2 ^ ( c / 1200) = fratio
-				voiceposUnit = (voiceNoInCluster / self.voicesPerNote) * 2 - 1
-				centsDetune = 30
-				clusterDetune = pow(2, centsDetune*voiceposUnit/1200)
-				note.voices += [voice]
-				logger.debug("modifier " + str(self.getPitchMod()))
-				self.strikeIncrement[voice.index] = note.defaultIncrement * clusterDetune * self.incrementScale
-				voice.setAllIncrements(self.getPitchMod())
-				logger.debug("self.strikeIncrement[voice.index] " + str(self.strikeIncrement[voice.index]))
-				voice.setPhaseAllOps(0)
-						
-				dt01.formatAndSend(dt01.cmd_channelgain, voice.index, 0, [2**16*note.velocityReal]*2, voicemode = False)
-				
+			cluster = sorted(self.clusters, key=lambda x: x.spawntime)[0]
+			cluster.spawntime = time.time()
+			cluster.spawn(note)
+
 		if msg.type == 'pitchwheel':
 			logger.debug("PW: " + str(msg.pitch))
 			self.pitchwheel = msg.pitch
@@ -353,7 +420,7 @@ class Patch():
 		if msg.type == "note_off" or (msg.type == "note_on" and msg.velocity == 0):
 			# implement rising mono rate
 			for heldnote in self.allNotes[::-1]:
-				if heldnote.held and self.polyphony == self.voicesPerNote :
+				if heldnote.held and self.polyphony == self.voicesPerCluster :
 					self.midi2commands(heldnote.msg)
 					break
 		
@@ -545,4 +612,4 @@ class PatchManager():
 			del self.midiin
 if __name__ == "__main__":
 	P = PatchManager()
-	P.startup('/home/pi/dt_fm/patches/aaa/B3 P2 8888.json')
+	P.startup('/home/pi/dtfm/patches/aaa/sine.json')
