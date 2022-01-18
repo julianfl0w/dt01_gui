@@ -6,11 +6,12 @@ cd $DOWNLOADS
 DIR="/home/pi/Downloads/LCD-show"
 if [ ! -d "$DIR" ]; then
   # add autostart
-  sudo echo "@/home/pi/dtfm/startscript.sh" > /etc/xdg/lxsession/LXDE-pi/autostart
+  sudo mkdir --parents /etc/xdg/lxsession/LXDE-pi
+  sudo cp ../dtfm/backend/random/autostart /etc/xdg/lxsession/LXDE-pi/autostart
 
 
   sudo apt-get update
-  sudo apt-get upgrade
+  #sudo apt-get upgrade
   # Take action if $DIR not exists. #
   echo "Setting up touchscreen..."
   sudo rm -rf LCD-show
@@ -72,10 +73,10 @@ export DISPLAY=:0
 #python3 -m pip install --upgrade pip
 
 sudo apt-get install -y onboard
-sudo apt-get install -y network-manager
+#sudo apt-get install -y network-manager << BREAKS THE SYSTEM?
 sudo apt-get install -y libasound2-dev
 sudo apt-get install -y libjack-dev
-sudo apt-get install -y xdotool 
+#sudo apt-get install -y xdotool 
 # only do these copies here. boot info for RPI
 
 #to change hostname:
@@ -84,8 +85,8 @@ sudo apt-get install -y xdotool
 
 
 DIR="/home/pi/dtfm"
-#sudo cp $DIR/random/cmdline.txt /boot/cmdline.txt
-#sudo cp $DIR/random/config.txt /boot/config.txt
+sudo cp $DIR/random/cmdline.txt /boot/cmdline.txt
+sudo cp $DIR/random/config.txt /boot/config.txt
 
 # configure autostart
 mkdir -p /home/pi/.config/autostart/
