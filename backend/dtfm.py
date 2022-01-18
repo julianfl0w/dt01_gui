@@ -14,11 +14,10 @@ import os
 import traceback
 import pickle
 import RPi.GPIO as GPIO
-from goto import with_goto
 import logging
 import faulthandler; faulthandler.enable()
 
-logger = logging.getLogger('DT01')
+logger = logging.getLogger('dtfm')
 
 MIDINOTES      = 128
 CONTROLCOUNT   = 128
@@ -82,7 +81,7 @@ SamplePeriodSeconds = 1.0/SamplesPerSecond
 
 import inspect
 
-def DT01_fromFile(filename):
+def dtfm_fromFile(filename):
 	with open(filename, 'rb') as f:
 		return pickle.load(f)
 	
@@ -173,7 +172,7 @@ def getRateAndLevel(opDict, output_level, maxout = 2**29):
 	logger.debug("envThisLevel " + str(envThisLevel))
 	return envRatePerSample, envThisLevel
 	
-class DT01(JObject):
+class dtfm(JObject):
 
 	def toFile(self, filename):
 		with open(filename, 'wb+') as f:
@@ -183,15 +182,15 @@ class DT01(JObject):
 		
 		self.voices = 0
 		self.polyphony = polyphony
-		self.voicesPerPatch = min(self.polyphony, 64)
-		self.patchesPerDT01 = int(round(self.polyphony / self.voicesPerPatch))
+		self.voicesPerPatch = min(self.polyphony, 512)
+		self.patchesPerdtfm = int(round(self.polyphony / self.voicesPerPatch))
 		self.voices = []
 		self.voiceSets = []
-		self.loanTime = [0]*self.patchesPerDT01
+		self.loanTime = [0]*self.patchesPerdtfm
 		self.maxPhaseCount = 10 # we store in memory up to 100 phases
 		
 		index = 0
-		for i in range(self.patchesPerDT01):
+		for i in range(self.patchesPerdtfm):
 			newSet = []
 			for j in range(self.voicesPerPatch):
 				newVoice = Voice(index, self)
@@ -266,8 +265,8 @@ class DT01(JObject):
 		
 class Voice(JObject):
 		
-	def __init__(self, index, dt01_inst):
-		self.dt01_inst = dt01_inst
+	def __init__(self, index, dtfm_inst):
+		self.dtfm_inst = dtfm_inst
 		self.index = index
 		self.spawntime = 0
 		self.index = index
@@ -279,7 +278,7 @@ class Voice(JObject):
 		self.opZeros = np.array([0]* OPERATORCOUNT, dtype=np.int32)
 
 		for opindex in range(OPERATORCOUNT):
-			self.operators += [Operator(self, opindex, dt01_inst)]
+			self.operators += [Operator(self, opindex, dtfm_inst)]
 		
 		self.channels = []
 		self.channels += [Channel(self, 0)]
@@ -331,24 +330,24 @@ class Voice(JObject):
 		return formatAndSendVal
 		
 	def setFMAlgo(self, algo):
-		self.formatAndSend(dt01.cmd_fm_algo, getFMAlgo(algo))
+		self.formatAndSend(dtfm.cmd_fm_algo, getFMAlgo(algo))
 	
 	def setAMSrc(self, opno, source):
 		self.operators[opno].amsrc = source
 		formatAndSendVal = 0
-		for i in reversed(range(dt01.OPERATORCOUNT)):
+		for i in reversed(range(dtfm.OPERATORCOUNT)):
 			formatAndSendVal = int(formatAndSendVal) << 4
 			formatAndSendVal += int(voice.operators[i].amsrc)
 			#logger.debug(bin(formatAndSendVal))
-		voice.formatAndSend(dt01.cmd_am_algo, formatAndSendVal)
+		voice.formatAndSend(dtfm.cmd_am_algo, formatAndSendVal)
 		
 	def applySounding(self, isSounding):
 		formatAndSendVal = 0
-		for i in reversed(range(dt01.OPERATORCOUNT)):
+		for i in reversed(range(dtfm.OPERATORCOUNT)):
 			formatAndSendVal = int(formatAndSendVal) << 1
 			formatAndSendVal += int(voice.operators[i].sounding)
 			#logger.debug(bin(formatAndSendVal))
-		voice.formatAndSend(dt01.cmd_sounding, formatAndSendVal)
+		voice.formatAndSend(dtfm.cmd_sounding, formatAndSendVal)
 	
 	def formatAndSend(self, param, value, voicemode = False):
 		return formatAndSend(param, self.index, 0, value, voicemode)
@@ -365,8 +364,8 @@ class Channel(JObject):
 		
 # OPERATOR DESCRIPTIONS
 class Operator(JObject):
-	def __init__(self, voice, index, dt01_inst):
-		self.dt01_inst = dt01_inst
+	def __init__(self, voice, index, dtfm_inst):
+		self.dtfm_inst = dtfm_inst
 		self.index = index
 		self.voice = voice
 		self.sounding = 1
@@ -451,7 +450,7 @@ if __name__ == "__main__":
 				
 	# run testbench
 	
-	logger = logging.getLogger('DT01')
+	logger = logging.getLogger('dtfm')
 	#formatter = logging.Formatter('{"debug": %(asctime)s {%(pathname)s:%(lineno)d} %(message)s}')
 	formatter = logging.Formatter('{{%(pathname)s:%(lineno)d %(message)s}')
 	ch = logging.StreamHandler()

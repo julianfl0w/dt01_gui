@@ -16,7 +16,7 @@ import git
 import datetime
 
 # git stuff
-repo = git.Repo("/home/pi/dt_fm")
+repo = git.Repo("/home/pi/dtfm")
 main = repo.head.reference
 commitDate = str(datetime.datetime.fromtimestamp(main.commit.committed_date))
 
@@ -87,7 +87,7 @@ class TextEntryWindow(QWidget):
 		self.layout.addLayout(self.showWithCancelLayout)
 		#self.layout.addWidget(self.bottomHalf)
 	
-		onboardPath  = "/home/pi/dt_fm/gui/onboard/"
+		onboardPath  = "/home/pi/dtfm/gui/onboard/"
 		layoutsPath  = os.path.join(onboardPath, "layouts")
 		themePath    = os.path.join(onboardPath, "themes")
 		layoutOption = " -l " + os.path.join(layoutsPath,"Phone")

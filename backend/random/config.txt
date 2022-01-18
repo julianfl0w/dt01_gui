@@ -76,3 +76,5 @@ hdmi_drive=2
 
 #SSH over USB
 dtoverlay=dwc2
+# SPI stuff
+dtoverlay=spi1-2cs,cs0_pin=16,cs1_pin=12

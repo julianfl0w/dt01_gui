@@ -18,7 +18,7 @@ import hjson as json
 import socket
 import traceback
 import pickle
-import dt01
+import dtfm
 
 useKeyboard = False
 if useKeyboard:
@@ -34,7 +34,7 @@ import RPi.GPIO as GPIO
 import zmq
 import algos
 import queue
-logger = logging.getLogger('DT01')
+logger = logging.getLogger('dtfm')
 #formatter = logging.Formatter('{"debug": %(asctime)s {%(pathname)s:%(lineno)d} %(message)s}')
 formatter = logging.Formatter('{{%(pathname)s:%(lineno)d %(message)s}')
 ch = logging.StreamHandler()
@@ -86,15 +86,15 @@ class Cluster():
 		# c / 1200 = log2 (fratio)
 		# 2 ^ ( c / 1200) = fratio
 		self.voiceposUnit = (voiceNoInCluster / len(voices)) * 2 - 1
-		self.centsDetune = 15
+		self.centsDetune = 20
 		self.clusterDetune = pow(2, self.centsDetune*self.voiceposUnit/1200)
 		np.set_printoptions(threshold=sys.maxsize)
 	
 	def startEnvs(self):
 		logger.debug("startEnvs cluster " + str(self.index))
-		self.formatAndSend(dt01.cmd_env_rate, self.opZeros,  voicemode=False)                               
-		self.formatAndSend(dt01.cmd_env,      self.env0,     voicemode=False)
-		self.formatAndSend(dt01.cmd_env_rate, self.envRate0, voicemode=False) 
+		self.formatAndSend(dtfm.cmd_env_rate, self.opZeros,  voicemode=False)                               
+		self.formatAndSend(dtfm.cmd_env,      self.env0,     voicemode=False)
+		self.formatAndSend(dtfm.cmd_env_rate, self.envRate0, voicemode=False) 
 		for voice in self.voices:
 			for op in voice.operators:
 				op.phase = 0
@@ -105,51 +105,66 @@ class Cluster():
 		#logger.debug("clusterDetune "  + str(self.clusterDetune))
 		#logger.debug("incrementScale " + str(self.patch.incrementScale))
 		#logger.debug("freqScales " + str(self.freqScales[:]))
-		self.strikeIncrement = note.defaultIncrement * self.freqScales
+		np.multiply(note.defaultIncrement, self.freqScales, out = self.strikeIncrement, casting='unsafe')
 		logger.debug(self.strikeIncrement)
 		for voice in self.voices:
 			voice.note = note
-			note.voices += [voice]
+		note.cluster = self
 			
 		#logger.debug("modifier " + str(self.patch.getPitchMod()))
 		self.setAllIncrements()
 		self.startEnvs()
-		dt01.formatAndSend(dt01.cmd_channelgain, self.vIndexes[0], 0, [2**16*note.velocityReal]*len(self.voices), voicemode = True)
-		dt01.formatAndSend(dt01.cmd_channelgain, self.vIndexes[0], 1, [2**16*note.velocityReal]*len(self.voices), voicemode = True)
+		dtfm.formatAndSend(dtfm.cmd_channelgain, self.vIndexes[0], 0, [2**16*note.velocityReal]*len(self.voices), voicemode = True)
+		dtfm.formatAndSend(dtfm.cmd_channelgain, self.vIndexes[0], 1, [2**16*note.velocityReal]*len(self.voices), voicemode = True)
 				
 	
 	def setAllIncrements(self):
 		logger.debug("setting all increments")
-		val = np.minimum(self.patch.baseIncrement + self.strikeIncrement * self.patch.getPitchMod(), 2**30).astype(np.int32)
+		np.multiply(self.strikeIncrement, self.patch.getPitchMod(), out = self.strikeIncrementPM, casting='unsafe' )
+		
+		val = np.minimum(self.patch.baseIncrement + self.strikeIncrementPM, 2**30).astype(np.int32)
 		val = val.flatten()
 		logger.debug("val " + str( val))
-		self.voices[0].formatAndSend(dt01.cmd_increment, val[:], voicemode = False)
+		self.voices[0].formatAndSend(dtfm.cmd_increment, val[:], voicemode = False)
 	
+	def silenceAllOps(self):
+		rates  = []
+		for voice in self.voices:
+			for op in voice.operators:
+				rates  += [self.patch.envRatePerSample[op.index, self.patch.phaseCount[op.index] - 1]]
+				op.phase = self.patch.phaseCount[op.index] - 1
+		#logger.debug(rates)
+		self.formatAndSend(dtfm.cmd_env_rate, self.opZeros, voicemode=False)
+		self.formatAndSend(dtfm.cmd_env,      self.opZeros, voicemode=False)
+		self.formatAndSend(dtfm.cmd_env_rate, rates, voicemode=False)        
+		
 	def update(self):
 		self.opZeros = np.zeros((8 * len(self.voices)), dtype=np.int32)
-		self.env0     = np.repeat(self.patch.envThisLevel    [:,0].reshape((1, dt01.OPERATORCOUNT)), len(self.voices), axis=0).astype(np.int32).flatten()    
-		self.envRate0 = np.repeat(self.patch.envRatePerSample[:,0].reshape((1, dt01.OPERATORCOUNT)), len(self.voices), axis=0).astype(np.int32).flatten()
-		self.freqScales = (np.rot90(self.clusterDetune.reshape(1,len(self.voices)), 3) * self.patch.incrementScale)
+		self.env0     = np.repeat(self.patch.envThisLevel    [:,0].reshape((1, dtfm.OPERATORCOUNT)), len(self.voices), axis=0).astype(np.int32).flatten()    
+		self.envRate0 = np.repeat(self.patch.envRatePerSample[:,0].reshape((1, dtfm.OPERATORCOUNT)), len(self.voices), axis=0).astype(np.int32).flatten()
+		self.freqScales = (np.rot90(self.clusterDetune.reshape(1,len(self.voices)), 3) * self.patch.incrementScale).astype(np.float32)
+		self.strikeIncrement   = np.full_like(self.freqScales, 1, dtype = np.int32)
+		self.strikeIncrementPM = np.full_like(self.freqScales, 1, dtype = np.int32)
 		
 		np.set_printoptions(threshold=sys.maxsize)
 		#logger.debug(str(self.env0 ))
 	
 	def formatAndSend(self, param, value, voicemode):
-		dt01.formatAndSend(param, self.vIndexes[0], 0, value, voicemode)
+		dtfm.formatAndSend(param, self.vIndexes[0], 0, value, voicemode)
 		
 # patch holds all state, including note and control state
 class Patch():
 					
 	def formatAndSend(self, param, value):
-		dt01.formatAndSend(param, 0, 0, value)
+		dtfm.formatAndSend(param, 0, 0, value)
 	
 	def processControl(self, paramName, value):
-		self.midi2commands(mido.Message('control_change', control = dt01.controlNum2Num [paramName], value = value)) #
+		self.midi2commands(mido.Message('control_change', control = dtfm.controlNum2Num [paramName], value = value)) #
 		
-	def __init__(self, dt01_inst, patchFilename):
+	def __init__(self, dtfm_inst, patchFilename):
 		logger.debug("patch init ")
-		self.dt01_inst = dt01_inst
-		self.polyphony = 64
+		self.dtfm_inst = dtfm_inst
+		self.polyphony = 128
 		self.active = True
 		self.voicesPerCluster = 5
 		self.voices = []
@@ -167,7 +182,7 @@ class Patch():
 			self.allNotes+= [Note(i)]
 			
 		self.activeOperator = 0
-		self.voices = dt01_inst.getVoices()
+		self.voices = dtfm_inst.getVoices()
 		self.clusterCount = int(len(self.voices) / self.voicesPerCluster)
 		
 		remainingVoices = self.voices.copy()
@@ -243,7 +258,7 @@ class Patch():
 		#logger.debug(modifier)
 		self.tosend = np.add(self.baseIncrement, self.getPitchMod() * self.strikeIncrement).astype(np.int32)
 		for op in self.lowestVoice.operators[:6]:
-			op.formatAndSend(dt01.cmd_increment, self.tosend[:, op.index], voicemode = True)
+			op.formatAndSend(dtfm.cmd_increment, self.tosend[:, op.index], voicemode = True)
 	
 	def loadJson(self, filename):
 	
@@ -254,13 +269,13 @@ class Patch():
 		initDict, sounding0indexed = self.getInitDict(patchDict)
 		
 		# ignoring pitch envelope generator for now
-		self.phaseCount       = np.zeros((dt01.OPERATORCOUNT), dtype=np.int32)
-		self.envRatePerSample = np.zeros((dt01.OPERATORCOUNT, 100), dtype=np.int32)
-		self.envThisLevel     = np.zeros((dt01.OPERATORCOUNT, 100), dtype=np.int32)
-		self.incrementScale   = np.zeros((dt01.OPERATORCOUNT))
-		self.baseIncrement    = np.zeros((dt01.OPERATORCOUNT))
-		self.strikeIncrement  = np.zeros((self.polyphony, dt01.OPERATORCOUNT), dtype=np.int32)
-		self.sounding         = np.zeros((dt01.OPERATORCOUNT), dtype=np.int32)
+		self.phaseCount       = np.zeros((dtfm.OPERATORCOUNT), dtype=np.int32)
+		self.envRatePerSample = np.zeros((dtfm.OPERATORCOUNT, 100), dtype=np.int32)
+		self.envThisLevel     = np.zeros((dtfm.OPERATORCOUNT, 100), dtype=np.int32)
+		self.incrementScale   = np.zeros((dtfm.OPERATORCOUNT))
+		self.baseIncrement    = np.zeros((dtfm.OPERATORCOUNT))
+		self.strikeIncrement  = np.zeros((self.polyphony, dtfm.OPERATORCOUNT), dtype=np.int32)
+		self.sounding         = np.zeros((dtfm.OPERATORCOUNT), dtype=np.int32)
 			
 		logger.debug("Kosherizing env vals")
 		# setup env vals
@@ -268,7 +283,7 @@ class Patch():
 		for opno in range(soundingops):
 			logger.debug("Operator" + str(opno+1))
 			opDict = patchDict["Operator" + str(opno+1)]
-			eps, ela = dt01.getRateAndLevel(opDict, (opDict["Output Level"]))
+			eps, ela = dtfm.getRateAndLevel(opDict, (opDict["Output Level"]))
 			self.phaseCount[opno] = len(ela)
 			self.envRatePerSample[opno,:self.phaseCount[opno]] = np.abs(eps)
 			self.envThisLevel    [opno,:self.phaseCount[opno]] = ela
@@ -280,13 +295,13 @@ class Patch():
 				self.incrementScale[opno] = opDict["Frequency"] * (1 + (opDict["Detune"] / 7.0) / 30)
 
 			else:
-				self.baseIncrement [opno] = (2**32)*opDict["Frequency"] / dt01.SamplesPerSecond
+				self.baseIncrement [opno] = (2**32)*opDict["Frequency"] / dtfm.SamplesPerSecond
 				self.incrementScale[opno] = 0
 			
 			self.sounding[opno] = 1 if opno in sounding0indexed else 0
 		logger.debug("Done kosherizing")
 
-		self.dt01_inst.initialize(initDict, voices = self.voices)
+		self.dtfm_inst.initialize(initDict, voices = self.voices)
 		for cluster in self.clusters:
 			cluster.update()
 		return 0
@@ -295,7 +310,7 @@ class Patch():
 		
 		for opno in opnos:
 			if opno < 6:
-				op = self.dt01_inst.voices[voiceno].operators[opno]
+				op = self.dtfm_inst.voices[voiceno].operators[opno]
 				phase = (op.phase + 1) % self.phaseCount[opno]
 
 				#logger.debug("\n\nproc IRQUEUE! voice:" + str(voiceno) + " op:"+ str(opno) + " phase:" + str(phase))
@@ -308,9 +323,9 @@ class Patch():
 					pass
 				else:
 					op.phase = phase
-					op.formatAndSend(dt01.cmd_env_rate, 0)                               
-					op.formatAndSend(dt01.cmd_env,      self.envThisLevel[opno, phase])
-					op.formatAndSend(dt01.cmd_env_rate, self.envRatePerSample[opno, phase])                           
+					op.formatAndSend(dtfm.cmd_env_rate, 0)                               
+					op.formatAndSend(dtfm.cmd_env,      self.envThisLevel[opno, phase])
+					op.formatAndSend(dtfm.cmd_env_rate, self.envRatePerSample[opno, phase])                           
 					#logger.debug("sending rate " + str(self.envRatePerSample[opno,phase]))
 					#logger.debug("envRatePerSample:\n" + str(self.envRatePerSample))
 					
@@ -333,10 +348,9 @@ class Patch():
 			note = self.allNotes[msg.note] 
 			note.velocity = 0 
 			note.velocityReal = 0 
-			for voice in note.voices:
-				#voice.spawntime = 0
-				voice.silenceAllOps()
-			note.voices = []
+			if note.cluster is not None:
+				note.cluster.silenceAllOps()
+			note.cluster = None
 			note.held = False
 			note.releaseTime = time.time()
 		
@@ -366,7 +380,7 @@ class Patch():
 			
 		elif msg.type == 'control_change':
 						
-			logger.debug("control : " + str(msg.control) + " (" + dt01.controlNum2Name[msg.control] +  "): " + str(msg.value))
+			logger.debug("control : " + str(msg.control) + " (" + dtfm.controlNum2Name[msg.control] +  "): " + str(msg.value))
 
 			event = "control[" + str(msg.control) + "]"
 			
@@ -376,24 +390,24 @@ class Patch():
 			if msg.control == 3:
 				self.midi2commands(mido.Message('control_change', control= 7, value = msg.value ))
 				
-			if msg.control == dt01.ctrl_vibrato_env:
-				dt01.formatAndSend(dt01.cmd_env_rate , self.lowestVoiceIndex, 7, [0] * self.polyphony)
-				dt01.formatAndSend(dt01.cmd_env , self.lowestVoiceIndex, 7, [(msg.value/127.0)*2**29] * self.polyphony)
-				dt01.formatAndSend(dt01.cmd_env_rate , self.lowestVoiceIndex, 7, [(msg.value/127.0)*2**29] * self.polyphony)
+			if msg.control == dtfm.ctrl_vibrato_env:
+				dtfm.formatAndSend(dtfm.cmd_env_rate , self.lowestVoiceIndex, 7, [0] * self.polyphony)
+				dtfm.formatAndSend(dtfm.cmd_env , self.lowestVoiceIndex, 7, [(msg.value/127.0)*2**29] * self.polyphony)
+				dtfm.formatAndSend(dtfm.cmd_env_rate , self.lowestVoiceIndex, 7, [(msg.value/127.0)*2**29] * self.polyphony)
 				
-			if msg.control == dt01.ctrl_tremolo_env:
-				dt01.formatAndSend(dt01.cmd_env_rate , self.lowestVoiceIndex, 6, [0] * self.polyphony)
-				dt01.formatAndSend(dt01.cmd_env , self.lowestVoiceIndex, 6, [(msg.value/127.0)*2**29] * self.polyphony)
-				dt01.formatAndSend(dt01.cmd_env_rate , self.lowestVoiceIndex, 6, [(msg.value/127.0)*2**29] * self.polyphony)
+			if msg.control == dtfm.ctrl_tremolo_env:
+				dtfm.formatAndSend(dtfm.cmd_env_rate , self.lowestVoiceIndex, 6, [0] * self.polyphony)
+				dtfm.formatAndSend(dtfm.cmd_env , self.lowestVoiceIndex, 6, [(msg.value/127.0)*2**29] * self.polyphony)
+				dtfm.formatAndSend(dtfm.cmd_env_rate , self.lowestVoiceIndex, 6, [(msg.value/127.0)*2**29] * self.polyphony)
 				
-			if msg.control == dt01.ctrl_silence:
+			if msg.control == dtfm.ctrl_silence:
 				for op in range(6):
-					dt01.formatAndSend(dt01.cmd_env , self.lowestVoiceIndex,      op, [0] * self.polyphony)
-					dt01.formatAndSend(dt01.cmd_env_rate , self.lowestVoiceIndex, op, [0] * self.polyphony)
+					dtfm.formatAndSend(dtfm.cmd_env , self.lowestVoiceIndex,      op, [0] * self.polyphony)
+					dtfm.formatAndSend(dtfm.cmd_env_rate , self.lowestVoiceIndex, op, [0] * self.polyphony)
 				
 				
 			# OPERATOR CONCERNS
-			if msg.control == dt01.ctrl_sustain: 
+			if msg.control == dtfm.ctrl_sustain: 
 				self.sustain  = msg.value
 				if not self.sustain:
 					for note, release in enumerate(self.toRelease):
@@ -522,7 +536,7 @@ class PatchManager():
 		
 			#c = sys.stdin.read(1)
 			#if c == 'd':
-			#	dt01_inst.dumpState()
+			#	dtfm_inst.dumpState()
 			self.checkMidi()
 			
 			if useKeyboard:
@@ -531,7 +545,7 @@ class PatchManager():
 			
 			# process the IRQUEUE
 			while(GPIO.input(37)):
-				voiceno, opnos = dt01.getIRQueue()
+				voiceno, opnos = dtfm.getIRQueue()
 				self.GLOBAL_DEFAULT_PATCH.processIRQueue(voiceno, opnos)
 				
 			if time.time()-lastPatchCheck > 0.02:
@@ -539,6 +553,7 @@ class PatchManager():
 				self.checkForPatchChange()
 			
 			if useMouse:
+				print("CHECKING MOUSE")
 				mouseX, mouseY = mouse.get_position()
 				#mouseX /= pyautogui.size()[0]
 				#mouseY /= pyautogui.size()[1]
@@ -546,8 +561,8 @@ class PatchManager():
 				mouseY /= 360
 				if (mouseX, mouseY) != mousePosLast:
 					mousePosLast = (mouseX, mouseY)
-					self.GLOBAL_DEFAULT_PATCH.midi2commands(mido.Message('control_change', control= dt01.ctrl_tremolo_env, value = int(mouseX*127)))
-					self.GLOBAL_DEFAULT_PATCH.midi2commands(mido.Message('control_change', control= dt01.ctrl_vibrato_env, value = int(mouseY*127)))
+					self.GLOBAL_DEFAULT_PATCH.midi2commands(mido.Message('control_change', control= dtfm.ctrl_tremolo_env, value = int(mouseX*127)))
+					self.GLOBAL_DEFAULT_PATCH.midi2commands(mido.Message('control_change', control= dtfm.ctrl_vibrato_env, value = int(mouseY*127)))
 					#logger.debug((mouseX, mouseY))
 						
 
@@ -574,18 +589,18 @@ class PatchManager():
 		if len(sys.argv) > 1:
 			logger.setLevel(1)
 			
-		logger.debug("Instantiating DT01")
+		logger.debug("Instantiating dtfm")
 		self.polyphony = 512
 		
 		logger.debug("initializing from scratch")
-		self.dt01_inst = dt01.DT01(polyphony = self.polyphony)
+		self.dtfm_inst = dtfm.dtfm(polyphony = self.polyphony)
 			
-		self.GLOBAL_DEFAULT_PATCH = Patch(self.dt01_inst, patchFilename)
+		self.GLOBAL_DEFAULT_PATCH = Patch(self.dtfm_inst, patchFilename)
 		
 		api=rtmidi.API_UNSPECIFIED
 		self.midiin = rtmidi.MidiIn(get_api_from_environment(api))
 		
-		dt01.initIRQueue()
+		dtfm.initIRQueue()
 			
 		# Socket to talk to server
 		context = zmq.Context()
@@ -612,4 +627,4 @@ class PatchManager():
 			del self.midiin
 if __name__ == "__main__":
 	P = PatchManager()
-	P.startup('/home/pi/dtfm/patches/aaa/sine.json')
+	P.startup('/home/pi/dtfm/patches/aaa/Dlby Rude .json')

@@ -1,41 +1,5 @@
 #!/bin/bash
 
-# setup screen
-DOWNLOADS="/home/pi/Downloads"
-cd $DOWNLOADS
-DIR="/home/pi/Downloads/LCD-show"
-if [ ! -d "$DIR" ]; then
-  # add autostart
-  sudo mkdir --parents /etc/xdg/lxsession/LXDE-pi
-  sudo cp ../dtfm/backend/random/autostart /etc/xdg/lxsession/LXDE-pi/autostart
-
-
-  sudo apt-get update
-  #sudo apt-get upgrade
-  # Take action if $DIR not exists. #
-  echo "Setting up touchscreen..."
-  sudo rm -rf LCD-show
-  git clone https://github.com/goodtft/LCD-show.git
-  chmod -R 755 LCD-show
-  cd LCD-show/
-  sudo ./LCD35-show 180
-fi
-
-#cd $DOWNLOADS
-#if ! type conda &> /dev/null; then
-#  # install anaconda
-#  wget http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-armv7l.sh
-#  sudo md5sum Miniconda3-latest-Linux-armv7l.sh # (optional) check md5
-#  sudo chmod 777 /bin/bash Miniconda3-latest-Linux-armv7l.sh
-#  /bin/bash Miniconda3-latest-Linux-armv7l.sh -b -f # -> change default directory to /home/pi/miniconda3
-#  echo "export PATH=\"/home/pi/miniconda3/bin:$PATH\"" >> /home/pi/.bashrc # add to path
-#  #sudo reboot -h now
-#  conda install -y anaconda-client
-#  
-#fi
-
-cd ..
-
 export DISPLAY=:0
 
 #DIR="/home/pi/dtfm"
@@ -76,6 +40,7 @@ sudo apt-get install -y onboard
 #sudo apt-get install -y network-manager << BREAKS THE SYSTEM?
 sudo apt-get install -y libasound2-dev
 sudo apt-get install -y libjack-dev
+sudo apt install -y python3-pyqt5
 #sudo apt-get install -y xdotool 
 # only do these copies here. boot info for RPI
 
@@ -85,12 +50,12 @@ sudo apt-get install -y libjack-dev
 
 
 DIR="/home/pi/dtfm"
-sudo cp $DIR/random/cmdline.txt /boot/cmdline.txt
-sudo cp $DIR/random/config.txt /boot/config.txt
+sudo cp $DIR/backend/random/cmdline.txt /boot/cmdline.txt
+sudo cp $DIR/backend/random/config.txt /boot/config.txt
 
 # configure autostart
 mkdir -p /home/pi/.config/autostart/
-sudo cp $DIR/random/dt01.desktop /home/pi/.config/autostart/
+sudo cp $DIR/backend/random/dt01.desktop /home/pi/.config/autostart/
 sudo chmod +x /home/pi/.config/autostart/*
 
 #remove top panel
