@@ -627,4 +627,4 @@ class PatchManager():
 			del self.midiin
 if __name__ == "__main__":
 	P = PatchManager()
-	P.startup('/home/pi/dtfm/patches/aaa/Dlby Rude .json')
+	P.startup('/home/pi/dtfm/patches/aaa/B3 P2 8888.json')
