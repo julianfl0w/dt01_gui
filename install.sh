@@ -50,8 +50,8 @@ sudo apt install -y python3-pyqt5
 
 
 DIR="/home/pi/dtfm"
-sudo cp $DIR/backend/random/cmdline.txt /boot/cmdline.txt
-sudo cp $DIR/backend/random/config.txt /boot/config.txt
+#sudo cp $DIR/backend/random/cmdline.txt /boot/cmdline.txt
+#sudo cp $DIR/backend/random/config.txt /boot/config.txt
 
 # configure autostart
 mkdir -p /home/pi/.config/autostart/
@@ -66,4 +66,8 @@ sudo chmod +x /home/pi/.config/autostart/*
 sudo rm /etc/xdg/autostart/piwiz.desktop
 
 chmod 777 $DIR/startscript.sh
+
+pip install -r requirements_user.txt
+sudo pip install -r requirements_sudo.txt
+
 #pwd

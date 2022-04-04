@@ -22,9 +22,12 @@ commitDate = str(datetime.datetime.fromtimestamp(main.commit.committed_date))
 
 def conditionalShow(wind):
 	if "aarch64" in platform.platform():
+		print("FULL SCREEN")
 		wind.showFullScreen()
 	else:
-		wind.show()
+		print("NOT FULL SCREEN")
+		#wind.show()
+		wind.showFullScreen()
 
 class TextEntryWindow(QWidget):
 	
@@ -98,8 +101,9 @@ class TextEntryWindow(QWidget):
 		#os.system("xdotool search \"onboard\" windowactivate --sync &")
 		self.setLayout(self.layout)
 		
-		self.setFixedWidth(480)
-		self.setFixedHeight(160)
+		
+		self.setFixedWidth(parent.width)
+		self.setFixedHeight(parent.height/2)
 				
 		self.centerWindow()
 		
@@ -197,9 +201,10 @@ class MainWindow(QWidget):
 		conditionalShow(SettingsWindow())
 		#self.hide()
 	
-	def __init__(self, parent=None):
+	def __init__(self, height, width,parent=None):
 		super().__init__(parent)
-		
+		self.height = height
+		self.width  = width
 		context = zmq.Context()
 		self.socket = context.socket(zmq.PUB)
 		self.socket.bind("tcp://*:5555")
@@ -207,10 +212,10 @@ class MainWindow(QWidget):
 		self.allCategoriesDir = os.path.join(sys.path[0], '..', 'patches/')
 		self.folderSlice = SliceViewSelect(self, [""]*4)
 		self.folderSlice.buttons[0].size_hint = (0.5, 1.0)
-		self.folderSlice.buttons[0].setMaximumSize = (220, 160)
+		self.folderSlice.buttons[0].setMaximumSize = (self.width/2, self.height/2)
 		self.folderSlice.setItemsFromDirectory(self.allCategoriesDir)
 		self.fileSlice   = SliceViewSelect(self, [""]*4) # start fileslice empty for now
-		self.fileSlice.buttons[0].setMaximumSize = (220, 160)
+		self.fileSlice.buttons[0].setMaximumSize = (self.width/2, self.height/2)
 		
 		self.folderSlice.buttons[0].select() #select the first one
 		self.fileSlice.buttons[0].select()  #select the first one
@@ -241,7 +246,15 @@ def CheckReturn(retval):
 	
 if __name__ == '__main__':
 	app = QApplication(sys.argv)
-	main_window = MainWindow()
+
+	screen = app.primaryScreen()
+	print('Screen: %s' % screen.name())
+	size = screen.size()
+	print('Size: %d x %d' % (size.width(), size.height()))
+	rect = screen.availableGeometry()
+	print('Available: %d x %d' % (rect.width(), rect.height()))
+
+	main_window = MainWindow(size.width(), size.height())
 	#tew = TextEntryWindow(None, CheckReturn)
 	#print(platform.platform())
 	conditionalShow(main_window)

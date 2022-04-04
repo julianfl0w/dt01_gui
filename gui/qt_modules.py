@@ -23,7 +23,7 @@ class ActionButton(QPushButton):
 		self.setStyleSheet(stylesheet)
 		self.pressed.connect(self.onPress)
 		
-		self.setMaximumSize(480,320);
+		#self.setMaximumSize(480,320);
 		
 	def onPress(self):
 		self.parentLayout.anyButtonPressed(self)
@@ -37,7 +37,7 @@ class RadioLabelButton(QPushButton):
 		self.setFont(QFont('Arial', 30))
 		self.pressed.connect(self.select)
 		self.setStyleSheet("text-align: left; ")
-		self.setMaximumSize(480,320);
+		#self.setMaximumSize(480,320);
 				
 	def select(self):
 		# blank buttons are unselectable
@@ -99,12 +99,12 @@ class NavBox(QHBoxLayout):
 		button_scroll_file_up    .setFixedHeight(50)
 		button_scroll_file_down  .setFixedHeight(50)
 		
-		button_scroll_folder_up  .setMaximumSize(480/7, 50)
-		button_scroll_folder_down.setMaximumSize(480/7, 50)
-		button_scroll_file_up    .setMaximumSize(480/7, 50)
-		button_scroll_file_down  .setMaximumSize(480/7, 50)
-		settings_button          .setMaximumSize(480/7, 50)
-		self.wifi_button         .setMaximumSize(480/7, 50)
+		#button_scroll_folder_up  .setMaximumSize(480/7, 50)
+		#button_scroll_folder_down.setMaximumSize(480/7, 50)
+		#button_scroll_file_up    .setMaximumSize(480/7, 50)
+		#button_scroll_file_down  .setMaximumSize(480/7, 50)
+		#settings_button          .setMaximumSize(480/7, 50)
+		#self.wifi_button         .setMaximumSize(480/7, 50)
 		
 		self.addWidget(button_scroll_folder_up  )
 		self.addWidget(button_scroll_folder_down)
